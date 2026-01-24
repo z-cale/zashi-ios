@@ -175,17 +175,21 @@ public struct ServerSetup {
                 
                 return .run { [input] send in
                     do {
+                        print("DEBUG: Attempting to parse endpoint: '\(input)'")
                         let endpoint = UserPreferencesStorage.ServerConfig.endpoint(
                             for: input,
                             streamingCallTimeoutInMillis: streamingCallTimeoutInMillis
                         )
                         guard let endpoint else {
+                            print("DEBUG: endpoint() returned nil for input: '\(input)'")
                             throw ZcashError.synchronizerServerSwitch
                         }
+                        print("DEBUG: Parsed endpoint - host: \(endpoint.host), port: \(endpoint.port), secure: \(endpoint.secure)")
                         try await sdkSynchronizer.switchToEndpoint(endpoint)
                         try await mainQueue.sleep(for: .seconds(1))
                         await send(.switchSucceeded)
                     } catch {
+                        print("DEBUG: switchToEndpoint failed with error: \(error)")
                         await send(.switchFailed(error.toZcashError()))
                     }
                 }

@@ -89,7 +89,11 @@ public struct SDKSynchronizerClient {
     public var exchangeRateEnabled: (Bool) async throws -> Void
     public var isTorSuccessfullyInitialized: () async -> Bool?
     public var httpRequestOverTor: (URLRequest) async throws -> (Data, HTTPURLResponse)
-    
+
+    // PIR (Private Information Retrieval)
+    public var getPIRStatus: () async throws -> PirStatusResponse
+    public var getPIRParams: () async throws -> PirParamsResponse
+
     public var debugDatabaseSql: (String) -> String = { _ in "" }
     
     public var getSingleUseTransparentAddress: (AccountUUID) async throws -> SingleUseTransparentAddress = { _ in

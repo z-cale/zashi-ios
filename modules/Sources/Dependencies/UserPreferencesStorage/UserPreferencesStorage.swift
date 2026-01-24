@@ -139,10 +139,12 @@ public extension UserPreferencesStorage {
         }
         
         public func endpoint(streamingCallTimeoutInMillis: Int64) -> LightWalletEndpoint {
-            LightWalletEndpoint(
+            // Use insecure connection for localhost (development/testing only)
+            let isLocalhost = host == "127.0.0.1" || host == "localhost"
+            return LightWalletEndpoint(
                 address: host,
                 port: port,
-                secure: true,
+                secure: !isLocalhost,
                 streamingCallTimeoutInMillis: streamingCallTimeoutInMillis
             )
         }
@@ -172,10 +174,12 @@ public extension UserPreferencesStorage {
                     host = "\(String(first))\(String(second))"
                 }
                 
+                // Use insecure connection for localhost (development/testing only)
+                let isLocalhost = host == "127.0.0.1" || host == "localhost"
                 return LightWalletEndpoint(
                     address: host,
                     port: port,
-                    secure: true,
+                    secure: !isLocalhost,
                     streamingCallTimeoutInMillis: streamingCallTimeoutInMillis
                 )
             }

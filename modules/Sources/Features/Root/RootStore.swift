@@ -90,6 +90,7 @@ public struct Root {
         @Shared(.inMemory(.exchangeRate)) public var currencyConversion: CurrencyConversion? = nil
         public var debugState: DebugState
         public var deeplinkWarningState: DeeplinkWarning.State = .initial
+        public var pirState: PIRState = .initial
         public var destinationState: DestinationState
         public var exportLogsState: ExportLogs.State
         @Shared(.inMemory(.featureFlags)) public var featureFlags: FeatureFlags = .initial
@@ -207,6 +208,7 @@ public struct Root {
         case onboarding(OnboardingFlow.Action)
         case osStatusError(OSStatusError.Action)
         case phraseDisplay(RecoveryPhraseDisplay.Action)
+        case pir(PIRAction)
         case serverSetup(ServerSetup.Action)
         case serverSetupBindingUpdated(Bool)
         case splashFinished
@@ -397,7 +399,9 @@ public struct Root {
         destinationReduce()
         
         debugReduce()
-        
+
+        pirReduce()
+
         transactionsReduce()
         
         addressBookReduce()

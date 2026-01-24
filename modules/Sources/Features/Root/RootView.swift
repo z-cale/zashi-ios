@@ -49,6 +49,33 @@ public struct RootView: View {
                     .applyScreenBackground()
                 }
             }
+            .overlay(alignment: .bottomTrailing) {
+                // PIR Debug FAB (Floating Action Button)
+                if store.destinationState.destination == .home && !store.pirState.isOverlayVisible {
+                    Button {
+                        store.send(.pir(.toggleOverlay))
+                    } label: {
+                        Image(systemName: "shield.checkered")
+                            .font(.title2)
+                            .foregroundColor(.white)
+                            .frame(width: 56, height: 56)
+                            .background(Color.blue)
+                            .clipShape(Circle())
+                            .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+                    }
+                    .padding(.trailing, 20)
+                    .padding(.bottom, 100)
+                }
+            }
+            .overlay {
+                // PIR Debug Overlay
+                if store.pirState.isOverlayVisible {
+                    PIRDebugOverlayView(store: store)
+                        .frame(maxWidth: 400)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                        .animation(.spring(response: 0.3), value: store.pirState.isOverlayVisible)
+                }
+            }
             .onChange(of: scenePhase) { value in
                 covered = value == .background
             }

@@ -300,6 +300,12 @@ extension SDKSynchronizerClient: DependencyKey {
             httpRequestOverTor: { request in
                 try await synchronizer.httpRequestOverTor(for: request)
             },
+            getPIRStatus: {
+                try await synchronizer.getPIRStatus()
+            },
+            getPIRParams: {
+                try await synchronizer.getPIRParams()
+            },
             debugDatabaseSql: { query in
                 synchronizer.debugDatabase(sql: query)
             },

@@ -66,6 +66,8 @@ extension SDKSynchronizerClient: TestDependencyKey {
         exchangeRateEnabled: unimplemented("\(Self.self).exchangeRateEnabled"),
         isTorSuccessfullyInitialized: unimplemented("\(Self.self).isTorSuccessfullyInitialized", placeholder: nil),
         httpRequestOverTor: unimplemented("\(Self.self).httpRequestOverTor", placeholder: (Data(), HTTPURLResponse.mockResponse)),
+        getPIRStatus: unimplemented("\(Self.self).getPIRStatus", placeholder: PirStatusResponse()),
+        getPIRParams: unimplemented("\(Self.self).getPIRParams", placeholder: PirParamsResponse()),
         debugDatabaseSql: unimplemented("\(Self.self).debugDatabaseSql", placeholder: ""),
         getSingleUseTransparentAddress: unimplemented(
             "\(Self.self).getSingleUseTransparentAddress",
@@ -119,6 +121,8 @@ extension SDKSynchronizerClient {
         exchangeRateEnabled: { _ in },
         isTorSuccessfullyInitialized: { nil },
         httpRequestOverTor: { _ in (data: Data(), response: HTTPURLResponse.mockResponse) },
+        getPIRStatus: { PirStatusResponse() },
+        getPIRParams: { PirParamsResponse() },
         debugDatabaseSql: { _ in "" },
         getSingleUseTransparentAddress: { _ in
             SingleUseTransparentAddress(address: "", gapPosition: 0, gapLimit: 0)
@@ -242,6 +246,8 @@ extension SDKSynchronizerClient {
         exchangeRateEnabled: @escaping (Bool) async throws -> Void = { _ in },
         isTorSuccessfullyInitialized: @escaping () async -> Bool? = { nil },
         httpRequestOverTor: @escaping (URLRequest) async throws -> (Data, HTTPURLResponse) = { _ in (Data(), HTTPURLResponse.mockResponse) },
+        getPIRStatus: @escaping () async throws -> PirStatusResponse = { PirStatusResponse() },
+        getPIRParams: @escaping () async throws -> PirParamsResponse = { PirParamsResponse() },
         debugDatabaseSql: @escaping (String) -> String = { _ in "" },
         getSingleUseTransparentAddress: @escaping (AccountUUID) async throws -> SingleUseTransparentAddress = { _ in
             SingleUseTransparentAddress(address: "", gapPosition: 0, gapLimit: 0)
@@ -291,6 +297,8 @@ extension SDKSynchronizerClient {
             exchangeRateEnabled: exchangeRateEnabled,
             isTorSuccessfullyInitialized: isTorSuccessfullyInitialized,
             httpRequestOverTor: httpRequestOverTor,
+            getPIRStatus: getPIRStatus,
+            getPIRParams: getPIRParams,
             debugDatabaseSql: debugDatabaseSql,
             getSingleUseTransparentAddress: getSingleUseTransparentAddress,
             checkSingleUseTransparentAddresses: checkSingleUseTransparentAddresses,

@@ -50,6 +50,7 @@ let package = Package(
         .library(name: "OSStatusError", targets: ["OSStatusError"]),
         .library(name: "PartnerKeys", targets: ["PartnerKeys"]),
         .library(name: "Pasteboard", targets: ["Pasteboard"]),
+        .library(name: "PIRCheckerClient", targets: ["PIRCheckerClient"]),
         .library(name: "PrivateDataConsent", targets: ["PrivateDataConsent"]),
         .library(name: "QRImageDetector", targets: ["QRImageDetector"]),
         .library(name: "Receive", targets: ["Receive"]),
@@ -101,7 +102,8 @@ let package = Package(
         .package(url: "https://github.com/pointfreeco/swift-case-paths", from: "1.5.6"),
         .package(url: "https://github.com/pointfreeco/swift-url-routing", from: "0.6.2"),
         .package(url: "https://github.com/zcash-hackworks/MnemonicSwift", from: "2.2.5"),
-        .package(url: "https://github.com/Electric-Coin-Company/zcash-swift-wallet-sdk", from: "2.4.2"),
+        // Local SDK with PIR support - change back to remote for production
+        .package(path: "/Users/czar/Documents/forks/zcash-swift-wallet-sdk"),
         .package(url: "https://github.com/flexa/flexa-ios.git", exact: "1.1.4"),
         .package(url: "https://github.com/pacu/zcash-swift-payment-uri", from: "1.0.0"),
         .package(url: "https://github.com/airbnb/lottie-spm.git", from: "4.5.1"),
@@ -547,6 +549,15 @@ let package = Package(
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
             ],
             path: "Sources/Dependencies/Pasteboard"
+        ),
+        .target(
+            name: "PIRCheckerClient",
+            dependencies: [
+                "SDKSynchronizer",
+                .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+                .product(name: "ZcashLightClientKit", package: "zcash-swift-wallet-sdk")
+            ],
+            path: "Sources/Dependencies/PIRCheckerClient"
         ),
         .target(
             name: "PrivateDataConsent",
