@@ -6,6 +6,8 @@
 //
 
 import ComposableArchitecture
+import Models
+import Utils
 import XCTestDynamicOverlay
 
 extension WalletStorageClient: TestDependencyKey {
@@ -33,7 +35,9 @@ extension WalletStorageClient: TestDependencyKey {
         importTorSetupFlag: unimplemented("\(Self.self).importTorSetupFlag"),
         exportTorSetupFlag: unimplemented("\(Self.self).exportTorSetupFlag", placeholder: nil),
         importZodlAnnouncementFlag: unimplemented("\(Self.self).importZodlAnnouncementFlag"),
-        exportZodlAnnouncementFlag: unimplemented("\(Self.self).exportZodlAnnouncementFlag", placeholder: nil)
+        exportZodlAnnouncementFlag: unimplemented("\(Self.self).exportZodlAnnouncementFlag", placeholder: nil),
+        importVotingHotkey: unimplemented("\(Self.self).importVotingHotkey", placeholder: {}()),
+        exportVotingHotkey: unimplemented("\(Self.self).exportVotingHotkey", placeholder: .init(seedPhrase: .init(""), version: 0))
     )
 }
 
@@ -62,6 +66,8 @@ extension WalletStorageClient {
         importTorSetupFlag: { _ in },
         exportTorSetupFlag: { false },
         importZodlAnnouncementFlag: { _ in },
-        exportZodlAnnouncementFlag: { false }
+        exportZodlAnnouncementFlag: { false },
+        importVotingHotkey: { _ in },
+        exportVotingHotkey: { .init(seedPhrase: .init(""), version: 0) }
     )
 }
