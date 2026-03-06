@@ -32,6 +32,7 @@ import AudioServices
 import ShieldingProcessor
 import SupportDataGenerator
 import SwapAndPay
+import Voting
 import ZodlAnnouncement
 
 // Path
@@ -73,6 +74,7 @@ public struct Root {
             case swapAndPayCoordFlow
             case torSetup
             case transactionsCoordFlow
+            case voting
             case walletBackup
         }
         
@@ -122,6 +124,7 @@ public struct Root {
         public var wasRestoringWhenDisconnected = false
         public var welcomeState: Welcome.State
         @Shared(.inMemory(.zashiWalletAccount)) public var zashiWalletAccount: WalletAccount? = nil
+        public var votingState = Voting.State.initial
         public var zodlAnnouncementState = ZodlAnnouncement.State.initial
         
         // Auto-update swaps
@@ -217,6 +220,7 @@ public struct Root {
         case updateStateAfterConfigUpdate(WalletConfig)
         case walletConfigLoaded(WalletConfig)
         case welcome(Welcome.Action)
+        case voting(Voting.Action)
         case zodlAnnouncement(ZodlAnnouncement.Action)
         
         // Path
@@ -395,6 +399,9 @@ public struct Root {
             SwapAndPayCoordFlow()
         }
         
+        Scope(state: \.votingState, action: \.voting) {
+            Voting()
+        }
         Scope(state: \.zodlAnnouncementState, action: \.zodlAnnouncement) {
             ZodlAnnouncement()
         }

@@ -92,6 +92,12 @@ extension WalletStorageClient: DependencyKey {
             },
             exportZodlAnnouncementFlag: {
                 walletStorage.exportZodlAnnouncementFlag()
+            },
+            importVotingHotkey: { phrase in
+                try walletStorage.importVotingHotkey(phrase)
+            },
+            exportVotingHotkey: {
+                try walletStorage.exportVotingHotkey()
             }
         )
     }
