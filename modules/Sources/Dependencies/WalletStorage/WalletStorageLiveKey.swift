@@ -86,6 +86,12 @@ extension WalletStorageClient: DependencyKey {
             },
             exportTorSetupFlag: {
                 walletStorage.exportTorSetupFlag()
+            },
+            importVotingHotkey: { phrase in
+                try walletStorage.importVotingHotkey(phrase)
+            },
+            exportVotingHotkey: {
+                try walletStorage.exportVotingHotkey()
             }
         )
     }

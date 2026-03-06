@@ -180,6 +180,19 @@ extension Root {
                 state.path = .serverSwitch
                 return .none
 
+                // MARK: - Voting
+
+            case .home(.votingBannerTapped):
+                state.homeState.moreRequest = false
+                state.votingState = .initial
+                state.votingState.isKeystoneUser = state.homeState.isKeystoneAccountActive
+                state.path = .voting
+                return .none
+
+            case .voting(.dismissFlow):
+                state.path = nil
+                return .none
+
                 // MARK: - Keystone
 
             case .sendCoordFlow(.path(.element(id: _, action: .confirmWithKeystone(.rejectTapped)))),

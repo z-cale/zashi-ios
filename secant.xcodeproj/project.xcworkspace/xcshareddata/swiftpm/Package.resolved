@@ -118,6 +118,15 @@
       }
     },
     {
+      "identity" : "librustvoting",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/z-cale/librustvoting.git",
+      "state" : {
+        "revision" : "080d1418aa6e03204bfe93a48185f03b4973a46c",
+        "version" : "0.1.0"
+      }
+    },
+    {
       "identity" : "lottie-spm",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/airbnb/lottie-spm.git",
