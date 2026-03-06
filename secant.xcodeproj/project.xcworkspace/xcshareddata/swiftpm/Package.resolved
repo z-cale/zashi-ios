@@ -120,7 +120,7 @@
     {
       "identity" : "librustvoting",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/z-cale/librustvoting.git",
+      "location" : "https://github.com/valargroup/librustvoting.git",
       "state" : {
         "revision" : "080d1418aa6e03204bfe93a48185f03b4973a46c",
         "version" : "0.1.0"
@@ -498,10 +498,10 @@
     {
       "identity" : "zcash-swift-wallet-sdk",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/zcash/zcash-swift-wallet-sdk",
+      "location" : "https://github.com/valargroup/zcash-swift-wallet-sdk.git",
       "state" : {
-        "revision" : "43e2ace646c00ac3955e5717db18474e91512949",
-        "version" : "2.4.5"
+        "branch" : "valargroup/governance-tree-state",
+        "revision" : "83f70dbcce5d1710e00934b362b840bf6ccdf6f7"
       }
     }
   ],
