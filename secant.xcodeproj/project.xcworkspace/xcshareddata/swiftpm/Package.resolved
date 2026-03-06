@@ -120,7 +120,7 @@
     {
       "identity" : "librustvoting",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/z-cale/librustvoting.git",
+      "location" : "https://github.com/valargroup/librustvoting.git",
       "state" : {
         "revision" : "080d1418aa6e03204bfe93a48185f03b4973a46c",
         "version" : "0.1.0"
@@ -212,8 +212,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pointfreeco/swift-composable-architecture",
       "state" : {
-        "revision" : "ce8ee57840b2b46cd6b5cf06ed0526dd1d690126",
-        "version" : "1.25.4"
+        "revision" : "5b0890fabfd68a2d375d68502bc3f54a8548c494",
+        "version" : "1.23.1"
       }
     },
     {
@@ -293,8 +293,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pointfreeco/swift-navigation",
       "state" : {
-        "revision" : "e7441dc4dfec6a4ae929e614e3c1e67c6639d164",
-        "version" : "2.7.0"
+        "revision" : "bf498690e1f6b4af790260f542e8428a4ba10d78",
+        "version" : "2.6.0"
       }
     },
     {
@@ -482,8 +482,17 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pointfreeco/xctest-dynamic-overlay",
       "state" : {
-        "revision" : "dfd70507def84cb5fb821278448a262c6ff2bbad",
-        "version" : "1.9.0"
+        "revision" : "a3f634d1a409c7979cabc0a71b3f26ffa9fc8af1",
+        "version" : "1.4.3"
+      }
+    },
+    {
+      "identity" : "zcash-light-client-ffi",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Electric-Coin-Company/zcash-light-client-ffi",
+      "state" : {
+        "revision" : "5994278d739644f0e19673a8f4f8371fb3f2c5f4",
+        "version" : "0.19.2"
       }
     },
     {
@@ -498,10 +507,10 @@
     {
       "identity" : "zcash-swift-wallet-sdk",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/zcash/zcash-swift-wallet-sdk",
+      "location" : "https://github.com/valargroup/zcash-swift-wallet-sdk.git",
       "state" : {
-        "revision" : "e7d4aa8db98a61c90903b3e28437cd2aa857ddf2",
-        "version" : "2.4.9"
+        "branch" : "valargroup/governance-tree-state",
+        "revision" : "83f70dbcce5d1710e00934b362b840bf6ccdf6f7"
       }
     }
   ],

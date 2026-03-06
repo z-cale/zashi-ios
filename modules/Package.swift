@@ -106,7 +106,7 @@ let package = Package(
         .package(url: "https://github.com/pointfreeco/swift-case-paths", from: "1.7.2"),
         .package(url: "https://github.com/pointfreeco/swift-url-routing", from: "0.6.2"),
         .package(url: "https://github.com/zcash-hackworks/MnemonicSwift", from: "2.2.5"),
-        .package(url: "https://github.com/zcash/zcash-swift-wallet-sdk", from: "2.4.9"),
+        .package(url: "https://github.com/valargroup/zcash-swift-wallet-sdk.git", branch: "valargroup/governance-tree-state"),
         .package(url: "https://github.com/flexa/flexa-ios.git", exact: "1.1.4"),
         .package(url: "https://github.com/pacu/zcash-swift-payment-uri", from: "1.0.1"),
         .package(url: "https://github.com/airbnb/lottie-spm.git", from: "4.5.2"),
@@ -118,6 +118,7 @@ let package = Package(
         .package(url: "https://github.com/pointfreeco/swift-navigation", from: "2.5.1"),
         .package(url: "https://github.com/liamnichols/xcstrings-tool-plugin", from: "1.2.0")
             .package(url: "https://github.com/z-cale/librustvoting.git", exact: "0.1.0"),
+        .package(url: "https://github.com/valargroup/librustvoting.git", exact: "0.1.0")
     ],
     targets: [
         .target(
