@@ -108,4 +108,8 @@ public struct WalletStorageClient {
     /// Zodl Announcement flag
     public var importZodlAnnouncementFlag: (Bool) throws -> Void
     public var exportZodlAnnouncementFlag: () -> Bool? = { nil }
+
+    /// Voting hotkey
+    public var importVotingHotkey: (String) throws -> Void
+    public var exportVotingHotkey: () throws -> StoredVotingHotkey
 }

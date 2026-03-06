@@ -111,6 +111,7 @@ public struct Home {
         case syncFailed(ZcashError)
         case torSetupTapped(Bool)
         case updatePrivateUA(UnifiedAddress?)
+        case votingBannerTapped
         case updateTransactionList([TransactionState])
         case transactionList(TransactionList.Action)
         case walletAccountTapped(WalletAccount)
@@ -367,6 +368,9 @@ public struct Home {
                 return .none
                 
             case .smartBanner:
+                return .none
+
+            case .votingBannerTapped:
                 return .none
             }
         }
