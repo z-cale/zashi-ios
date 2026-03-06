@@ -32,6 +32,7 @@ import AudioServices
 import ShieldingProcessor
 import SupportDataGenerator
 import SwapAndPay
+import Voting
 
 // Path
 import CurrencyConversionSetup
@@ -64,6 +65,7 @@ public struct Root {
             case swapAndPayCoordFlow
             case torSetup
             case transactionsCoordFlow
+            case voting
             case walletBackup
         }
         
@@ -119,6 +121,8 @@ public struct Root {
         public var wasRestoringWhenDisconnected = false
         public var welcomeState: Welcome.State
         @Shared(.inMemory(.zashiWalletAccount)) public var zashiWalletAccount: WalletAccount? = nil
+        public var votingState = Voting.State.initial
+
 
         // Auto-update swaps
         public var autoUpdateCandidate: TransactionState? = nil
@@ -213,6 +217,8 @@ public struct Root {
         case updateStateAfterConfigUpdate(WalletConfig)
         case walletConfigLoaded(WalletConfig)
         case welcome(Welcome.Action)
+        case voting(Voting.Action)
+
 
         // Path
         case addKeystoneHWWalletCoordFlow(AddKeystoneHWWalletCoordFlow.Action)
@@ -388,6 +394,10 @@ public struct Root {
 
         Scope(state: \.swapAndPayCoordFlowState, action: \.swapAndPayCoordFlow) {
             SwapAndPayCoordFlow()
+        }
+
+        Scope(state: \.votingState, action: \.voting) {
+            Voting()
         }
 
         initializationReduce()

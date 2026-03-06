@@ -68,6 +68,7 @@ extension SDKSynchronizerClient: TestDependencyKey {
         exchangeRateEnabled: unimplemented("\(Self.self).exchangeRateEnabled"),
         isTorSuccessfullyInitialized: unimplemented("\(Self.self).isTorSuccessfullyInitialized", placeholder: nil),
         httpRequestOverTor: unimplemented("\(Self.self).httpRequestOverTor", placeholder: (Data(), HTTPURLResponse.mockResponse)),
+        getTreeState: unimplemented("\(Self.self).getTreeState", placeholder: Data()),
         debugDatabaseSql: unimplemented("\(Self.self).debugDatabaseSql", placeholder: ""),
         getSingleUseTransparentAddress: unimplemented(
             "\(Self.self).getSingleUseTransparentAddress",
@@ -123,6 +124,7 @@ extension SDKSynchronizerClient {
         exchangeRateEnabled: { _ in },
         isTorSuccessfullyInitialized: { nil },
         httpRequestOverTor: { _ in (data: Data(), response: HTTPURLResponse.mockResponse) },
+        getTreeState: { _ in Data() },
         debugDatabaseSql: { _ in "" },
         getSingleUseTransparentAddress: { _ in
             SingleUseTransparentAddress(address: "", gapPosition: 0, gapLimit: 0)
@@ -299,6 +301,7 @@ extension SDKSynchronizerClient {
             exchangeRateEnabled: exchangeRateEnabled,
             isTorSuccessfullyInitialized: isTorSuccessfullyInitialized,
             httpRequestOverTor: httpRequestOverTor,
+            getTreeState: { _ in Data() },
             debugDatabaseSql: debugDatabaseSql,
             getSingleUseTransparentAddress: getSingleUseTransparentAddress,
             checkSingleUseTransparentAddresses: checkSingleUseTransparentAddresses,
