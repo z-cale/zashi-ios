@@ -122,8 +122,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/valargroup/librustvoting.git",
       "state" : {
-        "revision" : "e0fed7af309b046fcf5bb9cca607b5c08c5b7f3b",
-        "version" : "0.3.0"
+        "revision" : "31f87923c10e136816e23d2b11718b30fc4d17a7",
+        "version" : "0.4.0"
       }
     },
     {
