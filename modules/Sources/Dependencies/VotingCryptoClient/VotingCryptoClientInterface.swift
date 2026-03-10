@@ -86,14 +86,13 @@ public struct VotingCryptoClient {
         _ roundId: String,
         _ bundleIndex: UInt32,
         _ bundleNotes: [NoteInfo],
-        _ walletDbPath: String,
         _ senderSeed: [UInt8],
         _ hotkeySeed: [UInt8],
         _ networkId: UInt32,
         _ accountIndex: UInt32,
         _ pirServerUrl: String
     ) -> AsyncThrowingStream<ProofEvent, Error>
-        = { _, _, _, _, _, _, _, _, _ in AsyncThrowingStream { $0.finish() } }
+        = { _, _, _, _, _, _, _, _ in AsyncThrowingStream { $0.finish() } }
     /// Extract Orchard FVK bytes from a UFVK string.
     public var extractOrchardFvkFromUfvk: @Sendable (_ ufvkStr: String, _ networkId: UInt32) throws -> Data
     public var decomposeWeight: @Sendable (_ weight: UInt64) -> [UInt64] = { _ in [] }

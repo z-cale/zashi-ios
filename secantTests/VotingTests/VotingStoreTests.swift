@@ -41,7 +41,7 @@ final class VotingStoreTests: XCTestCase {
         store.dependencies.walletStorage = .noOp
         store.dependencies.mnemonic = .noOp
         store.dependencies.databaseFiles = .noOp
-        store.dependencies.votingCrypto.buildAndProveDelegation = { _, _, _, _, _, _, _, _, _ in
+        store.dependencies.votingCrypto.buildAndProveDelegation = { _, _, _, _, _, _, _, _ in
             AsyncThrowingStream { continuation in
                 continuation.yield(.progress(1.0))
                 continuation.yield(.completed(Data(repeating: 0xFF, count: 32)))
@@ -138,7 +138,7 @@ final class VotingStoreTests: XCTestCase {
         store.dependencies.votingCrypto.extractPcztSighash = { _ in
             Data(repeating: 0x77, count: 32)
         }
-        store.dependencies.votingCrypto.buildAndProveDelegation = { _, _, _, _, _, _, _, _, _ in
+        store.dependencies.votingCrypto.buildAndProveDelegation = { _, _, _, _, _, _, _, _ in
             AsyncThrowingStream { continuation in
                 continuation.yield(.progress(1.0))
                 continuation.yield(.completed(Data(repeating: 0xFF, count: 32)))
