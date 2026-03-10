@@ -263,7 +263,7 @@ extension DelegationSigningView {
                 HStack(spacing: 6) {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.red)
-                    Text("Verification failed: \(error)")
+                    Text(error)
                         .zFont(.medium, size: 13, style: Design.Text.tertiary)
                         .lineLimit(3)
                 }
@@ -381,7 +381,7 @@ extension DelegationSigningView {
                         .zFont(.medium, size: 13, style: Design.Text.tertiary)
                 }
             case .failed(let error):
-                Text("Keystone signing failed: \(error)")
+                Text(error)
                     .zFont(size: 12, style: Design.Text.tertiary)
             }
         }

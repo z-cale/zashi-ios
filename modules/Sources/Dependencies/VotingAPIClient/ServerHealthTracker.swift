@@ -1,7 +1,4 @@
 import Foundation
-import os
-
-private let logger = Logger(subsystem: "co.electriccoin.voting", category: "HealthTracker")
 
 // MARK: - Server Health Tracker
 
@@ -22,8 +19,8 @@ actor ServerHealthTracker {
             switch (lhs, rhs) {
             case (.closed, .closed), (.halfOpen, .halfOpen):
                 return true
-            case let (.open(since: lhsSince), .open(since: rhsSince)):
-                return lhsSince == rhsSince
+            case (.open(let a), .open(let b)):
+                return a == b
             default:
                 return false
             }
@@ -93,7 +90,7 @@ actor ServerHealthTracker {
 
         // Graceful degradation: never return empty
         if healthy.isEmpty {
-            logger.warning("All servers unhealthy — falling back to full list")
+            print("[HealthTracker] All servers unhealthy — falling back to full list")
             return Array(servers.keys)
         }
         return healthy
@@ -102,30 +99,28 @@ actor ServerHealthTracker {
     // MARK: - State Updates
 
     func recordSuccess(for url: String) {
-        guard var state = servers[url] else { return }
-        let previous = state.circuit
-        state.circuit = .closed
-        state.consecutiveFailures = 0
-        servers[url] = state
+        guard servers[url] != nil else { return }
+        let previous = servers[url]!.circuit
+        servers[url]!.circuit = .closed
+        servers[url]!.consecutiveFailures = 0
         if previous != .closed {
-            logger.info("\(url, privacy: .public) recovered → closed")
+            print("[HealthTracker] \(url) recovered → closed")
         }
     }
 
     func recordFailure(for url: String) {
-        guard var state = servers[url] else { return }
-        state.consecutiveFailures += 1
-        let failures = state.consecutiveFailures
+        guard servers[url] != nil else { return }
+        servers[url]!.consecutiveFailures += 1
+        let failures = servers[url]!.consecutiveFailures
 
-        if failures >= failureThreshold && state.circuit == .closed {
-            state.circuit = .open(since: Date())
-            logger.warning("\(url, privacy: .public) tripped → open (after \(failures) failures)")
-        } else if state.circuit == .halfOpen {
+        if failures >= failureThreshold && servers[url]!.circuit == .closed {
+            servers[url]!.circuit = .open(since: Date())
+            print("[HealthTracker] \(url) tripped → open (after \(failures) failures)")
+        } else if servers[url]!.circuit == .halfOpen {
             // halfOpen probe failed — re-open
-            state.circuit = .open(since: Date())
-            logger.warning("\(url, privacy: .public) halfOpen probe failed → open")
+            servers[url]!.circuit = .open(since: Date())
+            print("[HealthTracker] \(url) halfOpen probe failed → open")
         }
-        servers[url] = state
     }
 
     // MARK: - Health Probing
@@ -138,12 +133,12 @@ actor ServerHealthTracker {
         await withTaskGroup(of: (String, Bool).self) { group in
             for url in urls {
                 group.addTask { [probeSession] in
-                    let healthy = await Self.probe(url: url, session: probeSession)
-                    return (url, healthy)
+                    let ok = await Self.probe(url: url, session: probeSession)
+                    return (url, ok)
                 }
             }
-            for await (url, healthy) in group {
-                if healthy {
+            for await (url, ok) in group {
+                if ok {
                     recordSuccess(for: url)
                 } else {
                     recordFailure(for: url)

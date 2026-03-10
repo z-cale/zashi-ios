@@ -51,6 +51,44 @@ private enum VotingFlowError: LocalizedError {
     }
 }
 
+private enum VotingErrorMapper {
+    static func userFriendlyMessage(from rawError: String) -> String {
+        if rawError.contains("nullifier already spent") {
+            return "This wallet has already been registered for this voting round. "
+                + "If you have this wallet on multiple devices, please use the device "
+                + "where you originally started the voting process."
+        }
+        if rawError.contains("vote round is not active") {
+            return "This voting round is no longer accepting votes. It may have ended or is not yet open."
+        }
+        if rawError.contains("vote round not found") {
+            return "This voting round could not be found on the network."
+        }
+        if rawError.contains("PIR server connect failed") || rawError.contains("PIR parallel fetch failed") {
+            return "Unable to reach the nullifier service. Please check your internet connection and try again."
+        }
+        if rawError.contains("Commitment tree did not grow") {
+            return "Your transaction hasn't been confirmed yet. The network may be congested — please wait a moment and try again."
+        }
+        if rawError.contains("invalid commitment tree anchor height") {
+            return "The voting state is out of sync. Please retry to use the latest data."
+        }
+        if rawError.contains("invalid zero-knowledge proof") {
+            return "Your proof was rejected by the network. Please try again."
+        }
+        if rawError.contains("delegation bundle build failed") || rawError.contains("create_proof failed") {
+            return "Proof generation failed. Please try again."
+        }
+        if rawError.contains("NoTreeState") || rawError.contains("no tree state") {
+            return "The voting commitment tree is not available yet. The voting round may not have started or the chain has not processed any commitments."
+        }
+        if rawError.contains("HTTP 5") {
+            return "The voting server is temporarily unavailable. Please try again shortly."
+        }
+        return rawError
+    }
+}
+
 @Reducer
 public struct Voting { // swiftlint:disable:this type_body_length
     @Dependency(\.databaseFiles)
@@ -775,7 +813,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
             case .initializeFailed(let error):
                 logger.error("Initialization error: \(error)")
-                state.screenStack = [.error(error)]
+                state.screenStack = [.error(VotingErrorMapper.userFriendlyMessage(from: error))]
                 return .none
 
             case let .walletNotSynced(scannedHeight, snapshotHeight):
@@ -949,7 +987,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
             case .verifyWitnesses:
                 guard let activeSession = state.activeSession else {
-                    state.witnessStatus = .failed("missing active session")
+                    state.witnessStatus = .failed(VotingErrorMapper.userFriendlyMessage(from: "missing active session"))
                     return .none
                 }
                 state.witnessTiming = nil
@@ -1078,7 +1116,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 return .none
 
             case .witnessVerificationFailed(let error):
-                state.witnessStatus = .failed(error)
+                state.witnessStatus = .failed(VotingErrorMapper.userFriendlyMessage(from: error))
                 return .none
 
             // MARK: - Round Resume
@@ -1360,7 +1398,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 return .none
 
             case .keystoneSigningFailed(let error):
-                state.keystoneSigningStatus = .failed(error)
+                state.keystoneSigningStatus = .failed(VotingErrorMapper.userFriendlyMessage(from: error))
                 return .none
 
             case .openKeystoneSignatureScan:
@@ -1580,7 +1618,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 return .none
 
             case .spendAuthSignatureExtractionFailed(let error):
-                state.keystoneSigningStatus = .failed(error)
+                state.keystoneSigningStatus = .failed(VotingErrorMapper.userFriendlyMessage(from: error))
                 return .none
 
             case .delegationProofProgress(let progress):
@@ -1606,7 +1644,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                         is below the minimum required to vote (\(requiredStr) ZEC).
                         """
                 } else {
-                    userMessage = error
+                    userMessage = VotingErrorMapper.userFriendlyMessage(from: error)
                 }
                 state.delegationProofStatus = .failed(userMessage)
                 state.isDelegationProofInFlight = false
@@ -1797,7 +1835,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 state.isSubmittingVote = false
                 state.submittingProposalId = nil
                 state.voteSubmissionStep = nil
-                state.voteSubmissionError = error
+                state.voteSubmissionError = VotingErrorMapper.userFriendlyMessage(from: error)
                 state.currentVoteBundleIndex = nil
                 // Remove the optimistic vote since it didn't land on chain
                 state.votes.removeValue(forKey: proposalId)
