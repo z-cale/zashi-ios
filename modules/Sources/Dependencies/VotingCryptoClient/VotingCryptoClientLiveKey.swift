@@ -239,8 +239,8 @@ extension VotingCryptoClient: DependencyKey {
             extractPcztSighash: { pcztBytes in
                 Data(try VotingRustBackend.extractPcztSighash(pcztBytes: [UInt8](pcztBytes)))
             },
-            // swiftlint:disable:next line_length unused_closure_parameter
-            buildAndProveDelegation: { roundId, bundleIndex, bundleNotes, walletDbPath, senderSeed, hotkeySeed, networkId, accountIndex, pirServerUrl in
+            // swiftlint:disable:next line_length
+            buildAndProveDelegation: { roundId, bundleIndex, bundleNotes, senderSeed, hotkeySeed, networkId, accountIndex, pirServerUrl in
                 AsyncThrowingStream { continuation in
                     Task.detached {
                         do {
@@ -251,10 +251,11 @@ extension VotingCryptoClient: DependencyKey {
                                 networkId: networkId,
                                 accountIndex: accountIndex
                             )
+                            let sdkNotes = bundleNotes.map { $0.toSDK() }
                             let result = try backend.buildAndProveDelegation(
                                 roundId: roundId,
                                 bundleIndex: bundleIndex,
-                                walletDbPath: walletDbPath,
+                                notes: sdkNotes,
                                 hotkeyRawAddress: inputs.hotkeyRawAddress,
                                 pirServerUrl: pirServerUrl,
                                 networkId: networkId,
