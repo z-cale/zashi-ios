@@ -30,24 +30,11 @@ struct VotingErrorView: View {
                     Text("Something Went Wrong")
                         .zFont(.semiBold, size: 22, style: Design.Text.primary)
 
-                    // Description
-                    Text("Unable to load governance proposals. Please try again.")
+                    // Description (already mapped to a user-friendly message by VotingErrorMapper)
+                    Text(errorMessage)
                         .zFont(.regular, size: 15, style: Design.Text.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 32)
-
-                    // Error detail card
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Error details")
-                            .zFont(.medium, size: 13, style: Design.Text.tertiary)
-                        Text(errorMessage)
-                            .zFont(.regular, size: 14, style: Design.Text.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(14)
-                    .background(Design.Text.secondary.color(colorScheme).opacity(0.06))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .padding(.horizontal, 24)
                 }
 
                 Spacer()
@@ -66,6 +53,8 @@ struct VotingErrorView: View {
                 .padding(.bottom, 24)
             }
             .navigationTitle("Governance")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Design.screenBackground.color(colorScheme))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {

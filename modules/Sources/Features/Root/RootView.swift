@@ -259,12 +259,14 @@ private extension RootView {
                                 .transition(.move(edge: .trailing))
                                 .zIndex(1)
                             } else if path == .voting {
-                                VotingView(
-                                    store:
-                                        store.scope(
-                                            state: \.votingState,
-                                            action: \.voting)
-                                )
+                                NavigationStack {
+                                    VotingView(
+                                        store:
+                                            store.scope(
+                                                state: \.votingState,
+                                                action: \.voting)
+                                    )
+                                }
                                 .transition(.move(edge: .trailing))
                                 .zIndex(1)
                             } else if path == .swapAndPayCoordFlow {

@@ -32,8 +32,7 @@ public struct VotingServiceConfig: Codable, Equatable, Sendable {
     }
 
     /// CDN URL for the production config (served from Vercel Edge Config).
-    // swiftlint:disable:next force_unwrapping
-    public static let cdnURL = URL(string: "https://zally-phi.vercel.app/api/voting-config")!
+    public static let cdnURL = URL(string: "https://shielded-vote.vercel.app/api/voting-config")!
 
     /// Filename for a local override bundled in the app (takes priority over CDN).
     public static let localOverrideFilename = "voting-config-local.json"
