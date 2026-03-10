@@ -110,8 +110,7 @@ let package = Package(
         .package(url: "https://github.com/KeystoneHQ/keystone-sdk-ios/", from: "0.0.1"),
         .package(url: "https://github.com/mgriebling/BigDecimal.git", from: Version(stringLiteral: "2.2.3")),
         .package(url: "https://github.com/siteline/swiftui-introspect", from: "26.0.0"),
-        .package(url: "https://github.com/pointfreeco/swift-navigation", from: "2.5.1"),
-        .package(url: "https://github.com/valargroup/librustvoting.git", exact: "0.4.0")
+        .package(url: "https://github.com/pointfreeco/swift-navigation", from: "2.5.1")
     ],
     targets: [
         .target(
@@ -1237,7 +1236,7 @@ let package = Package(
             dependencies: [
                 "VotingModels",
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
-                .product(name: "ZcashVotingFFI", package: "librustvoting"),
+                .product(name: "ZcashLightClientKit", package: "zcash-swift-wallet-sdk"),
             ],
             path: "Sources/Dependencies/VotingCryptoClient"
         ),

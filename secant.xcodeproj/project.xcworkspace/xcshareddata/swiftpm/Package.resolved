@@ -118,15 +118,6 @@
       }
     },
     {
-      "identity" : "librustvoting",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/valargroup/librustvoting.git",
-      "state" : {
-        "revision" : "31f87923c10e136816e23d2b11718b30fc4d17a7",
-        "version" : "0.4.0"
-      }
-    },
-    {
       "identity" : "lottie-spm",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/airbnb/lottie-spm.git",
@@ -478,15 +469,6 @@
       }
     },
     {
-      "identity" : "zcash-light-client-ffi",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Electric-Coin-Company/zcash-light-client-ffi",
-      "state" : {
-        "revision" : "5994278d739644f0e19673a8f4f8371fb3f2c5f4",
-        "version" : "0.19.2"
-      }
-    },
-    {
       "identity" : "zcash-swift-payment-uri",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pacu/zcash-swift-payment-uri",
@@ -501,7 +483,7 @@
       "location" : "https://github.com/valargroup/zcash-swift-wallet-sdk.git",
       "state" : {
         "branch" : "valargroup/governance-tree-state",
-        "revision" : "83f70dbcce5d1710e00934b362b840bf6ccdf6f7"
+        "revision" : "38e4406b1262adc8f31fc9f86f2ba379ca6a1a0d"
       }
     }
   ],
