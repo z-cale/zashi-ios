@@ -11,6 +11,7 @@ import Pasteboard
 import Scan
 import SDKSynchronizer
 import UIComponents
+import UIKit
 import Utils
 import VotingAPIClient
 import VotingCryptoClient
@@ -84,6 +85,9 @@ private enum VotingErrorMapper {
         }
         if rawError.contains("HTTP 5") {
             return "The voting server is temporarily unavailable. Please try again shortly."
+        }
+        if rawError.contains("GRPCStatus") || rawError.contains("RPC timed out") || rawError.contains("Transport became inactive") {
+            return "Unable to reach the Zcash lightwalletd server. Please check your internet connection or try switching to a different server in Settings."
         }
         return rawError
     }
@@ -1116,7 +1120,10 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 return .none
 
             case .witnessVerificationFailed(let error):
-                state.witnessStatus = .failed(VotingErrorMapper.userFriendlyMessage(from: error))
+                let message = VotingErrorMapper.userFriendlyMessage(from: error)
+                state.witnessStatus = .failed(message)
+                state.delegationProofStatus = .failed(message)
+                state.isDelegationProofInFlight = false
                 return .none
 
             // MARK: - Round Resume
@@ -1275,6 +1282,9 @@ public struct Voting { // swiftlint:disable:this type_body_length
                     // Run delegation proof pipeline
                     // Round is already initialized and witnesses cached by verifyWitnesses
                     .run { [sdkSynchronizer, votingCrypto, votingAPI, mnemonic, walletStorage] send in
+                        let bgTaskId = await UIApplication.shared.beginBackgroundTask(expirationHandler: nil)
+                        defer { Task { await UIApplication.shared.endBackgroundTask(bgTaskId) } }
+
                         // Reload hotkey from keychain (generated during initialize)
                         let senderPhrase = try walletStorage.exportWallet().seedPhrase.value()
                         let senderSeed = try mnemonic.toSeed(senderPhrase)
@@ -1496,6 +1506,9 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 let signedCount = storedSignatures.count
 
                 return .run { [votingCrypto, votingAPI, mnemonic, walletStorage] send in
+                    let bgTaskId = await UIApplication.shared.beginBackgroundTask(expirationHandler: nil)
+                    defer { Task { await UIApplication.shared.endBackgroundTask(bgTaskId) } }
+
                     let senderPhrase = try walletStorage.exportWallet().seedPhrase.value()
                     let senderSeed = try mnemonic.toSeed(senderPhrase)
                     let hotkeyPhrase = try walletStorage.exportVotingHotkey().seedPhrase.value()
@@ -1687,6 +1700,9 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
                 let bundleCount = state.bundleCount
                 return .run { [votingAPI, votingCrypto, mnemonic, walletStorage] send in
+                    let bgTaskId = await UIApplication.shared.beginBackgroundTask(expirationHandler: nil)
+                    defer { Task { await UIApplication.shared.endBackgroundTask(bgTaskId) } }
+
                     let hotkeyPhrase = try walletStorage.exportVotingHotkey().seedPhrase.value()
                     let hotkeySeed = try mnemonic.toSeed(hotkeyPhrase)
 
