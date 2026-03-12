@@ -17,6 +17,7 @@ extension BackgroundTaskClient: DependencyKey {
                 var taskId: UIBackgroundTaskIdentifier = .invalid
                 taskId = UIApplication.shared.beginBackgroundTask(withName: name) {
                     logger.warning("Background task '\(name)' expired by iOS — ending task")
+                    UIApplication.shared.isIdleTimerDisabled = false
                     UIApplication.shared.endBackgroundTask(taskId)
                     taskId = .invalid
                 }
