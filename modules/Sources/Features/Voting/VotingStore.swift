@@ -10,8 +10,8 @@ import Models
 import Pasteboard
 import Scan
 import SDKSynchronizer
+import BackgroundTaskClient
 import UIComponents
-import UIKit
 import Utils
 import VotingAPIClient
 import VotingCryptoClient
@@ -95,6 +95,8 @@ private enum VotingErrorMapper {
 
 @Reducer
 public struct Voting { // swiftlint:disable:this type_body_length
+    @Dependency(\.backgroundTask)
+    var backgroundTask
     @Dependency(\.databaseFiles)
     var databaseFiles
     @Dependency(\.keystoneHandler)
@@ -1281,9 +1283,9 @@ public struct Voting { // swiftlint:disable:this type_body_length
                     .cancellable(id: cancelStateStreamId, cancelInFlight: true),
                     // Run delegation proof pipeline
                     // Round is already initialized and witnesses cached by verifyWitnesses
-                    .run { [sdkSynchronizer, votingCrypto, votingAPI, mnemonic, walletStorage] send in
-                        let bgTaskId = await UIApplication.shared.beginBackgroundTask(expirationHandler: nil)
-                        defer { Task { await UIApplication.shared.endBackgroundTask(bgTaskId) } }
+                    .run { [backgroundTask, sdkSynchronizer, votingCrypto, votingAPI, mnemonic, walletStorage] send in
+                        let bgTaskId = await backgroundTask.beginTask("Delegation proof generation")
+                        defer { Task { await backgroundTask.endTask(bgTaskId) } }
 
                         // Reload hotkey from keychain (generated during initialize)
                         let senderPhrase = try walletStorage.exportWallet().seedPhrase.value()
@@ -1505,9 +1507,9 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 let storedSignatures = state.keystoneBundleSignatures
                 let signedCount = storedSignatures.count
 
-                return .run { [votingCrypto, votingAPI, mnemonic, walletStorage] send in
-                    let bgTaskId = await UIApplication.shared.beginBackgroundTask(expirationHandler: nil)
-                    defer { Task { await UIApplication.shared.endBackgroundTask(bgTaskId) } }
+                return .run { [backgroundTask, votingCrypto, votingAPI, mnemonic, walletStorage] send in
+                    let bgTaskId = await backgroundTask.beginTask("Keystone delegation proof")
+                    defer { Task { await backgroundTask.endTask(bgTaskId) } }
 
                     let senderPhrase = try walletStorage.exportWallet().seedPhrase.value()
                     let senderSeed = try mnemonic.toSeed(senderPhrase)
@@ -1699,9 +1701,9 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 let chainNodeUrl = state.serviceConfig?.voteServers.first?.url ?? "https://46-101-255-48.sslip.io"
 
                 let bundleCount = state.bundleCount
-                return .run { [votingAPI, votingCrypto, mnemonic, walletStorage] send in
-                    let bgTaskId = await UIApplication.shared.beginBackgroundTask(expirationHandler: nil)
-                    defer { Task { await UIApplication.shared.endBackgroundTask(bgTaskId) } }
+                return .run { [backgroundTask, votingAPI, votingCrypto, mnemonic, walletStorage] send in
+                    let bgTaskId = await backgroundTask.beginTask("Vote commitment proof")
+                    defer { Task { await backgroundTask.endTask(bgTaskId) } }
 
                     let hotkeyPhrase = try walletStorage.exportVotingHotkey().seedPhrase.value()
                     let hotkeySeed = try mnemonic.toSeed(hotkeyPhrase)
