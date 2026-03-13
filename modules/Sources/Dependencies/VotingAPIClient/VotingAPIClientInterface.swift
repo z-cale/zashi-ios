@@ -29,7 +29,7 @@ public struct VotingAPIClient {
     /// Distribute shares across available vote servers. Config must be set via `configureURLs` first.
     public var delegateShares: @Sendable (_ payloads: [SharePayload], _ roundIdHex: String) async throws -> Void
     public var fetchProposalTally: @Sendable (_ roundId: Data, _ proposalId: UInt32) async throws -> TallyResult
-    public var awaitCommitmentTreeGrowth: @Sendable (_ previousNextIndex: UInt64, _ timeoutSeconds: TimeInterval) async throws -> CommitmentTreeState
-    /// Check whether a TX has been included in a block. Returns nil if not yet confirmed (404 or network error).
-    public var checkTxConfirmed: @Sendable (_ txHash: String) async throws -> TxConfirmation?
+    /// Query the Cosmos SDK TX endpoint for a confirmed transaction and its ABCI events.
+    /// Returns nil if the TX is not yet in a block (404 or network error).
+    public var fetchTxConfirmation: @Sendable (_ txHash: String) async throws -> TxConfirmation?
 }

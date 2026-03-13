@@ -62,14 +62,21 @@ final class VotingStoreTests: XCTestCase {
             )
         }
         store.dependencies.votingCrypto.storeVanPosition = { _, _, _ in }
-        store.dependencies.votingAPI.fetchLatestCommitmentTree = {
-            CommitmentTreeState(nextIndex: 0, root: Data(repeating: 0, count: 32), height: 0)
-        }
         store.dependencies.votingAPI.submitDelegation = { _ in
             TxResult(txHash: "mock-hash", code: 0)
         }
-        store.dependencies.votingAPI.awaitCommitmentTreeGrowth = { _, _ in
-            CommitmentTreeState(nextIndex: 1, root: Data(repeating: 0, count: 32), height: 1)
+        store.dependencies.votingAPI.fetchTxConfirmation = { _ in
+            TxConfirmation(
+                height: 100,
+                code: 0,
+                events: [
+                    TxEvent(type: "delegate_vote", attributes: [
+                        TxEventAttribute(key: "vote_round_id", value: "aabb"),
+                        TxEventAttribute(key: "leaf_index", value: "5"),
+                        TxEventAttribute(key: "nullifier_count", value: "3"),
+                    ])
+                ]
+            )
         }
 
         await store.send(.delegationApproved) { state in
@@ -159,14 +166,21 @@ final class VotingStoreTests: XCTestCase {
             )
         }
         store.dependencies.votingCrypto.storeVanPosition = { _, _, _ in }
-        store.dependencies.votingAPI.fetchLatestCommitmentTree = {
-            CommitmentTreeState(nextIndex: 0, root: Data(repeating: 0, count: 32), height: 0)
-        }
         store.dependencies.votingAPI.submitDelegation = { _ in
             TxResult(txHash: "mock-hash", code: 0)
         }
-        store.dependencies.votingAPI.awaitCommitmentTreeGrowth = { _, _ in
-            CommitmentTreeState(nextIndex: 1, root: Data(repeating: 0, count: 32), height: 1)
+        store.dependencies.votingAPI.fetchTxConfirmation = { _ in
+            TxConfirmation(
+                height: 100,
+                code: 0,
+                events: [
+                    TxEvent(type: "delegate_vote", attributes: [
+                        TxEventAttribute(key: "vote_round_id", value: "aabb"),
+                        TxEventAttribute(key: "leaf_index", value: "5"),
+                        TxEventAttribute(key: "nullifier_count", value: "3"),
+                    ])
+                ]
+            )
         }
 
         await store.send(.spendAuthSignatureExtracted(
@@ -191,4 +205,141 @@ final class VotingStoreTests: XCTestCase {
     // Note: Client-side signature verification was removed — Keystone signatures
     // are correct by construction (signed over the PCZT's ZIP-244 sighash).
     // Verification will be re-added once the GovernancePczt flow is fully wired (Task #6).
+}
+
+// MARK: - TX Event Parsing Tests
+//
+// These validate that the TxEvent / TxConfirmation model helpers correctly
+// extract leaf indices from realistic Cosmos SDK TX response payloads matching
+// what the vote-sdk chain emits for delegate_vote and cast_vote.
+
+final class TxEventParsingTests: XCTestCase {
+
+    // MARK: - delegate_vote (ZKP #1)
+    // Chain emits: leaf_index = "<vanCmxIdx>" (single uint)
+
+    func testDelegateVoteEventLeafIndex() {
+        let confirmation = TxConfirmation(
+            height: 1042,
+            code: 0,
+            log: "",
+            events: [
+                TxEvent(type: "message", attributes: [
+                    TxEventAttribute(key: "action", value: "/svote.vote.MsgDelegateVote"),
+                    TxEventAttribute(key: "sender", value: "cosmos1abc"),
+                ]),
+                TxEvent(type: "delegate_vote", attributes: [
+                    TxEventAttribute(key: "vote_round_id", value: "aabbccdd"),
+                    TxEventAttribute(key: "leaf_index", value: "7"),
+                    TxEventAttribute(key: "nullifier_count", value: "4"),
+                ]),
+            ]
+        )
+
+        let event = confirmation.event(ofType: "delegate_vote")
+        XCTAssertNotNil(event)
+        XCTAssertEqual(event?.attribute(forKey: "leaf_index"), "7")
+        XCTAssertEqual(UInt32(event!.attribute(forKey: "leaf_index")!), 7)
+    }
+
+    func testDelegateVoteMultipleBundlesGetDistinctIndices() {
+        let bundle0Confirmation = TxConfirmation(
+            height: 1042, code: 0, events: [
+                TxEvent(type: "delegate_vote", attributes: [
+                    TxEventAttribute(key: "leaf_index", value: "0"),
+                ]),
+            ]
+        )
+        let bundle1Confirmation = TxConfirmation(
+            height: 1043, code: 0, events: [
+                TxEvent(type: "delegate_vote", attributes: [
+                    TxEventAttribute(key: "leaf_index", value: "1"),
+                ]),
+            ]
+        )
+
+        let idx0 = UInt32(bundle0Confirmation.event(ofType: "delegate_vote")!.attribute(forKey: "leaf_index")!)
+        let idx1 = UInt32(bundle1Confirmation.event(ofType: "delegate_vote")!.attribute(forKey: "leaf_index")!)
+        XCTAssertEqual(idx0, 0)
+        XCTAssertEqual(idx1, 1)
+        XCTAssertNotEqual(idx0, idx1)
+    }
+
+    // MARK: - cast_vote (ZKP #2)
+    // Chain emits: leaf_index = "<vanIdx>,<vcIdx>" (comma-separated pair)
+
+    func testCastVoteEventLeafIndices() {
+        let confirmation = TxConfirmation(
+            height: 2001,
+            code: 0,
+            log: "",
+            events: [
+                TxEvent(type: "message", attributes: [
+                    TxEventAttribute(key: "action", value: "/svote.vote.MsgCastVote"),
+                ]),
+                TxEvent(type: "cast_vote", attributes: [
+                    TxEventAttribute(key: "vote_round_id", value: "aabbccdd"),
+                    TxEventAttribute(key: "leaf_index", value: "10,11"),
+                ]),
+            ]
+        )
+
+        let leafPair = confirmation.event(ofType: "cast_vote")?.attribute(forKey: "leaf_index")
+        XCTAssertEqual(leafPair, "10,11")
+
+        let parts = leafPair!.split(separator: ",")
+        XCTAssertEqual(parts.count, 2)
+        XCTAssertEqual(UInt64(parts[0]), 10)
+        XCTAssertEqual(UInt64(parts[1]), 11)
+    }
+
+    func testCastVoteHighLeafIndicesFromConcurrentBlock() {
+        let confirmation = TxConfirmation(
+            height: 5000, code: 0, events: [
+                TxEvent(type: "cast_vote", attributes: [
+                    TxEventAttribute(key: "leaf_index", value: "1048576,1048577"),
+                ]),
+            ]
+        )
+
+        let leafPair = confirmation.event(ofType: "cast_vote")!.attribute(forKey: "leaf_index")!
+        let parts = leafPair.split(separator: ",")
+        XCTAssertEqual(UInt64(parts[0]), 1_048_576)
+        XCTAssertEqual(UInt64(parts[1]), 1_048_577)
+    }
+
+    // MARK: - Edge cases
+
+    func testMissingEventReturnsNil() {
+        let confirmation = TxConfirmation(
+            height: 100, code: 0, events: [
+                TxEvent(type: "message", attributes: [
+                    TxEventAttribute(key: "action", value: "/svote.vote.MsgDelegateVote"),
+                ]),
+            ]
+        )
+        XCTAssertNil(confirmation.event(ofType: "delegate_vote"))
+        XCTAssertNil(confirmation.event(ofType: "cast_vote"))
+    }
+
+    func testFailedTxCodeNonZero() {
+        let confirmation = TxConfirmation(
+            height: 100, code: 5, log: "nullifier already spent", events: []
+        )
+        XCTAssertNotEqual(confirmation.code, 0)
+        XCTAssertNil(confirmation.event(ofType: "delegate_vote"))
+    }
+
+    func testEventAttributeForKeyMiss() {
+        let event = TxEvent(type: "delegate_vote", attributes: [
+            TxEventAttribute(key: "vote_round_id", value: "aabb"),
+        ])
+        XCTAssertNil(event.attribute(forKey: "leaf_index"))
+    }
+
+    func testEmptyEventsArray() {
+        let confirmation = TxConfirmation(height: 100, code: 0, events: [])
+        XCTAssertNil(confirmation.event(ofType: "delegate_vote"))
+        XCTAssertNil(confirmation.event(ofType: "cast_vote"))
+    }
 }
