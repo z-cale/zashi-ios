@@ -18,6 +18,7 @@ let package = Package(
         .library(name: "AppVersion", targets: ["AppVersion"]),
         .library(name: "AudioServices", targets: ["AudioServices"]),
         .library(name: "AutolockHandler", targets: ["AutolockHandler"]),
+        .library(name: "BackgroundTaskClient", targets: ["BackgroundTaskClient"]),
         .library(name: "BalanceBreakdown", targets: ["BalanceBreakdown"]),
         .library(name: "BalanceFormatter", targets: ["BalanceFormatter"]),
         .library(name: "CaptureDevice", targets: ["CaptureDevice"]),
@@ -203,6 +204,13 @@ let package = Package(
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
             ],
             path: "Sources/Dependencies/AutolockHandler"
+        ),
+        .target(
+            name: "BackgroundTaskClient",
+            dependencies: [
+                .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
+            ],
+            path: "Sources/Dependencies/BackgroundTaskClient"
         ),
         .target(
             name: "BalanceBreakdown",
@@ -1203,6 +1211,7 @@ let package = Package(
         .target(
             name: "Voting",
             dependencies: [
+                "BackgroundTaskClient",
                 "DatabaseFiles",
                 "Generated",
                 "KeystoneHandler",
