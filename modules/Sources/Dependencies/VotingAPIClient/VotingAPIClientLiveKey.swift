@@ -33,7 +33,6 @@ private enum SvAPIError: LocalizedError {
     case httpError(statusCode: Int, message: String)
     case invalidResponse(String)
     case txFailed(code: UInt32, log: String)
-    case commitmentTreeTimeout(seconds: TimeInterval)
 
     var errorDescription: String? {
         switch self {
@@ -43,8 +42,6 @@ private enum SvAPIError: LocalizedError {
             return "Invalid API response: \(detail)"
         case .txFailed(let code, let log):
             return "Transaction failed (code \(code)): \(log)"
-        case .commitmentTreeTimeout(let seconds):
-            return "Commitment tree did not grow within \(Int(seconds))s — the TX may not have been included in a block yet."
         }
     }
 }
@@ -539,41 +536,64 @@ extension VotingAPIClient: DependencyKey {
                     }
                 return TallyResult(entries: entries)
             },
-            awaitCommitmentTreeGrowth: { previousNextIndex, timeoutSeconds in
-                let deadline = Date().addingTimeInterval(timeoutSeconds)
-                while Date() < deadline {
-                    let json = try await getJSON("/shielded-vote/v1/commitment-tree/latest")
-                    guard let tree = json["tree"] as? [String: Any] else {
-                        throw SvAPIError.invalidResponse("missing 'tree' in response")
-                    }
-                    let state = parseCommitmentTree(from: tree)
-                    if state.nextIndex > previousNextIndex {
-                        return state
-                    }
-                    try await Task.sleep(for: .seconds(1))
-                }
-                throw SvAPIError.commitmentTreeTimeout(seconds: timeoutSeconds)
-            },
-            checkTxConfirmed: { txHash in
+            fetchTxConfirmation: { txHash in
+                let base = await SvAPIConfigStore.shared.baseURL
+                guard let url = URL(string: "\(base)/cosmos/tx/v1beta1/txs/\(txHash)") else { return nil }
+
+                let data: Data
+                let response: URLResponse
                 do {
-                    let base = await SvAPIConfigStore.shared.baseURL
-                    guard let url = URL(string: "\(base)/shielded-vote/v1/tx/\(txHash)") else { return nil }
-                    let (data, response) = try await httpSession.data(from: url)
-                    guard let http = response as? HTTPURLResponse else { return nil }
-
-                    // 200 = TX confirmed with code 0; 422 = TX confirmed with non-zero code.
-                    // Both mean the TX is in a block — parse the body for height/code/log.
-                    guard http.statusCode == 200 || http.statusCode == 422 else { return nil }
-
-                    guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
-                    let height = parseUInt64(json["height"])
-                    let code = parseUInt32(json["code"])
-                    let log = json["log"] as? String ?? ""
-                    return TxConfirmation(height: height, code: code, log: log)
+                    (data, response) = try await httpSession.data(from: url)
                 } catch {
-                    // TX not yet confirmed (404 or network error)
                     return nil
                 }
+                guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+                guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let txResponse = json["tx_response"] as? [String: Any]
+                else { return nil }
+
+                let height = parseUInt64(txResponse["height"])
+                let code = parseUInt32(txResponse["code"])
+                let log = txResponse["raw_log"] as? String ?? ""
+
+                var parsedEvents: [TxEvent] = []
+
+                // Prefer tx_response.logs[].events — per-message events with plain-string keys.
+                if let logs = txResponse["logs"] as? [[String: Any]] {
+                    for entry in logs {
+                        guard let events = entry["events"] as? [[String: Any]] else { continue }
+                        for event in events {
+                            guard let evType = event["type"] as? String,
+                                  let attrs = event["attributes"] as? [[String: Any]]
+                            else { continue }
+                            let parsed = attrs.compactMap { attr -> TxEventAttribute? in
+                                guard let key = attr["key"] as? String,
+                                      let value = attr["value"] as? String
+                                else { return nil }
+                                return TxEventAttribute(key: key, value: value)
+                            }
+                            parsedEvents.append(TxEvent(type: evType, attributes: parsed))
+                        }
+                    }
+                }
+
+                // Fallback: tx_response.events (TX-level ABCI events).
+                if parsedEvents.isEmpty, let events = txResponse["events"] as? [[String: Any]] {
+                    for event in events {
+                        guard let evType = event["type"] as? String,
+                              let attrs = event["attributes"] as? [[String: Any]]
+                        else { continue }
+                        let parsed = attrs.compactMap { attr -> TxEventAttribute? in
+                            guard let key = attr["key"] as? String,
+                                  let value = attr["value"] as? String
+                            else { return nil }
+                            return TxEventAttribute(key: key, value: value)
+                        }
+                        parsedEvents.append(TxEvent(type: evType, attributes: parsed))
+                    }
+                }
+
+                return TxConfirmation(height: height, code: code, log: log, events: parsedEvents)
             }
         )
     }
