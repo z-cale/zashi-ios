@@ -529,17 +529,50 @@ public struct CastVoteSignature: Equatable, Sendable {
     }
 }
 
-/// Result of checking whether a TX has been included in a block.
-/// Returned by the /zally/v1/tx/{hash} endpoint.
+/// A single key-value attribute from an ABCI event.
+public struct TxEventAttribute: Equatable, Sendable {
+    public let key: String
+    public let value: String
+
+    public init(key: String, value: String) {
+        self.key = key
+        self.value = value
+    }
+}
+
+/// An ABCI event emitted during transaction execution (e.g. `cast_vote`, `delegate_vote`).
+public struct TxEvent: Equatable, Sendable {
+    public let type: String
+    public let attributes: [TxEventAttribute]
+
+    public init(type: String, attributes: [TxEventAttribute]) {
+        self.type = type
+        self.attributes = attributes
+    }
+
+    public func attribute(forKey key: String) -> String? {
+        attributes.first { $0.key == key }?.value
+    }
+}
+
+/// Confirmed transaction with its ABCI events, parsed from the Cosmos SDK
+/// `/cosmos/tx/v1beta1/txs/{hash}` endpoint.
 public struct TxConfirmation: Equatable, Sendable {
     public let height: UInt64
     public let code: UInt32
     public let log: String
+    public let events: [TxEvent]
 
-    public init(height: UInt64, code: UInt32, log: String = "") {
+    public init(height: UInt64, code: UInt32, log: String = "", events: [TxEvent] = []) {
         self.height = height
         self.code = code
         self.log = log
+        self.events = events
+    }
+
+    /// Find the first event matching a given type.
+    public func event(ofType type: String) -> TxEvent? {
+        events.first { $0.type == type }
     }
 }
 
