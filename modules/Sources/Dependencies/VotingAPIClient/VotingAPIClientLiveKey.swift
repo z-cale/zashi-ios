@@ -1,6 +1,9 @@
 import ComposableArchitecture
 import Foundation
+import os
 import VotingModels
+
+private let logger = Logger(subsystem: "co.zodl.voting", category: "VotingAPIClient")
 
 // MARK: - API Configuration
 
@@ -33,7 +36,6 @@ private enum SvAPIError: LocalizedError {
     case httpError(statusCode: Int, message: String)
     case invalidResponse(String)
     case txFailed(code: UInt32, log: String)
-    case commitmentTreeTimeout(seconds: TimeInterval)
 
     var errorDescription: String? {
         switch self {
@@ -43,8 +45,6 @@ private enum SvAPIError: LocalizedError {
             return "Invalid API response: \(detail)"
         case .txFailed(let code, let log):
             return "Transaction failed (code \(code)): \(log)"
-        case .commitmentTreeTimeout(let seconds):
-            return "Commitment tree did not grow within \(Int(seconds))s — the TX may not have been included in a block yet."
         }
     }
 }
@@ -539,42 +539,77 @@ extension VotingAPIClient: DependencyKey {
                     }
                 return TallyResult(entries: entries)
             },
-            awaitCommitmentTreeGrowth: { previousNextIndex, timeoutSeconds in
-                let deadline = Date().addingTimeInterval(timeoutSeconds)
-                while Date() < deadline {
-                    let json = try await getJSON("/shielded-vote/v1/commitment-tree/latest")
-                    guard let tree = json["tree"] as? [String: Any] else {
-                        throw SvAPIError.invalidResponse("missing 'tree' in response")
-                    }
-                    let state = parseCommitmentTree(from: tree)
-                    if state.nextIndex > previousNextIndex {
-                        return state
-                    }
-                    try await Task.sleep(for: .seconds(1))
-                }
-                throw SvAPIError.commitmentTreeTimeout(seconds: timeoutSeconds)
-            },
-            checkTxConfirmed: { txHash in
-                do {
-                    let base = await SvAPIConfigStore.shared.baseURL
-                    guard let url = URL(string: "\(base)/shielded-vote/v1/tx/\(txHash)") else { return nil }
-                    let (data, response) = try await httpSession.data(from: url)
-                    guard let http = response as? HTTPURLResponse else { return nil }
-
-                    // 200 = TX confirmed with code 0; 422 = TX confirmed with non-zero code.
-                    // Both mean the TX is in a block — parse the body for height/code/log.
-                    guard http.statusCode == 200 || http.statusCode == 422 else { return nil }
-
-                    guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
-                    let height = parseUInt64(json["height"])
-                    let code = parseUInt32(json["code"])
-                    let log = json["log"] as? String ?? ""
-                    return TxConfirmation(height: height, code: code, log: log)
-                } catch {
-                    // TX not yet confirmed (404 or network error)
+            fetchTxConfirmation: { txHash in
+                let base = await SvAPIConfigStore.shared.baseURL
+                let urlString = "\(base)/shielded-vote/v1/tx/\(txHash)"
+                guard let url = URL(string: urlString) else {
+                    logger.error("fetchTxConfirmation: invalid URL: \(urlString)")
                     return nil
                 }
+
+                let data: Data
+                let response: URLResponse
+                do {
+                    (data, response) = try await httpSession.data(from: url)
+                } catch {
+                    logger.debug("fetchTxConfirmation: network error: \(error.localizedDescription)")
+                    return nil
+                }
+
+                guard let http = response as? HTTPURLResponse else {
+                    logger.error("fetchTxConfirmation: not an HTTP response")
+                    return nil
+                }
+
+                // 404 = TX not yet in a block (normal during polling)
+                if http.statusCode == 404 {
+                    logger.debug("fetchTxConfirmation: 404 (not yet in block) for \(txHash)")
+                    return nil
+                }
+
+                // 422 = TX included but execution failed (non-zero code).
+                // Parse the response to extract the error code/log.
+                guard http.statusCode == 200 || http.statusCode == 422 else {
+                    let body = String(data: data.prefix(512), encoding: .utf8) ?? "<non-utf8>"
+                    logger.debug("fetchTxConfirmation: HTTP \(http.statusCode) for \(txHash) — \(body)")
+                    return nil
+                }
+
+                guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                    let snippet = String(data: data.prefix(512), encoding: .utf8) ?? "<non-utf8>"
+                    logger.error("fetchTxConfirmation: JSON parse failed — \(snippet)")
+                    return nil
+                }
+
+                let height = parseUInt64(json["height"])
+                let code = parseUInt32(json["code"])
+                let log = json["log"] as? String ?? ""
+
+                var parsedEvents: [TxEvent] = []
+                if let events = json["events"] as? [[String: Any]] {
+                    for event in events {
+                        guard let evType = event["type"] as? String,
+                              let attrs = event["attributes"] as? [[String: Any]]
+                        else { continue }
+                        let parsed = attrs.compactMap { attr -> TxEventAttribute? in
+                            guard let key = attr["key"] as? String,
+                                  let value = attr["value"] as? String
+                            else { return nil }
+                            return TxEventAttribute(key: key, value: value)
+                        }
+                        parsedEvents.append(TxEvent(type: evType, attributes: parsed))
+                    }
+                }
+
+                let eventSummary = parsedEvents.map { ev in
+                    let keys = ev.attributes.map(\.key).joined(separator: ",")
+                    return "\(ev.type)[\(keys)]"
+                }.joined(separator: "; ")
+                logger.debug("fetchTxConfirmation: height=\(height) code=\(code) events=\(eventSummary)")
+
+                return TxConfirmation(height: height, code: code, log: log, events: parsedEvents)
             }
         )
     }
 }
+
