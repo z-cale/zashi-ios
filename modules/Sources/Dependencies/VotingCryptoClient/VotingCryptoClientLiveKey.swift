@@ -15,6 +15,7 @@ extension VotingCryptoClient: DependencyKey {
         let stateSubject = CurrentValueSubject<VotingDbState, Never>(.initial)
         let pendingDelegationStore = PendingDelegationFileStore()
         let committedStore = CommittedVoteFileStore()
+        let keystoneSigStore = KeystoneSignatureFileStore()
 
         /// Query rounds + votes tables and publish combined state.
         func publishState(backend: VotingRustBackend, roundId: String) {
@@ -487,9 +488,16 @@ extension VotingCryptoClient: DependencyKey {
             clearCommittedVote: { roundId, bundleIndex, proposalId in
                 try await committedStore.clear(roundId: roundId, bundleIndex: bundleIndex, proposalId: proposalId)
             },
+            persistKeystoneSig: { record in
+                try await keystoneSigStore.persist(record)
+            },
+            getKeystoneSigs: { roundId in
+                try await keystoneSigStore.records(for: roundId)
+            },
             clearAllRecoveryRecords: { roundId in
                 try await pendingDelegationStore.clearAll(roundId: roundId)
                 try await committedStore.clearAll(roundId: roundId)
+                try await keystoneSigStore.clearAll(roundId: roundId)
             },
             signCastVote: { hotkeySeed, networkId, bundle in
                 let sig = try VotingRustBackend.signCastVote(
@@ -629,6 +637,44 @@ private actor CommittedVoteFileStore {
         var all = (try? loadAll()) ?? []
         all.removeAll { $0.roundId == roundId && $0.bundleIndex == bundleIndex && $0.proposalId == proposalId }
         try saveAll(all)
+    }
+
+    func clearAll(roundId: String) throws {
+        var all = (try? loadAll()) ?? []
+        all.removeAll { $0.roundId == roundId }
+        try saveAll(all)
+    }
+}
+
+// MARK: - KeystoneSignatureFileStore
+
+private actor KeystoneSignatureFileStore {
+    private let fileURL: URL = {
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        return docs.appendingPathComponent("keystone_signatures.json")
+    }()
+
+    private func loadAll() throws -> [PersistedKeystoneSignature] {
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return [] }
+        let data = try Data(contentsOf: fileURL)
+        guard !data.isEmpty else { return [] }
+        return try JSONDecoder().decode([PersistedKeystoneSignature].self, from: data)
+    }
+
+    private func saveAll(_ records: [PersistedKeystoneSignature]) throws {
+        let data = try JSONEncoder().encode(records)
+        try data.write(to: fileURL, options: .atomic)
+    }
+
+    func persist(_ record: PersistedKeystoneSignature) throws {
+        var all = (try? loadAll()) ?? []
+        all.removeAll { $0.roundId == record.roundId && $0.bundleIndex == record.bundleIndex }
+        all.append(record)
+        try saveAll(all)
+    }
+
+    func records(for roundId: String) throws -> [PersistedKeystoneSignature] {
+        try loadAll().filter { $0.roundId == roundId }
     }
 
     func clearAll(roundId: String) throws {

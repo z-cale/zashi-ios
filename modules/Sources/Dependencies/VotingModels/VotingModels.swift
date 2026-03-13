@@ -690,6 +690,24 @@ public enum VoteCommitmentBuildEvent: Equatable, Sendable {
     case completed(VoteCommitmentBundle)
 }
 
+/// Keystone spend-auth signature persisted at QR-scan time so the delegation
+/// submission can be rebuilt on recovery without requiring the user to re-sign.
+public struct PersistedKeystoneSignature: Codable, Equatable, Sendable {
+    public let roundId: String
+    public let bundleIndex: UInt32
+    public let sig: Data
+    public let sighash: Data
+    public let rk: Data
+
+    public init(roundId: String, bundleIndex: UInt32, sig: Data, sighash: Data, rk: Data) {
+        self.roundId = roundId
+        self.bundleIndex = bundleIndex
+        self.sig = sig
+        self.sighash = sighash
+        self.rk = rk
+    }
+}
+
 /// Persisted record of a delegation TX that has been submitted to chain but
 /// whose VAN leaf position has not yet been stored locally.
 /// Used to recover the VAN position after app interruption during ZKP1.

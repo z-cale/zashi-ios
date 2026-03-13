@@ -157,7 +157,11 @@ public struct VotingCryptoClient {
     public var getCommittedVotes: @Sendable (_ roundId: String) async throws -> [CommittedVoteRecord]
     /// Remove a committed vote record after successful share delegation.
     public var clearCommittedVote: @Sendable (_ roundId: String, _ bundleIndex: UInt32, _ proposalId: UInt32) async throws -> Void
-    /// Remove all pending delegation and committed vote records for a round (cleanup after successful completion).
+    /// Persist a Keystone signature at QR-scan time so delegation can be rebuilt on recovery.
+    public var persistKeystoneSig: @Sendable (_ record: PersistedKeystoneSignature) async throws -> Void
+    /// Retrieve saved Keystone signatures for a round.
+    public var getKeystoneSigs: @Sendable (_ roundId: String) async throws -> [PersistedKeystoneSignature]
+    /// Remove all recovery records (pending delegations, committed votes, Keystone sigs) for a round.
     public var clearAllRecoveryRecords: @Sendable (_ roundId: String) async throws -> Void
     /// Decompress r_vpk and sign the canonical cast-vote sighash.
     /// Call after `buildVoteCommitment` completes, before `submitVoteCommitment`.
