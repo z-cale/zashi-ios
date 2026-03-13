@@ -1825,13 +1825,13 @@ public struct Voting { // swiftlint:disable:this type_body_length
                             }
                             let leafParts = leafPair.split(separator: ",")
                             guard leafParts.count == 2,
-                                  let vanIdx = UInt64(leafParts[0]),
+                                  let vanIdx = UInt32(leafParts[0]),
                                   let vcIdx = UInt64(leafParts[1])
                             else {
                                 throw VotingFlowError.voteCommitmentTxFailed(code: 0)
                             }
 
-                            let newVanPosition = UInt32(vanIdx)
+                            let newVanPosition = vanIdx
                             let vcTreePosition = vcIdx
                             try await votingCrypto.storeVanPosition(roundId, bundleIndex, newVanPosition)
 
