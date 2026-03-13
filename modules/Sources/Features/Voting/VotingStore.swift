@@ -30,6 +30,7 @@ private enum VotingFlowError: LocalizedError {
     case missingPendingUnsignedPczt
     case invalidDelegationSignature
     case missingVoteCommitmentBundle
+    case delegationTxFailed(code: UInt32)
     case voteCommitmentTxFailed(code: UInt32)
 
     var errorDescription: String? {
@@ -46,6 +47,8 @@ private enum VotingFlowError: LocalizedError {
             return "Keystone delegation signature tuple (rk, sighash, sig) is inconsistent with the payload being submitted."
         case .missingVoteCommitmentBundle:
             return "vote commitment build completed without a commitment bundle"
+        case .delegationTxFailed(let code):
+            return "delegation TX failed on-chain (code \(code)) or missing delegate_vote event"
         case .voteCommitmentTxFailed(code: let code):
             return "vote commitment TX failed on-chain (code \(code))"
         }
@@ -182,7 +185,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
         public enum VoteSubmissionStep: Equatable {
             case preparingProof     // syncVoteTree + generateVanWitness + buildVoteCommitment + signCastVote + submitVoteCommitment
-            case confirming         // awaitCommitmentTreeGrowth
+            case confirming         // fetchTxConfirmation poll
             case sendingShares      // buildSharePayloads + delegateShares
 
             public var label: String {
@@ -1381,13 +1384,27 @@ public struct Voting { // swiftlint:disable:this type_body_length
                                 let registration = try await votingCrypto.getDelegationSubmission(
                                     roundId, bundleIndex, senderSeed, networkId, accountIndex
                                 )
-                                let preTree = try await votingAPI.fetchLatestCommitmentTree()
                                 let delegTxResult = try await votingAPI.submitDelegation(registration)
                                 logger.info("Delegation TX \(bundleIndex) submitted: \(delegTxResult.txHash)")
 
-                                // Poll until the delegation TX lands and the tree grows
-                                let postTree = try await votingAPI.awaitCommitmentTreeGrowth(preTree.nextIndex, 90)
-                                let vanPosition = UInt32(postTree.nextIndex) - 1
+                                // Poll until the TX lands, then extract the VAN leaf index
+                                // from the delegate_vote event rather than inferring from tree growth.
+                                let delegDeadline = Date().addingTimeInterval(90)
+                                var delegConfirmation: TxConfirmation?
+                                repeat {
+                                    delegConfirmation = try? await votingAPI.fetchTxConfirmation(delegTxResult.txHash)
+                                    if delegConfirmation != nil { break }
+                                    try await Task.sleep(for: .seconds(2))
+                                } while Date() < delegDeadline
+
+                                guard let delegConfirmation, delegConfirmation.code == 0,
+                                      let leafValue = delegConfirmation.event(ofType: "delegate_vote")?.attribute(forKey: "leaf_index"),
+                                      let vanPosition = UInt32(leafValue)
+                                else {
+                                    throw VotingFlowError.delegationTxFailed(
+                                        code: delegConfirmation?.code ?? 0
+                                    )
+                                }
                                 try await votingCrypto.storeVanPosition(roundId, bundleIndex, vanPosition)
                                 logger.debug("VAN position stored for bundle \(bundleIndex): \(vanPosition)")
                             }
@@ -1565,13 +1582,25 @@ public struct Voting { // swiftlint:disable:this type_body_length
                                 sig=\(Data(sig.sig.prefix(8)).hexString)
                                 """
                             )
-                            let preTree = try await votingAPI.fetchLatestCommitmentTree()
                             let delegTxResult = try await votingAPI.submitDelegation(registration)
                             logger.info("Delegation TX \(bundleIdx) submitted: \(delegTxResult.txHash)")
 
-                            // Poll until the delegation TX lands and the tree grows
-                            let postTree = try await votingAPI.awaitCommitmentTreeGrowth(preTree.nextIndex, 90)
-                            let vanPosition = UInt32(postTree.nextIndex) - 1
+                            let delegDeadline = Date().addingTimeInterval(90)
+                            var delegConfirmation: TxConfirmation?
+                            repeat {
+                                delegConfirmation = try? await votingAPI.fetchTxConfirmation(delegTxResult.txHash)
+                                if delegConfirmation != nil { break }
+                                try await Task.sleep(for: .seconds(2))
+                            } while Date() < delegDeadline
+
+                            guard let delegConfirmation, delegConfirmation.code == 0,
+                                  let leafValue = delegConfirmation.event(ofType: "delegate_vote")?.attribute(forKey: "leaf_index"),
+                                  let vanPosition = UInt32(leafValue)
+                            else {
+                                throw VotingFlowError.delegationTxFailed(
+                                    code: delegConfirmation?.code ?? 0
+                                )
+                            }
                             try await votingCrypto.storeVanPosition(roundId, bundleIdx, vanPosition)
                             logger.debug("VAN position stored for bundle \(bundleIdx): \(vanPosition)")
                         }
@@ -1771,49 +1800,39 @@ public struct Voting { // swiftlint:disable:this type_body_length
                                 hotkeySeed, networkId, builtBundle
                             )
 
-                            // Submit cast-vote TX to chain, polling for tree growth
+                            // Submit cast-vote TX to chain
                             await send(.voteSubmissionStepUpdated(.confirming))
-                            let preVCTree = try await votingAPI.fetchLatestCommitmentTree()
                             let txResult = try await votingAPI.submitVoteCommitment(builtBundle, castVoteSig)
                             let txHash = txResult.txHash
                             await send(.voteCommitmentSubmitted(txHash))
 
-                            // Wait for the cast-vote TX to land and read the new tree position.
-                            // The chain appends vote_authority_note_new first, then vote_commitment,
-                            // so the new VAN is at nextIndex-2 and the VC is at nextIndex-1.
-                            // If the tree doesn't grow in time, fall back to TX hash polling.
-                            let postVCTree: CommitmentTreeState
-                            do {
-                                postVCTree = try await votingAPI.awaitCommitmentTreeGrowth(preVCTree.nextIndex, 90)
-                            } catch {
-                                logger.warning("Tree growth timeout, falling back to TX confirmation polling: \(error)")
-                                guard !txHash.isEmpty else { throw error }
+                            // Poll until our TX lands and extract exact leaf positions
+                            // from the cast_vote event (emits "vanIdx,vcIdx").
+                            let voteDeadline = Date().addingTimeInterval(90)
+                            var voteConfirmation: TxConfirmation?
+                            repeat {
+                                voteConfirmation = try? await votingAPI.fetchTxConfirmation(txHash)
+                                if voteConfirmation != nil { break }
+                                try await Task.sleep(for: .seconds(2))
+                            } while Date() < voteDeadline
 
-                                // Poll TX status for up to 30s to verify it actually landed
-                                let txDeadline = Date().addingTimeInterval(30)
-                                var confirmation: TxConfirmation?
-                                while Date() < txDeadline {
-                                    if let result = try await votingAPI.checkTxConfirmed(txHash) {
-                                        confirmation = result
-                                        break
-                                    }
-                                    try await Task.sleep(for: .seconds(2))
-                                }
-                                guard let confirmation else { throw error }
-                                guard confirmation.code == 0 else {
-                                    throw VotingFlowError.voteCommitmentTxFailed(code: confirmation.code)
-                                }
-
-                                // TX landed — reset stale tree client and re-fetch tree state
-                                logger.info("TX confirmed at height \(confirmation.height), resetting tree client")
-                                try await votingCrypto.resetTreeClient()
-                                postVCTree = try await votingAPI.fetchLatestCommitmentTree()
+                            guard let voteConfirmation, voteConfirmation.code == 0,
+                                  let leafPair = voteConfirmation.event(ofType: "cast_vote")?.attribute(forKey: "leaf_index")
+                            else {
+                                throw VotingFlowError.voteCommitmentTxFailed(
+                                    code: voteConfirmation?.code ?? 0
+                                )
+                            }
+                            let leafParts = leafPair.split(separator: ",")
+                            guard leafParts.count == 2,
+                                  let vanIdx = UInt64(leafParts[0]),
+                                  let vcIdx = UInt64(leafParts[1])
+                            else {
+                                throw VotingFlowError.voteCommitmentTxFailed(code: 0)
                             }
 
-                            let newVanPosition = UInt32(postVCTree.nextIndex) - 2
-                            let vcTreePosition = postVCTree.nextIndex - 1
-
-                            // Update VAN position so the next vote on this bundle uses the new VAN leaf
+                            let newVanPosition = UInt32(vanIdx)
+                            let vcTreePosition = vcIdx
                             try await votingCrypto.storeVanPosition(roundId, bundleIndex, newVanPosition)
 
                             await send(.voteSubmissionStepUpdated(.sendingShares))
