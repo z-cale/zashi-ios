@@ -487,6 +487,10 @@ extension VotingCryptoClient: DependencyKey {
             clearCommittedVote: { roundId, bundleIndex, proposalId in
                 try await committedStore.clear(roundId: roundId, bundleIndex: bundleIndex, proposalId: proposalId)
             },
+            clearAllRecoveryRecords: { roundId in
+                try await pendingDelegationStore.clearAll(roundId: roundId)
+                try await committedStore.clearAll(roundId: roundId)
+            },
             signCastVote: { hotkeySeed, networkId, bundle in
                 let sig = try VotingRustBackend.signCastVote(
                     hotkeySeed: hotkeySeed,
@@ -582,6 +586,12 @@ private actor PendingDelegationFileStore {
         all.removeAll { $0.roundId == roundId && $0.bundleIndex == bundleIndex }
         try saveAll(all)
     }
+
+    func clearAll(roundId: String) throws {
+        var all = (try? loadAll()) ?? []
+        all.removeAll { $0.roundId == roundId }
+        try saveAll(all)
+    }
 }
 
 // MARK: - CommittedVoteFileStore
@@ -618,6 +628,12 @@ private actor CommittedVoteFileStore {
     func clear(roundId: String, bundleIndex: UInt32, proposalId: UInt32) throws {
         var all = (try? loadAll()) ?? []
         all.removeAll { $0.roundId == roundId && $0.bundleIndex == bundleIndex && $0.proposalId == proposalId }
+        try saveAll(all)
+    }
+
+    func clearAll(roundId: String) throws {
+        var all = (try? loadAll()) ?? []
+        all.removeAll { $0.roundId == roundId }
         try saveAll(all)
     }
 }

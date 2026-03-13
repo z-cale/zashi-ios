@@ -157,6 +157,8 @@ public struct VotingCryptoClient {
     public var getCommittedVotes: @Sendable (_ roundId: String) async throws -> [CommittedVoteRecord]
     /// Remove a committed vote record after successful share delegation.
     public var clearCommittedVote: @Sendable (_ roundId: String, _ bundleIndex: UInt32, _ proposalId: UInt32) async throws -> Void
+    /// Remove all pending delegation and committed vote records for a round (cleanup after successful completion).
+    public var clearAllRecoveryRecords: @Sendable (_ roundId: String) async throws -> Void
     /// Decompress r_vpk and sign the canonical cast-vote sighash.
     /// Call after `buildVoteCommitment` completes, before `submitVoteCommitment`.
     public var signCastVote: @Sendable (

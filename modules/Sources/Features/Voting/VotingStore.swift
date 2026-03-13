@@ -1647,6 +1647,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                                 logger.debug("VAN position stored for bundle \(bundleIndex): \(vanPosition)")
                             }
 
+                            try? await votingCrypto.clearAllRecoveryRecords(roundId)
                             await send(.delegationProofCompleted)
                         } catch {
                             await backgroundTask.endTask(bgTaskId)
@@ -1885,6 +1886,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                             logger.debug("VAN position stored for bundle \(bundleIdx): \(vanPosition)")
                         }
 
+                        try? await votingCrypto.clearAllRecoveryRecords(roundId)
                         await send(.delegationProofCompleted)
                     } catch {
                         await backgroundTask.endTask(bgTaskId)
