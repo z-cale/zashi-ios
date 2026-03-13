@@ -1398,6 +1398,45 @@ public struct Voting { // swiftlint:disable:this type_body_length
                                     await send(.delegationProofCompleted)
                                     return
                                 }
+
+                                // Before building a PCZT (which overwrites delegation data in the DB),
+                                // check if a previous run already submitted the delegation TX.
+                                // Recovery must happen here — not in keystoneAllBundlesSigned — because
+                                // buildGovernancePczt would overwrite the DB data that the on-chain TX
+                                // references, making any later VAN witness/vote proof invalid.
+                                let pendingDelegations = try await votingCrypto.getPendingDelegations(roundId)
+                                if !pendingDelegations.isEmpty {
+                                    logger.info("Found \(pendingDelegations.count) pending delegation(s), recovering before Keystone PCZT build")
+                                    var allRecovered = true
+                                    for record in pendingDelegations {
+                                        let deadline = Date().addingTimeInterval(90)
+                                        var confirmation: TxConfirmation?
+                                        repeat {
+                                            confirmation = try? await votingAPI.fetchTxConfirmation(record.txHash)
+                                            if confirmation != nil { break }
+                                            try await Task.sleep(for: .seconds(2))
+                                        } while Date() < deadline
+
+                                        guard let confirmation, confirmation.code == 0,
+                                              let leafValue = confirmation.event(ofType: "delegate_vote")?.attribute(forKey: "leaf_index"),
+                                              let vanPosition = UInt32(leafValue)
+                                        else {
+                                            logger.error("Could not recover pending delegation for bundle \(record.bundleIndex)")
+                                            allRecovered = false
+                                            break
+                                        }
+                                        try await votingCrypto.storeVanPosition(roundId, record.bundleIndex, vanPosition)
+                                        try? await votingCrypto.clearPendingDelegation(roundId, record.bundleIndex)
+                                        logger.info("Pre-PCZT recovery: bundle \(record.bundleIndex) VAN \(vanPosition)")
+                                    }
+
+                                    if allRecovered {
+                                        await backgroundTask.endTask(bgTaskId)
+                                        await send(.delegationProofCompleted)
+                                        return
+                                    }
+                                }
+
                                 // Build governance PCZT for the current bundle — its single Orchard
                                 // action IS the governance dummy action, so Keystone's SpendAuth
                                 // signature will verify against the PCZT's ZIP-244 sighash.
