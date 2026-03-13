@@ -541,19 +541,33 @@ extension VotingAPIClient: DependencyKey {
             },
             fetchTxConfirmation: { txHash in
                 let base = await SvAPIConfigStore.shared.baseURL
-                guard let url = URL(string: "\(base)/cosmos/tx/v1beta1/txs/\(txHash)") else { return nil }
+                let urlString = "\(base)/cosmos/tx/v1beta1/txs/\(txHash)"
+                guard let url = URL(string: urlString) else {
+                    logger.error("fetchTxConfirmation: invalid URL: \(urlString)")
+                    return nil
+                }
 
                 let data: Data
                 let response: URLResponse
                 do {
                     (data, response) = try await httpSession.data(from: url)
                 } catch {
+                    logger.debug("fetchTxConfirmation: network error: \(error.localizedDescription)")
                     return nil
                 }
-                guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+                guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                    let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+                    let body = String(data: data.prefix(512), encoding: .utf8) ?? "<non-utf8>"
+                    logger.debug("fetchTxConfirmation: HTTP \(status) for \(txHash) — \(body)")
+                    return nil
+                }
                 guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let txResponse = json["tx_response"] as? [String: Any]
-                else { return nil }
+                else {
+                    let snippet = String(data: data.prefix(512), encoding: .utf8) ?? "<non-utf8>"
+                    logger.error("fetchTxConfirmation: JSON parse failed — \(snippet)")
+                    return nil
+                }
 
                 let height = parseUInt64(txResponse["height"])
                 let code = parseUInt32(txResponse["code"])
