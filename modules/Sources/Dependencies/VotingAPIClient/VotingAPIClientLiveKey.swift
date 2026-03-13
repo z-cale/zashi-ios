@@ -1,6 +1,9 @@
 import ComposableArchitecture
 import Foundation
+import os
 import VotingModels
+
+private let logger = Logger(subsystem: "co.zodl.voting", category: "VotingAPIClient")
 
 // MARK: - API Configuration
 
@@ -556,10 +559,15 @@ extension VotingAPIClient: DependencyKey {
                 let code = parseUInt32(txResponse["code"])
                 let log = txResponse["raw_log"] as? String ?? ""
 
+                let logsRawType = txResponse["logs"].map { String(describing: type(of: $0)) } ?? "nil"
+                let eventsRawType = txResponse["events"].map { String(describing: type(of: $0)) } ?? "nil"
+                logger.debug("fetchTxConfirmation: height=\(height) code=\(code) logs type=\(logsRawType) events type=\(eventsRawType)")
+
                 var parsedEvents: [TxEvent] = []
 
                 // Prefer tx_response.logs[].events — per-message events with plain-string keys.
                 if let logs = txResponse["logs"] as? [[String: Any]] {
+                    logger.debug("fetchTxConfirmation: logs[] has \(logs.count) entries")
                     for entry in logs {
                         guard let events = entry["events"] as? [[String: Any]] else { continue }
                         for event in events {
@@ -575,10 +583,14 @@ extension VotingAPIClient: DependencyKey {
                             parsedEvents.append(TxEvent(type: evType, attributes: parsed))
                         }
                     }
+                } else {
+                    logger.debug("fetchTxConfirmation: logs[] not present or not an array")
                 }
 
                 // Fallback: tx_response.events (TX-level ABCI events).
+                // Keys/values may be base64-encoded (CometBFT ≤0.37 / Cosmos SDK ≤0.47).
                 if parsedEvents.isEmpty, let events = txResponse["events"] as? [[String: Any]] {
+                    logger.debug("fetchTxConfirmation: falling back to tx_response.events (\(events.count) entries)")
                     for event in events {
                         guard let evType = event["type"] as? String,
                               let attrs = event["attributes"] as? [[String: Any]]
@@ -587,14 +599,35 @@ extension VotingAPIClient: DependencyKey {
                             guard let key = attr["key"] as? String,
                                   let value = attr["value"] as? String
                             else { return nil }
-                            return TxEventAttribute(key: key, value: value)
+                            let decodedKey = decodeBase64IfNeeded(key)
+                            let decodedValue = decodeBase64IfNeeded(value)
+                            return TxEventAttribute(key: decodedKey, value: decodedValue)
                         }
                         parsedEvents.append(TxEvent(type: evType, attributes: parsed))
                     }
                 }
 
+                let eventSummary = parsedEvents.map { ev in
+                    let keys = ev.attributes.map(\.key).joined(separator: ",")
+                    return "\(ev.type)[\(keys)]"
+                }.joined(separator: "; ")
+                logger.debug("fetchTxConfirmation: parsed \(parsedEvents.count) events: \(eventSummary)")
+
                 return TxConfirmation(height: height, code: code, log: log, events: parsedEvents)
             }
         )
     }
+}
+
+/// If `value` looks like valid base64 and decodes to a printable UTF-8 string, return
+/// the decoded string; otherwise return the original. This handles CometBFT ≤0.37
+/// which base64-encodes event attribute keys/values in the JSON response.
+private func decodeBase64IfNeeded(_ value: String) -> String {
+    guard !value.isEmpty,
+          value.allSatisfy({ $0.isASCII }),
+          let decoded = Data(base64Encoded: value),
+          let str = String(data: decoded, encoding: .utf8),
+          str.allSatisfy({ !$0.isNewline && ($0.isLetter || $0.isNumber || $0 == "_" || $0 == "," || $0 == "." || $0 == "-") })
+    else { return value }
+    return str
 }
