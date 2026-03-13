@@ -696,12 +696,22 @@ public enum VoteCommitmentBuildEvent: Equatable, Sendable {
 public struct PendingDelegationRecord: Codable, Equatable, Sendable {
     public let roundId: String
     public let bundleIndex: UInt32
-    public let txHash: String
+    public var txHash: String
+    /// Keystone spend-auth signature (64 bytes). Persisted so the delegation
+    /// submission can be rebuilt on recovery without re-signing.
+    public let keystoneSig: Data?
+    /// ZIP-244 sighash that was signed by Keystone.
+    public let keystoneSighash: Data?
 
-    public init(roundId: String, bundleIndex: UInt32, txHash: String) {
+    public init(
+        roundId: String, bundleIndex: UInt32, txHash: String,
+        keystoneSig: Data? = nil, keystoneSighash: Data? = nil
+    ) {
         self.roundId = roundId
         self.bundleIndex = bundleIndex
         self.txHash = txHash
+        self.keystoneSig = keystoneSig
+        self.keystoneSighash = keystoneSighash
     }
 }
 

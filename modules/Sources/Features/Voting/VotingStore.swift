@@ -1372,6 +1372,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 let roundName = state.votingRound.title
                 // PIR server URL from resolved service config
                 let pirServerUrl = state.serviceConfig?.pirServers.first?.url ?? "https://46-101-255-48.sslip.io/nullifier"
+                let chainNodeUrl = state.serviceConfig?.voteServers.first?.url ?? "https://46-101-255-48.sslip.io"
                 let keystoneBundleIndex = state.currentKeystoneBundleIndex
                 let bundleCount = state.bundleCount
                 return .merge(
@@ -1409,25 +1410,84 @@ public struct Voting { // swiftlint:disable:this type_body_length
                                     logger.info("Found \(pendingDelegations.count) pending delegation(s), recovering before Keystone PCZT build")
                                     var allRecovered = true
                                     for record in pendingDelegations {
-                                        let deadline = Date().addingTimeInterval(90)
-                                        var confirmation: TxConfirmation?
-                                        repeat {
-                                            confirmation = try? await votingAPI.fetchTxConfirmation(record.txHash)
-                                            if confirmation != nil { break }
-                                            try await Task.sleep(for: .seconds(2))
-                                        } while Date() < deadline
+                                        if !record.txHash.isEmpty {
+                                            // Have the TX hash — poll chain for events
+                                            let deadline = Date().addingTimeInterval(90)
+                                            var confirmation: TxConfirmation?
+                                            repeat {
+                                                confirmation = try? await votingAPI.fetchTxConfirmation(record.txHash)
+                                                if confirmation != nil { break }
+                                                try await Task.sleep(for: .seconds(2))
+                                            } while Date() < deadline
 
-                                        guard let confirmation, confirmation.code == 0,
-                                              let leafValue = confirmation.event(ofType: "delegate_vote")?.attribute(forKey: "leaf_index"),
-                                              let vanPosition = UInt32(leafValue)
-                                        else {
-                                            logger.error("Could not recover pending delegation for bundle \(record.bundleIndex)")
+                                            guard let confirmation, confirmation.code == 0,
+                                                  let leafValue = confirmation.event(ofType: "delegate_vote")?.attribute(forKey: "leaf_index"),
+                                                  let vanPosition = UInt32(leafValue)
+                                            else {
+                                                logger.error("Could not recover pending delegation for bundle \(record.bundleIndex)")
+                                                allRecovered = false
+                                                break
+                                            }
+                                            try await votingCrypto.storeVanPosition(roundId, record.bundleIndex, vanPosition)
+                                            try? await votingCrypto.clearPendingDelegation(roundId, record.bundleIndex)
+                                            logger.info("Pre-PCZT recovery (hash): bundle \(record.bundleIndex) VAN \(vanPosition)")
+
+                                        } else if let sig = record.keystoneSig, let sighash = record.keystoneSighash {
+                                            // Empty hash but have Keystone sig — proof was done, TX status unknown.
+                                            // DB still has original delegation data. Try to resubmit.
+                                            logger.info("Attempting resubmit for bundle \(record.bundleIndex) using saved Keystone sig")
+                                            let registration = try await votingCrypto.getDelegationSubmissionWithKeystoneSig(
+                                                roundId, record.bundleIndex, [UInt8](sig), [UInt8](sighash)
+                                            )
+                                            do {
+                                                let txResult = try await votingAPI.submitDelegation(registration)
+                                                logger.info("Resubmit succeeded: \(txResult.txHash)")
+                                                try await votingCrypto.persistPendingDelegation(PendingDelegationRecord(
+                                                    roundId: roundId, bundleIndex: record.bundleIndex, txHash: txResult.txHash,
+                                                    keystoneSig: sig, keystoneSighash: sighash
+                                                ))
+                                                // Poll for confirmation
+                                                let deadline = Date().addingTimeInterval(90)
+                                                var confirmation: TxConfirmation?
+                                                repeat {
+                                                    confirmation = try? await votingAPI.fetchTxConfirmation(txResult.txHash)
+                                                    if confirmation != nil { break }
+                                                    try await Task.sleep(for: .seconds(2))
+                                                } while Date() < deadline
+
+                                                guard let confirmation, confirmation.code == 0,
+                                                      let leafValue = confirmation.event(ofType: "delegate_vote")?.attribute(forKey: "leaf_index"),
+                                                      let vanPosition = UInt32(leafValue)
+                                                else {
+                                                    allRecovered = false
+                                                    break
+                                                }
+                                                try await votingCrypto.storeVanPosition(roundId, record.bundleIndex, vanPosition)
+                                                try? await votingCrypto.clearPendingDelegation(roundId, record.bundleIndex)
+                                                logger.info("Pre-PCZT recovery (resubmit): bundle \(record.bundleIndex) VAN \(vanPosition)")
+                                            } catch {
+                                                // "Already registered" means the previous TX landed.
+                                                // DB data is preserved (no buildGovernancePczt yet),
+                                                // so sync the tree and use its size as VAN position.
+                                                let errorMsg = "\(error)"
+                                                if errorMsg.contains("already") && errorMsg.localizedCaseInsensitiveContains("registered") {
+                                                    logger.warning("Bundle \(record.bundleIndex) already on-chain, recovering VAN from tree")
+                                                    let treeSize = try await votingCrypto.syncVoteTree(roundId, chainNodeUrl)
+                                                    let vanPosition = treeSize > 0 ? treeSize - 1 : 0
+                                                    try await votingCrypto.storeVanPosition(roundId, record.bundleIndex, vanPosition)
+                                                    try? await votingCrypto.clearPendingDelegation(roundId, record.bundleIndex)
+                                                    logger.info("Pre-PCZT recovery (tree): bundle \(record.bundleIndex) VAN \(vanPosition)")
+                                                } else {
+                                                    logger.error("Resubmit failed for bundle \(record.bundleIndex): \(error)")
+                                                    allRecovered = false
+                                                    break
+                                                }
+                                            }
+                                        } else {
+                                            logger.error("Pending delegation for bundle \(record.bundleIndex) has no hash or sig")
                                             allRecovered = false
                                             break
                                         }
-                                        try await votingCrypto.storeVanPosition(roundId, record.bundleIndex, vanPosition)
-                                        try? await votingCrypto.clearPendingDelegation(roundId, record.bundleIndex)
-                                        logger.info("Pre-PCZT recovery: bundle \(record.bundleIndex) VAN \(vanPosition)")
                                     }
 
                                     if allRecovered {
@@ -1546,6 +1606,12 @@ public struct Voting { // swiftlint:disable:this type_body_length
                                 let registration = try await votingCrypto.getDelegationSubmission(
                                     roundId, bundleIndex, senderSeed, networkId, accountIndex
                                 )
+                                // Persist before submit so a crash between submit and persist
+                                // doesn't lose track of the delegation attempt.
+                                try await votingCrypto.persistPendingDelegation(PendingDelegationRecord(
+                                    roundId: roundId, bundleIndex: bundleIndex, txHash: ""
+                                ))
+
                                 let delegTxResult = try await votingAPI.submitDelegation(registration)
                                 logger.info("Delegation TX \(bundleIndex) submitted: \(delegTxResult.txHash)")
 
@@ -1775,11 +1841,20 @@ public struct Voting { // swiftlint:disable:this type_body_length
                                 sig=\(Data(sig.sig.prefix(8)).hexString)
                                 """
                             )
+                            // Persist BEFORE submit so a crash between submit and persist
+                            // doesn't lose the Keystone signature needed for resubmission.
+                            try await votingCrypto.persistPendingDelegation(PendingDelegationRecord(
+                                roundId: roundId, bundleIndex: bundleIdx, txHash: "",
+                                keystoneSig: Data(sig.sig), keystoneSighash: Data(sig.sighash)
+                            ))
+
                             let delegTxResult = try await votingAPI.submitDelegation(registration)
                             logger.info("Delegation TX \(bundleIdx) submitted: \(delegTxResult.txHash)")
 
+                            // Update with real TX hash now that submission succeeded
                             try await votingCrypto.persistPendingDelegation(PendingDelegationRecord(
-                                roundId: roundId, bundleIndex: bundleIdx, txHash: delegTxResult.txHash
+                                roundId: roundId, bundleIndex: bundleIdx, txHash: delegTxResult.txHash,
+                                keystoneSig: Data(sig.sig), keystoneSighash: Data(sig.sighash)
                             ))
 
                             let delegDeadline = Date().addingTimeInterval(90)
