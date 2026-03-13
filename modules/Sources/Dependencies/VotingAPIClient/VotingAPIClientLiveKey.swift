@@ -541,7 +541,7 @@ extension VotingAPIClient: DependencyKey {
             },
             fetchTxConfirmation: { txHash in
                 let base = await SvAPIConfigStore.shared.baseURL
-                let urlString = "\(base)/cosmos/tx/v1beta1/txs/\(txHash)"
+                let urlString = "\(base)/shielded-vote/v1/tx/\(txHash)"
                 guard let url = URL(string: urlString) else {
                     logger.error("fetchTxConfirmation: invalid URL: \(urlString)")
                     return nil
@@ -555,56 +555,37 @@ extension VotingAPIClient: DependencyKey {
                     logger.debug("fetchTxConfirmation: network error: \(error.localizedDescription)")
                     return nil
                 }
-                guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                    let status = (response as? HTTPURLResponse)?.statusCode ?? -1
-                    let body = String(data: data.prefix(512), encoding: .utf8) ?? "<non-utf8>"
-                    logger.debug("fetchTxConfirmation: HTTP \(status) for \(txHash) — \(body)")
+
+                guard let http = response as? HTTPURLResponse else {
+                    logger.error("fetchTxConfirmation: not an HTTP response")
                     return nil
                 }
-                guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      let txResponse = json["tx_response"] as? [String: Any]
-                else {
+
+                // 404 = TX not yet in a block (normal during polling)
+                if http.statusCode == 404 {
+                    return nil
+                }
+
+                // 422 = TX included but execution failed (non-zero code).
+                // Parse the response to extract the error code/log.
+                guard http.statusCode == 200 || http.statusCode == 422 else {
+                    let body = String(data: data.prefix(512), encoding: .utf8) ?? "<non-utf8>"
+                    logger.debug("fetchTxConfirmation: HTTP \(http.statusCode) for \(txHash) — \(body)")
+                    return nil
+                }
+
+                guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
                     let snippet = String(data: data.prefix(512), encoding: .utf8) ?? "<non-utf8>"
                     logger.error("fetchTxConfirmation: JSON parse failed — \(snippet)")
                     return nil
                 }
 
-                let height = parseUInt64(txResponse["height"])
-                let code = parseUInt32(txResponse["code"])
-                let log = txResponse["raw_log"] as? String ?? ""
-
-                let logsRawType = txResponse["logs"].map { String(describing: type(of: $0)) } ?? "nil"
-                let eventsRawType = txResponse["events"].map { String(describing: type(of: $0)) } ?? "nil"
-                logger.debug("fetchTxConfirmation: height=\(height) code=\(code) logs type=\(logsRawType) events type=\(eventsRawType)")
+                let height = parseUInt64(json["height"])
+                let code = parseUInt32(json["code"])
+                let log = json["log"] as? String ?? ""
 
                 var parsedEvents: [TxEvent] = []
-
-                // Prefer tx_response.logs[].events — per-message events with plain-string keys.
-                if let logs = txResponse["logs"] as? [[String: Any]] {
-                    logger.debug("fetchTxConfirmation: logs[] has \(logs.count) entries")
-                    for entry in logs {
-                        guard let events = entry["events"] as? [[String: Any]] else { continue }
-                        for event in events {
-                            guard let evType = event["type"] as? String,
-                                  let attrs = event["attributes"] as? [[String: Any]]
-                            else { continue }
-                            let parsed = attrs.compactMap { attr -> TxEventAttribute? in
-                                guard let key = attr["key"] as? String,
-                                      let value = attr["value"] as? String
-                                else { return nil }
-                                return TxEventAttribute(key: key, value: value)
-                            }
-                            parsedEvents.append(TxEvent(type: evType, attributes: parsed))
-                        }
-                    }
-                } else {
-                    logger.debug("fetchTxConfirmation: logs[] not present or not an array")
-                }
-
-                // Fallback: tx_response.events (TX-level ABCI events).
-                // Keys/values may be base64-encoded (CometBFT ≤0.37 / Cosmos SDK ≤0.47).
-                if parsedEvents.isEmpty, let events = txResponse["events"] as? [[String: Any]] {
-                    logger.debug("fetchTxConfirmation: falling back to tx_response.events (\(events.count) entries)")
+                if let events = json["events"] as? [[String: Any]] {
                     for event in events {
                         guard let evType = event["type"] as? String,
                               let attrs = event["attributes"] as? [[String: Any]]
@@ -613,9 +594,7 @@ extension VotingAPIClient: DependencyKey {
                             guard let key = attr["key"] as? String,
                                   let value = attr["value"] as? String
                             else { return nil }
-                            let decodedKey = decodeBase64IfNeeded(key)
-                            let decodedValue = decodeBase64IfNeeded(value)
-                            return TxEventAttribute(key: decodedKey, value: decodedValue)
+                            return TxEventAttribute(key: key, value: value)
                         }
                         parsedEvents.append(TxEvent(type: evType, attributes: parsed))
                     }
@@ -625,7 +604,7 @@ extension VotingAPIClient: DependencyKey {
                     let keys = ev.attributes.map(\.key).joined(separator: ",")
                     return "\(ev.type)[\(keys)]"
                 }.joined(separator: "; ")
-                logger.debug("fetchTxConfirmation: parsed \(parsedEvents.count) events: \(eventSummary)")
+                logger.debug("fetchTxConfirmation: height=\(height) code=\(code) events=\(eventSummary)")
 
                 return TxConfirmation(height: height, code: code, log: log, events: parsedEvents)
             }
@@ -633,15 +612,3 @@ extension VotingAPIClient: DependencyKey {
     }
 }
 
-/// If `value` looks like valid base64 and decodes to a printable UTF-8 string, return
-/// the decoded string; otherwise return the original. This handles CometBFT ≤0.37
-/// which base64-encodes event attribute keys/values in the JSON response.
-private func decodeBase64IfNeeded(_ value: String) -> String {
-    guard !value.isEmpty,
-          value.allSatisfy({ $0.isASCII }),
-          let decoded = Data(base64Encoded: value),
-          let str = String(data: decoded, encoding: .utf8),
-          str.allSatisfy({ !$0.isNewline && ($0.isLetter || $0.isNumber || $0 == "_" || $0 == "," || $0 == "." || $0 == "-") })
-    else { return value }
-    return str
-}
