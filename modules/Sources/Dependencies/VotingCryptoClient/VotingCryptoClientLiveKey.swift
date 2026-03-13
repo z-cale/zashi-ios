@@ -285,9 +285,7 @@ extension VotingCryptoClient: DependencyKey {
                     EncryptedShare(
                         c1: Data($0.c1),
                         c2: Data($0.c2),
-                        shareIndex: $0.shareIndex,
-                        plaintextValue: $0.plaintextValue,
-                        randomness: Data($0.randomness)
+                        shareIndex: $0.shareIndex
                     )
                 }
             },
@@ -323,9 +321,7 @@ extension VotingCryptoClient: DependencyKey {
                                     VotingModels.EncryptedShare(
                                         c1: Data($0.c1),
                                         c2: Data($0.c2),
-                                        shareIndex: $0.shareIndex,
-                                        plaintextValue: $0.plaintextValue,
-                                        randomness: Data($0.randomness)
+                                        shareIndex: $0.shareIndex
                                     )
                                 },
                                 anchorHeight: result.anchorHeight,
@@ -347,12 +343,10 @@ extension VotingCryptoClient: DependencyKey {
             buildSharePayloads: { encShares, commitment, voteDecision, numOptions, vcTreePosition in
                 let backend = try await dbActor.backend()
                 let sdkShares = encShares.map {
-                    VotingEncryptedShare(
+                    VotingWireEncryptedShare(
                         c1: [UInt8]($0.c1),
                         c2: [UInt8]($0.c2),
-                        shareIndex: $0.shareIndex,
-                        plaintextValue: $0.plaintextValue,
-                        randomness: [UInt8]($0.randomness)
+                        shareIndex: $0.shareIndex
                     )
                 }
                 let sdkCommitment = VotingVoteCommitmentBundle(
@@ -385,9 +379,7 @@ extension VotingCryptoClient: DependencyKey {
                         encShare: EncryptedShare(
                             c1: Data($0.encShare.c1),
                             c2: Data($0.encShare.c2),
-                            shareIndex: $0.encShare.shareIndex,
-                            plaintextValue: $0.encShare.plaintextValue,
-                            randomness: Data($0.encShare.randomness)
+                            shareIndex: $0.encShare.shareIndex
                         ),
                         treePosition: $0.treePosition,
                         shareComms: $0.shareComms.map { Data($0) },
