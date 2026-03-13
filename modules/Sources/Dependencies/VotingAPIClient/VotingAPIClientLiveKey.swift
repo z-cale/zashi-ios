@@ -563,6 +563,7 @@ extension VotingAPIClient: DependencyKey {
 
                 // 404 = TX not yet in a block (normal during polling)
                 if http.statusCode == 404 {
+                    logger.debug("fetchTxConfirmation: 404 (not yet in block) for \(txHash)")
                     return nil
                 }
 
