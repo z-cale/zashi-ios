@@ -386,21 +386,25 @@ public struct DelegationRegistration: Equatable, Sendable {
 
 // MARK: - Voting
 
-public struct EncryptedShare: Equatable, Sendable {
+public struct EncryptedShare: Equatable, Sendable, Codable {
     public let c1: Data // swiftlint:disable:this identifier_name
     public let c2: Data // swiftlint:disable:this identifier_name
     public let shareIndex: UInt32
+    public let plaintextValue: UInt64
+    public let randomness: Data
 
     // swiftlint:disable:next identifier_name
-    public init(c1: Data, c2: Data, shareIndex: UInt32) {
+    public init(c1: Data, c2: Data, shareIndex: UInt32, plaintextValue: UInt64 = 0, randomness: Data = Data()) {
         self.c1 = c1
         self.c2 = c2
         self.shareIndex = shareIndex
+        self.plaintextValue = plaintextValue
+        self.randomness = randomness
     }
 }
 
 /// Maps to MsgCastVote (zvote/v1/tx.proto).
-public struct VoteCommitmentBundle: Equatable, Sendable {
+public struct VoteCommitmentBundle: Equatable, Sendable, Codable {
     public let vanNullifier: Data
     public let voteAuthorityNoteNew: Data
     public let voteCommitment: Data
@@ -464,17 +468,23 @@ public struct SharePayload: Equatable, Sendable {
     public let voteDecision: UInt32
     public let encShare: EncryptedShare
     public let treePosition: UInt64
+    /// All encrypted shares for this vote (needed by helper servers for verification).
+    public let allEncShares: [EncryptedShare]
     /// Pre-computed per-share Poseidon commitments (N x 32 bytes).
     public let shareComms: [Data]
     /// Blind factor for this specific share (32 bytes).
     public let primaryBlind: Data
 
-    public init(sharesHash: Data, proposalId: UInt32, voteDecision: UInt32, encShare: EncryptedShare, treePosition: UInt64, shareComms: [Data] = [], primaryBlind: Data = Data()) {
+    public init(
+        sharesHash: Data, proposalId: UInt32, voteDecision: UInt32, encShare: EncryptedShare,
+        treePosition: UInt64, allEncShares: [EncryptedShare] = [], shareComms: [Data] = [], primaryBlind: Data = Data()
+    ) {
         self.sharesHash = sharesHash
         self.proposalId = proposalId
         self.voteDecision = voteDecision
         self.encShare = encShare
         self.treePosition = treePosition
+        self.allEncShares = allEncShares
         self.shareComms = shareComms
         self.primaryBlind = primaryBlind
     }
@@ -668,6 +678,71 @@ public struct WitnessData: Equatable, Sendable {
         self.position = position
         self.root = root
         self.authPath = authPath
+    }
+}
+
+// MARK: - Recovery
+
+/// Per-bundle delegation status recovered from chain queries after an app crash.
+public struct DelegationReconciliation: Equatable, Sendable {
+    /// Bundle indices whose delegation TXs have already landed on-chain.
+    public let completedBundleIndices: Set<UInt32>
+    /// Recovered VAN positions from on-chain delegate_vote events (bundleIndex -> leafIndex).
+    public let vanPositions: [UInt32: UInt32]
+    /// Total bundles configured for this round.
+    public let totalBundles: UInt32
+
+    public init(completedBundleIndices: Set<UInt32>, vanPositions: [UInt32: UInt32], totalBundles: UInt32) {
+        self.completedBundleIndices = completedBundleIndices
+        self.vanPositions = vanPositions
+        self.totalBundles = totalBundles
+    }
+}
+
+/// Persisted Keystone bundle signature, matching the in-memory KeystoneBundleSignature
+/// but Codable for file-based persistence across app launches.
+public struct KeystoneBundleSignatureInfo: Equatable, Sendable, Codable {
+    public let bundleIndex: UInt32
+    public let sig: Data
+    public let sighash: Data
+    public let rk: Data // swiftlint:disable:this identifier_name
+
+    // swiftlint:disable:next identifier_name
+    public init(bundleIndex: UInt32, sig: Data, sighash: Data, rk: Data) {
+        self.bundleIndex = bundleIndex
+        self.sig = sig
+        self.sighash = sighash
+        self.rk = rk
+    }
+}
+
+/// Lightweight state persisted to a JSON file alongside the SQLite DB to track
+/// in-flight TX hashes and Keystone signatures that would otherwise be lost on crash.
+public struct RoundRecoveryState: Equatable, Sendable, Codable {
+    /// Delegation TX hashes by bundle index, stored immediately after submitDelegation returns.
+    public var delegationTxHashes: [UInt32: String]
+    /// Vote TX hashes by bundle index + proposal ID: "bundleIndex-proposalId" -> txHash.
+    public var voteTxHashes: [String: String]
+    /// Vote commitment bundles (containing encrypted shares) persisted before TX submission.
+    /// Keyed the same as voteTxHashes. Required for share delegation after crash recovery.
+    public var voteCommitmentBundles: [String: VoteCommitmentBundle]
+    /// Keystone signatures collected during the multi-bundle signing loop.
+    public var keystoneSignatures: [KeystoneBundleSignatureInfo]
+
+    public init(
+        delegationTxHashes: [UInt32: String] = [:],
+        voteTxHashes: [String: String] = [:],
+        voteCommitmentBundles: [String: VoteCommitmentBundle] = [:],
+        keystoneSignatures: [KeystoneBundleSignatureInfo] = []
+    ) {
+        self.delegationTxHashes = delegationTxHashes
+        self.voteTxHashes = voteTxHashes
+        self.voteCommitmentBundles = voteCommitmentBundles
+        self.keystoneSignatures = keystoneSignatures
+    }
+
+    public static func voteTxKey(bundleIndex: UInt32, proposalId: UInt32) -> String {
+        "\(bundleIndex)-\(proposalId)"
     }
 }
 

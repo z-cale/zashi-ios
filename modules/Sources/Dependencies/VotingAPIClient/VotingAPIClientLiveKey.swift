@@ -454,11 +454,22 @@ extension VotingAPIClient: DependencyKey {
                         "enc_share": [
                             "c1": payload.encShare.c1.base64EncodedString(),
                             "c2": payload.encShare.c2.base64EncodedString(),
-                            "share_index": payload.encShare.shareIndex
+                            "share_index": payload.encShare.shareIndex,
+                            "plaintext_value": payload.encShare.plaintextValue,
+                            "randomness": payload.encShare.randomness.base64EncodedString()
                         ],
                         "share_index": payload.encShare.shareIndex,
                         "tree_position": payload.treePosition,
                         "vote_round_id": roundIdHex,
+                        "all_enc_shares": payload.allEncShares.map { share -> [String: Any] in
+                            [
+                                "c1": share.c1.base64EncodedString(),
+                                "c2": share.c2.base64EncodedString(),
+                                "share_index": share.shareIndex,
+                                "plaintext_value": share.plaintextValue,
+                                "randomness": share.randomness.base64EncodedString()
+                            ]
+                        },
                         "share_comms": payload.shareComms.map { $0.base64EncodedString() },
                         "primary_blind": payload.primaryBlind.base64EncodedString()
                     ]
