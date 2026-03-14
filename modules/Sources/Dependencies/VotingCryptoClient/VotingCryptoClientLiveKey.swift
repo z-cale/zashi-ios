@@ -285,7 +285,9 @@ extension VotingCryptoClient: DependencyKey {
                     EncryptedShare(
                         c1: Data($0.c1),
                         c2: Data($0.c2),
-                        shareIndex: $0.shareIndex
+                        shareIndex: $0.shareIndex,
+                        plaintextValue: $0.plaintextValue,
+                        randomness: Data($0.randomness)
                     )
                 }
             },
@@ -321,7 +323,9 @@ extension VotingCryptoClient: DependencyKey {
                                     VotingModels.EncryptedShare(
                                         c1: Data($0.c1),
                                         c2: Data($0.c2),
-                                        shareIndex: $0.shareIndex
+                                        shareIndex: $0.shareIndex,
+                                        plaintextValue: $0.plaintextValue,
+                                        randomness: Data($0.randomness)
                                     )
                                 },
                                 anchorHeight: result.anchorHeight,
@@ -343,10 +347,12 @@ extension VotingCryptoClient: DependencyKey {
             buildSharePayloads: { encShares, commitment, voteDecision, numOptions, vcTreePosition in
                 let backend = try await dbActor.backend()
                 let sdkShares = encShares.map {
-                    VotingWireEncryptedShare(
+                    VotingEncryptedShare(
                         c1: [UInt8]($0.c1),
                         c2: [UInt8]($0.c2),
-                        shareIndex: $0.shareIndex
+                        shareIndex: $0.shareIndex,
+                        plaintextValue: $0.plaintextValue,
+                        randomness: [UInt8]($0.randomness)
                     )
                 }
                 let sdkCommitment = VotingVoteCommitmentBundle(
@@ -379,9 +385,20 @@ extension VotingCryptoClient: DependencyKey {
                         encShare: EncryptedShare(
                             c1: Data($0.encShare.c1),
                             c2: Data($0.encShare.c2),
-                            shareIndex: $0.encShare.shareIndex
+                            shareIndex: $0.encShare.shareIndex,
+                            plaintextValue: $0.encShare.plaintextValue,
+                            randomness: Data($0.encShare.randomness)
                         ),
                         treePosition: $0.treePosition,
+                        allEncShares: $0.allEncShares.map {
+                            EncryptedShare(
+                                c1: Data($0.c1),
+                                c2: Data($0.c2),
+                                shareIndex: $0.shareIndex,
+                                plaintextValue: $0.plaintextValue,
+                                randomness: Data($0.randomness)
+                            )
+                        },
                         shareComms: $0.shareComms.map { Data($0) },
                         primaryBlind: Data($0.primaryBlind)
                     )
@@ -475,6 +492,40 @@ extension VotingCryptoClient: DependencyKey {
             },
             extractNcRoot: { treeStateBytes in
                 Data(try VotingRustBackend.extractNcRoot(treeStateBytes: [UInt8](treeStateBytes)))
+            },
+            storeDelegationTxHash: { roundId, bundleIndex, txHash in
+                await RecoveryFileStore.shared.update(roundId: roundId) { state in
+                    state.delegationTxHashes[bundleIndex] = txHash
+                }
+            },
+            getDelegationTxHash: { roundId, bundleIndex in
+                await RecoveryFileStore.shared.load(roundId: roundId).delegationTxHashes[bundleIndex]
+            },
+            storeVoteTxHash: { roundId, bundleIndex, proposalId, txHash in
+                let key = RoundRecoveryState.voteTxKey(bundleIndex: bundleIndex, proposalId: proposalId)
+                await RecoveryFileStore.shared.update(roundId: roundId) { state in
+                    state.voteTxHashes[key] = txHash
+                }
+            },
+            getVoteTxHash: { roundId, bundleIndex, proposalId in
+                let key = RoundRecoveryState.voteTxKey(bundleIndex: bundleIndex, proposalId: proposalId)
+                return await RecoveryFileStore.shared.load(roundId: roundId).voteTxHashes[key]
+            },
+            storeKeystoneBundleSignature: { roundId, info in
+                await RecoveryFileStore.shared.update(roundId: roundId) { state in
+                    state.keystoneSignatures.removeAll { $0.bundleIndex == info.bundleIndex }
+                    state.keystoneSignatures.append(info)
+                    state.keystoneSignatures.sort { $0.bundleIndex < $1.bundleIndex }
+                }
+            },
+            loadKeystoneBundleSignatures: { roundId in
+                await RecoveryFileStore.shared.load(roundId: roundId).keystoneSignatures
+            },
+            getRecoveryState: { roundId in
+                await RecoveryFileStore.shared.load(roundId: roundId)
+            },
+            clearRecoveryState: { roundId in
+                await RecoveryFileStore.shared.clear(roundId: roundId)
             }
         )
     }
@@ -503,6 +554,48 @@ private actor DatabaseActor {
             throw VotingCryptoError.databaseNotOpen
         }
         return _backend
+    }
+}
+
+// MARK: - RecoveryFileStore
+
+/// Persists per-round recovery state (TX hashes, Keystone signatures) to a JSON file
+/// in the Documents directory. Sits alongside the voting SQLite DB and survives app
+/// restarts without requiring Rust backend changes.
+private actor RecoveryFileStore {
+    static let shared = RecoveryFileStore()
+    private var cache: [String: RoundRecoveryState] = [:]
+
+    private func fileURL(roundId: String) -> URL {
+        FileManager.default
+            .urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("voting-recovery-\(roundId).json")
+    }
+
+    func load(roundId: String) -> RoundRecoveryState {
+        if let cached = cache[roundId] { return cached }
+        let url = fileURL(roundId: roundId)
+        guard let data = try? Data(contentsOf: url),
+              let state = try? JSONDecoder().decode(RoundRecoveryState.self, from: data)
+        else { return RoundRecoveryState() }
+        cache[roundId] = state
+        return state
+    }
+
+    func update(roundId: String, _ mutation: (inout RoundRecoveryState) -> Void) {
+        var state = load(roundId: roundId)
+        mutation(&state)
+        cache[roundId] = state
+        let url = fileURL(roundId: roundId)
+        if let data = try? JSONEncoder().encode(state) {
+            try? data.write(to: url, options: .atomic)
+        }
+    }
+
+    func clear(roundId: String) {
+        cache.removeValue(forKey: roundId)
+        let url = fileURL(roundId: roundId)
+        try? FileManager.default.removeItem(at: url)
     }
 }
 
