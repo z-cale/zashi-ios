@@ -785,6 +785,7 @@
 				0D26AE9A299E8196005260EE /* Sources */,
 				0D26AF70299E8196005260EE /* Frameworks */,
 				0D26AF78299E8196005260EE /* Resources */,
+				AA000001VOTING000000000001 /* Copy Voting Config */,
 			);
 			buildRules = (
 			);
@@ -1503,6 +1504,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/zsh;
 			shellScript = "cp modules/Sources/Generated/Resources/en.lproj/Localizable.strings secant/Resources/en.lproj/\ncp modules/Sources/Generated/Resources/es.lproj/Localizable.strings secant/Resources/es.lproj/\n";
+		};
+		AA000001VOTING000000000001 /* Copy Voting Config */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy Voting Config";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/zsh;
+			shellScript = "if [[ \"$CONFIGURATION\" != \"Debug\" ]]; then\n    echo \"Skipping voting-config-local.json copy (non-Debug build)\"\n    exit 0\nfi\n\nVC_FILE=\"${SRCROOT}/secant/Resources/voting-config-local.json\"\nif [[ -f \"$VC_FILE\" ]]; then\n    echo \"Copying voting-config-local.json into bundle\"\n    cp \"$VC_FILE\" \"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/\"\nelse\n    echo \"No voting-config-local.json found, skipping\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
