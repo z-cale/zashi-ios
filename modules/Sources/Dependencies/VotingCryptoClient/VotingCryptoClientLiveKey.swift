@@ -521,6 +521,16 @@ extension VotingCryptoClient: DependencyKey {
             loadKeystoneBundleSignatures: { roundId in
                 await RecoveryFileStore.shared.load(roundId: roundId).keystoneSignatures
             },
+            storeVoteCommitmentBundle: { roundId, bundleIndex, proposalId, bundle in
+                let key = RoundRecoveryState.voteTxKey(bundleIndex: bundleIndex, proposalId: proposalId)
+                await RecoveryFileStore.shared.update(roundId: roundId) { state in
+                    state.voteCommitmentBundles[key] = bundle
+                }
+            },
+            getVoteCommitmentBundle: { roundId, bundleIndex, proposalId in
+                let key = RoundRecoveryState.voteTxKey(bundleIndex: bundleIndex, proposalId: proposalId)
+                return await RecoveryFileStore.shared.load(roundId: roundId).voteCommitmentBundles[key]
+            },
             getRecoveryState: { roundId in
                 await RecoveryFileStore.shared.load(roundId: roundId)
             },

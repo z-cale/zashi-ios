@@ -190,6 +190,20 @@ public struct VotingCryptoClient {
     public var loadKeystoneBundleSignatures: @Sendable (
         _ roundId: String
     ) async -> [KeystoneBundleSignatureInfo] = { _ in [] }
+    /// Persist the vote commitment bundle (with encrypted shares) before TX submission.
+    /// Required for share delegation if the app crashes between TX confirm and share send.
+    public var storeVoteCommitmentBundle: @Sendable (
+        _ roundId: String,
+        _ bundleIndex: UInt32,
+        _ proposalId: UInt32,
+        _ bundle: VoteCommitmentBundle
+    ) async -> Void = { _, _, _, _ in }
+    /// Load a persisted vote commitment bundle (nil if never stored).
+    public var getVoteCommitmentBundle: @Sendable (
+        _ roundId: String,
+        _ bundleIndex: UInt32,
+        _ proposalId: UInt32
+    ) async -> VoteCommitmentBundle? = { _, _, _ in nil }
     /// Load the full recovery state for a round.
     public var getRecoveryState: @Sendable (
         _ roundId: String

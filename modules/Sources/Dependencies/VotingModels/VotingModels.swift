@@ -386,7 +386,7 @@ public struct DelegationRegistration: Equatable, Sendable {
 
 // MARK: - Voting
 
-public struct EncryptedShare: Equatable, Sendable {
+public struct EncryptedShare: Equatable, Sendable, Codable {
     public let c1: Data // swiftlint:disable:this identifier_name
     public let c2: Data // swiftlint:disable:this identifier_name
     public let shareIndex: UInt32
@@ -404,7 +404,7 @@ public struct EncryptedShare: Equatable, Sendable {
 }
 
 /// Maps to MsgCastVote (zvote/v1/tx.proto).
-public struct VoteCommitmentBundle: Equatable, Sendable {
+public struct VoteCommitmentBundle: Equatable, Sendable, Codable {
     public let vanNullifier: Data
     public let voteAuthorityNoteNew: Data
     public let voteCommitment: Data
@@ -723,16 +723,21 @@ public struct RoundRecoveryState: Equatable, Sendable, Codable {
     public var delegationTxHashes: [UInt32: String]
     /// Vote TX hashes by bundle index + proposal ID: "bundleIndex-proposalId" -> txHash.
     public var voteTxHashes: [String: String]
+    /// Vote commitment bundles (containing encrypted shares) persisted before TX submission.
+    /// Keyed the same as voteTxHashes. Required for share delegation after crash recovery.
+    public var voteCommitmentBundles: [String: VoteCommitmentBundle]
     /// Keystone signatures collected during the multi-bundle signing loop.
     public var keystoneSignatures: [KeystoneBundleSignatureInfo]
 
     public init(
         delegationTxHashes: [UInt32: String] = [:],
         voteTxHashes: [String: String] = [:],
+        voteCommitmentBundles: [String: VoteCommitmentBundle] = [:],
         keystoneSignatures: [KeystoneBundleSignatureInfo] = []
     ) {
         self.delegationTxHashes = delegationTxHashes
         self.voteTxHashes = voteTxHashes
+        self.voteCommitmentBundles = voteCommitmentBundles
         self.keystoneSignatures = keystoneSignatures
     }
 

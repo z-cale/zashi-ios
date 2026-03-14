@@ -1902,10 +1902,37 @@ public struct Voting { // swiftlint:disable:this type_body_length
                                    let leafPair = confirmation.event(ofType: "cast_vote")?.attribute(forKey: "leaf_index") {
                                     let leafParts = leafPair.split(separator: ",")
                                     if leafParts.count == 2,
-                                       let vanIdx = UInt32(leafParts[0]) {
+                                       let vanIdx = UInt32(leafParts[0]),
+                                       let vcIdx = UInt64(leafParts[1]) {
                                         try await votingCrypto.storeVanPosition(roundId, bundleIndex, vanIdx)
+                                        logger.info("Vote recovery: bundle \(bundleIndex) TX confirmed (VAN pos \(vanIdx))")
+
+                                        // Complete share delegation using the persisted bundle.
+                                        // Without shares, the tally cannot decrypt the vote.
+                                        if let savedBundle = await votingCrypto.getVoteCommitmentBundle(roundId, bundleIndex, proposalId) {
+                                            await send(.voteSubmissionStepUpdated(.sendingShares))
+                                            let payloads = try await votingCrypto.buildSharePayloads(
+                                                savedBundle.encShares, savedBundle, choice, numOptions, vcIdx
+                                            )
+                                            var lastShareError: Error?
+                                            for attempt in 1...3 {
+                                                do {
+                                                    try await votingAPI.delegateShares(payloads, roundId)
+                                                    lastShareError = nil
+                                                    break
+                                                } catch {
+                                                    lastShareError = error
+                                                    logger.warning("Vote recovery: delegateShares attempt \(attempt)/3 failed: \(error)")
+                                                    if attempt < 3 { try await Task.sleep(for: .seconds(2)) }
+                                                }
+                                            }
+                                            if let lastShareError { throw lastShareError }
+                                            logger.info("Vote recovery: shares sent for bundle \(bundleIndex)")
+                                        } else {
+                                            logger.error("Vote recovery: no persisted bundle for share delegation — vote will not count in tally")
+                                        }
+
                                         try await votingCrypto.markVoteSubmitted(roundId, bundleIndex, proposalId)
-                                        logger.info("Vote recovery: bundle \(bundleIndex) recovered from chain (VAN pos \(vanIdx))")
                                         continue
                                     }
                                 }
@@ -1948,6 +1975,10 @@ public struct Voting { // swiftlint:disable:this type_body_length
                             guard let builtBundle else {
                                 throw VotingFlowError.missingVoteCommitmentBundle
                             }
+
+                            // Persist the bundle before submission so encrypted shares survive a crash.
+                            // Share delegation requires the original ciphertexts committed on-chain.
+                            await votingCrypto.storeVoteCommitmentBundle(roundId, bundleIndex, proposalId, builtBundle)
 
                             // Sign the cast-vote TX (sighash + spend auth signature)
                             let castVoteSig = try await votingCrypto.signCastVote(
