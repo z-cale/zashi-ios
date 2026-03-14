@@ -2,9 +2,12 @@ import XCTest
 import ComposableArchitecture
 import DatabaseFiles
 import MnemonicClient
+import SDKSynchronizer
 import Voting
+import VotingCryptoClient
 import VotingModels
 import WalletStorage
+import ZcashSDKEnvironment
 @testable import secant_testnet
 
 @MainActor
@@ -205,6 +208,278 @@ final class VotingStoreTests: XCTestCase {
     // Note: Client-side signature verification was removed — Keystone signatures
     // are correct by construction (signed over the PCZT's ZIP-244 sighash).
     // Verification will be re-added once the GovernancePczt flow is fully wired (Task #6).
+
+    // MARK: - Crash Recovery Tests
+
+    /// Dead State A: App killed after some bundles delegated on-chain.
+    /// Recovery state has TX hashes for bundles 0 and 1 (of 3). Both are confirmed.
+    /// verifyWitnesses should recover VAN positions and resume (not clearRound).
+    func testPartialDelegationRecoverySkipsClearRound() async throws {
+        var initialState = Voting.State(
+            votingRound: MockVotingService.votingRound,
+            votingWeight: 100_000_000,
+            isKeystoneUser: false,
+            roundId: "aabb"
+        )
+        initialState.activeSession = VotingSession(
+            voteRoundId: Data(repeating: 0xAA, count: 32),
+            snapshotHeight: 100,
+            snapshotBlockhash: Data(repeating: 0x01, count: 32),
+            proposalsHash: Data(repeating: 0x02, count: 32),
+            voteEndTime: Date(),
+            eaPK: Data(repeating: 0x03, count: 32),
+            vkZkp1: Data(repeating: 0x04, count: 32),
+            vkZkp2: Data(repeating: 0x05, count: 32),
+            vkZkp3: Data(repeating: 0x06, count: 32),
+            ncRoot: Data(repeating: 0x07, count: 32),
+            nullifierIMTRoot: Data(repeating: 0x08, count: 32),
+            creator: "creator",
+            proposals: MockVotingService.votingRound.proposals,
+            status: .active
+        )
+        initialState.walletNotes = [
+            NoteInfo(commitment: Data(repeating: 0x01, count: 32), nullifier: Data(repeating: 0x02, count: 32),
+                     value: 50_000_000, position: 0, diversifier: Data(repeating: 0x03, count: 11),
+                     rho: Data(repeating: 0x04, count: 32), rseed: Data(repeating: 0x05, count: 32), scope: 0, ufvkStr: "ufvk1")
+        ]
+
+        let store = TestStore(initialState: initialState) {
+            Voting()
+        }
+        store.exhaustivity = .off
+
+        var clearRoundCalled = false
+        store.dependencies.databaseFiles = .noOp
+        store.dependencies.sdkSynchronizer = .noOp
+        store.dependencies.zcashSDKEnvironment = .testValue
+        store.dependencies.votingCrypto.getRoundState = { _ in
+            RoundStateInfo(roundId: "aabb", phase: .delegationConstructed, snapshotHeight: 100,
+                           hotkeyAddress: nil, delegatedWeight: nil, proofGenerated: false)
+        }
+        store.dependencies.votingCrypto.getRecoveryState = { _ in
+            RoundRecoveryState(delegationTxHashes: [0: "tx-hash-0", 1: "tx-hash-1"])
+        }
+        store.dependencies.votingCrypto.storeVanPosition = { _, _, _ in }
+        store.dependencies.votingCrypto.getBundleCount = { _ in 3 }
+        store.dependencies.votingCrypto.clearRound = { _ in clearRoundCalled = true }
+        store.dependencies.votingAPI.fetchTxConfirmation = { txHash in
+            TxConfirmation(
+                height: 200, code: 0,
+                events: [TxEvent(type: "delegate_vote", attributes: [
+                    TxEventAttribute(key: "leaf_index", value: txHash == "tx-hash-0" ? "5" : "6")
+                ])]
+            )
+        }
+
+        await store.send(.verifyWitnesses)
+
+        // Recovery should skip clearRound since some TXs are confirmed
+        // Instead it should resume with witnessVerificationCompleted
+        await store.receive(.witnessPreparationStarted)
+        await store.receive(.witnessVerificationCompleted([], [], .init(treeStateFetchMs: 0, witnessGenerationMs: 0, verificationMs: 0), 3))
+
+        XCTAssertFalse(clearRoundCalled, "clearRound should NOT be called when recovery state has confirmed TXs")
+    }
+
+    /// Dead State A (full): All delegation TXs confirmed but proofGenerated is false.
+    /// verifyWitnesses should recover all VAN positions and resume to proposal list.
+    func testFullDelegationRecoveryResumesToProposalList() async throws {
+        var initialState = Voting.State(
+            votingRound: MockVotingService.votingRound,
+            votingWeight: 100_000_000,
+            isKeystoneUser: false,
+            roundId: "aabb"
+        )
+        initialState.activeSession = VotingSession(
+            voteRoundId: Data(repeating: 0xAA, count: 32),
+            snapshotHeight: 100,
+            snapshotBlockhash: Data(repeating: 0x01, count: 32),
+            proposalsHash: Data(repeating: 0x02, count: 32),
+            voteEndTime: Date(),
+            eaPK: Data(repeating: 0x03, count: 32),
+            vkZkp1: Data(repeating: 0x04, count: 32),
+            vkZkp2: Data(repeating: 0x05, count: 32),
+            vkZkp3: Data(repeating: 0x06, count: 32),
+            ncRoot: Data(repeating: 0x07, count: 32),
+            nullifierIMTRoot: Data(repeating: 0x08, count: 32),
+            creator: "creator",
+            proposals: MockVotingService.votingRound.proposals,
+            status: .active
+        )
+
+        let store = TestStore(initialState: initialState) {
+            Voting()
+        }
+        store.exhaustivity = .off
+
+        var vanPositionsStored: [UInt32: UInt32] = [:]
+        store.dependencies.databaseFiles = .noOp
+        store.dependencies.sdkSynchronizer = .noOp
+        store.dependencies.zcashSDKEnvironment = .testValue
+        store.dependencies.votingCrypto.getRoundState = { _ in
+            RoundStateInfo(roundId: "aabb", phase: .delegationConstructed, snapshotHeight: 100,
+                           hotkeyAddress: nil, delegatedWeight: nil, proofGenerated: false)
+        }
+        store.dependencies.votingCrypto.getRecoveryState = { _ in
+            RoundRecoveryState(delegationTxHashes: [0: "tx-0"])
+        }
+        store.dependencies.votingCrypto.getBundleCount = { _ in 1 }
+        store.dependencies.votingCrypto.storeVanPosition = { _, bundleIdx, pos in
+            vanPositionsStored[bundleIdx] = pos
+        }
+        store.dependencies.votingCrypto.clearRecoveryState = { _ in }
+        store.dependencies.votingAPI.fetchTxConfirmation = { _ in
+            TxConfirmation(height: 200, code: 0, events: [
+                TxEvent(type: "delegate_vote", attributes: [
+                    TxEventAttribute(key: "leaf_index", value: "42")
+                ])
+            ])
+        }
+
+        await store.send(.verifyWitnesses)
+        await store.receive(.roundResumeChecked(alreadyAuthorized: true))
+
+        XCTAssertEqual(vanPositionsStored[0], 42, "VAN position should be recovered from chain event")
+    }
+
+    /// Dead State C: Keystone signatures persisted, app restarted.
+    /// witnessVerificationCompleted should restore signatures and resume batch proving.
+    func testKeystoneSignatureRecoveryResumesBatchProve() async throws {
+        var initialState = Voting.State(
+            votingRound: MockVotingService.votingRound,
+            votingWeight: 100_000_000,
+            isKeystoneUser: true,
+            roundId: "aabb"
+        )
+        initialState.bundleCount = 1
+
+        let store = TestStore(initialState: initialState) {
+            Voting()
+        }
+        store.exhaustivity = .off
+
+        let savedSig = KeystoneBundleSignatureInfo(
+            bundleIndex: 0,
+            sig: Data(repeating: 0x44, count: 64),
+            sighash: Data(repeating: 0x77, count: 32),
+            rk: Data(repeating: 0x11, count: 32)
+        )
+        store.dependencies.votingCrypto.loadKeystoneBundleSignatures = { _ in [savedSig] }
+
+        await store.send(.witnessVerificationCompleted([], [], .init(treeStateFetchMs: 0, witnessGenerationMs: 0, verificationMs: 0), 1)) { state in
+            state.noteWitnessResults = []
+            state.cachedWitnesses = []
+            state.witnessStatus = .completed
+            state.bundleCount = 1
+        }
+
+        // Should restore the signature and go to batch proving
+        await store.receive(.keystoneSignaturesRestored([savedSig])) { state in
+            state.keystoneBundleSignatures = [
+                Voting.State.KeystoneBundleSignature(
+                    sig: Data(repeating: 0x44, count: 64),
+                    sighash: Data(repeating: 0x77, count: 32),
+                    rk: Data(repeating: 0x11, count: 32)
+                )
+            ]
+            state.currentKeystoneBundleIndex = 1
+            state.keystoneSigningStatus = .idle
+            state.screenStack = [.proposalList]
+            state.delegationProofStatus = .generating(progress: 0)
+        }
+    }
+
+    /// Dead State C: No saved Keystone signatures.
+    /// witnessVerificationCompleted should show the delegation signing screen.
+    func testKeystoneNoRecoveryShowsSigningScreen() async throws {
+        var initialState = Voting.State(
+            votingRound: MockVotingService.votingRound,
+            votingWeight: 100_000_000,
+            isKeystoneUser: true,
+            roundId: "aabb"
+        )
+
+        let store = TestStore(initialState: initialState) {
+            Voting()
+        }
+        store.exhaustivity = .off
+
+        store.dependencies.votingCrypto.loadKeystoneBundleSignatures = { _ in [] }
+
+        await store.send(.witnessVerificationCompleted([], [], .init(treeStateFetchMs: 0, witnessGenerationMs: 0, verificationMs: 0), 1)) { state in
+            state.noteWitnessResults = []
+            state.cachedWitnesses = []
+            state.witnessStatus = .completed
+            state.bundleCount = 1
+        }
+
+        await store.receive(.keystoneShowSigningScreen) { state in
+            state.screenStack = [.delegationSigning]
+        }
+    }
+
+    /// Dead State B: Delegation TX hash stored but VAN position not stored before crash.
+    /// On resume, verifyWitnesses should recover the VAN position from the chain event.
+    func testDelegationTxHashRecoveryStoresVanPosition() async throws {
+        var initialState = Voting.State(
+            votingRound: MockVotingService.votingRound,
+            votingWeight: 100_000_000,
+            isKeystoneUser: false,
+            roundId: "aabb"
+        )
+        initialState.activeSession = VotingSession(
+            voteRoundId: Data(repeating: 0xAA, count: 32),
+            snapshotHeight: 100,
+            snapshotBlockhash: Data(repeating: 0x01, count: 32),
+            proposalsHash: Data(repeating: 0x02, count: 32),
+            voteEndTime: Date(),
+            eaPK: Data(repeating: 0x03, count: 32),
+            vkZkp1: Data(repeating: 0x04, count: 32),
+            vkZkp2: Data(repeating: 0x05, count: 32),
+            vkZkp3: Data(repeating: 0x06, count: 32),
+            ncRoot: Data(repeating: 0x07, count: 32),
+            nullifierIMTRoot: Data(repeating: 0x08, count: 32),
+            creator: "creator",
+            proposals: MockVotingService.votingRound.proposals,
+            status: .active
+        )
+
+        let store = TestStore(initialState: initialState) {
+            Voting()
+        }
+        store.exhaustivity = .off
+
+        var storedPositions: [(UInt32, UInt32)] = []
+        store.dependencies.databaseFiles = .noOp
+        store.dependencies.sdkSynchronizer = .noOp
+        store.dependencies.zcashSDKEnvironment = .testValue
+        store.dependencies.votingCrypto.getRoundState = { _ in
+            RoundStateInfo(roundId: "aabb", phase: .delegationProved, snapshotHeight: 100,
+                           hotkeyAddress: nil, delegatedWeight: nil, proofGenerated: false)
+        }
+        store.dependencies.votingCrypto.getRecoveryState = { _ in
+            RoundRecoveryState(delegationTxHashes: [0: "delegation-tx-42"])
+        }
+        store.dependencies.votingCrypto.getBundleCount = { _ in 1 }
+        store.dependencies.votingCrypto.storeVanPosition = { _, bundleIdx, pos in
+            storedPositions.append((bundleIdx, pos))
+        }
+        store.dependencies.votingCrypto.clearRecoveryState = { _ in }
+        store.dependencies.votingAPI.fetchTxConfirmation = { _ in
+            TxConfirmation(height: 300, code: 0, events: [
+                TxEvent(type: "delegate_vote", attributes: [
+                    TxEventAttribute(key: "leaf_index", value: "99")
+                ])
+            ])
+        }
+
+        await store.send(.verifyWitnesses)
+        await store.receive(.roundResumeChecked(alreadyAuthorized: true))
+
+        XCTAssertEqual(storedPositions.count, 1)
+        XCTAssertEqual(storedPositions.first?.0, 0, "Should store position for bundle 0")
+        XCTAssertEqual(storedPositions.first?.1, 99, "Should store VAN position 99 from chain event")
+    }
 }
 
 // MARK: - TX Event Parsing Tests

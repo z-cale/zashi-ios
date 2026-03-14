@@ -154,4 +154,48 @@ public struct VotingCryptoClient {
     ) async throws -> CastVoteSignature
     /// Extract the Orchard nc_root from a protobuf-encoded TreeState.
     public var extractNcRoot: @Sendable (_ treeStateBytes: Data) throws -> Data
+
+    // --- Crash recovery (Swift-side JSON file alongside SQLite DB) ---
+
+    /// Persist a delegation TX hash for a bundle immediately after submission.
+    public var storeDelegationTxHash: @Sendable (
+        _ roundId: String,
+        _ bundleIndex: UInt32,
+        _ txHash: String
+    ) async -> Void = { _, _, _ in }
+    /// Load a previously stored delegation TX hash for a bundle (nil if never stored).
+    public var getDelegationTxHash: @Sendable (
+        _ roundId: String,
+        _ bundleIndex: UInt32
+    ) async -> String? = { _, _ in nil }
+    /// Persist a vote TX hash for a bundle + proposal immediately after submission.
+    public var storeVoteTxHash: @Sendable (
+        _ roundId: String,
+        _ bundleIndex: UInt32,
+        _ proposalId: UInt32,
+        _ txHash: String
+    ) async -> Void = { _, _, _, _ in }
+    /// Load a previously stored vote TX hash (nil if never stored).
+    public var getVoteTxHash: @Sendable (
+        _ roundId: String,
+        _ bundleIndex: UInt32,
+        _ proposalId: UInt32
+    ) async -> String? = { _, _, _ in nil }
+    /// Persist a Keystone bundle signature so it survives app restarts.
+    public var storeKeystoneBundleSignature: @Sendable (
+        _ roundId: String,
+        _ info: KeystoneBundleSignatureInfo
+    ) async -> Void = { _, _ in }
+    /// Load all persisted Keystone bundle signatures for a round.
+    public var loadKeystoneBundleSignatures: @Sendable (
+        _ roundId: String
+    ) async -> [KeystoneBundleSignatureInfo] = { _ in [] }
+    /// Load the full recovery state for a round.
+    public var getRecoveryState: @Sendable (
+        _ roundId: String
+    ) async -> RoundRecoveryState = { _ in RoundRecoveryState() }
+    /// Clear recovery state for a round (called after successful completion).
+    public var clearRecoveryState: @Sendable (
+        _ roundId: String
+    ) async -> Void = { _ in }
 }
