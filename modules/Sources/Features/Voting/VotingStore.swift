@@ -504,6 +504,8 @@ public struct Voting { // swiftlint:disable:this type_body_length
         case keystoneBundleAdvance
         case keystoneBundleSignatureStored(State.KeystoneBundleSignature, bundleIndex: UInt32, bundleCount: UInt32)
         case keystoneAllBundlesSigned
+        case keystoneSignaturesRestored([KeystoneBundleSignatureInfo])
+        case keystoneShowSigningScreen
         case skipRemainingKeystoneBundles
         case skipBundlesAlert(PresentationAction<Action>)
         case skipRemainingKeystoneBundlesConfirmed
@@ -521,6 +523,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
         // Proposal detail
         case castVote(proposalId: UInt32, choice: VoteChoice)
         case confirmVote
+        case resumePendingVote(proposalId: UInt32, choice: VoteChoice)
         case cancelPendingVote
         case dismissVoteError
         case voteCommitmentBuilt(VoteCommitmentBundle)
@@ -1005,7 +1008,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 let notes = state.walletNotes
                 let network = zcashSDKEnvironment.network
                 let walletDbPath = databaseFiles.dataDbURLFor(network).path
-                return .run { [sdkSynchronizer, votingCrypto] send in
+                return .run { [sdkSynchronizer, votingCrypto, votingAPI] send in
                     // Check if this round already exists and ALL bundles have proofs
                     let existingState = try? await votingCrypto.getRoundState(roundId)
                     let alreadyAuthorized = existingState?.proofGenerated ?? false
@@ -1015,11 +1018,47 @@ public struct Voting { // swiftlint:disable:this type_body_length
                         return
                     }
 
+                    // --- Crash recovery: check if some delegation TXs already landed on-chain ---
+                    let recovery = await votingCrypto.getRecoveryState(roundId)
+                    if !recovery.delegationTxHashes.isEmpty {
+                        logger.info("Recovery: found \(recovery.delegationTxHashes.count) stored delegation TX hashes, reconciling...")
+                        var recoveredPositions: [UInt32: UInt32] = [:]
+                        for (bundleIndex, txHash) in recovery.delegationTxHashes {
+                            if let confirmation = try? await votingAPI.fetchTxConfirmation(txHash),
+                               confirmation.code == 0,
+                               let leafValue = confirmation.event(ofType: "delegate_vote")?.attribute(forKey: "leaf_index"),
+                               let vanPosition = UInt32(leafValue) {
+                                try? await votingCrypto.storeVanPosition(roundId, bundleIndex, vanPosition)
+                                recoveredPositions[bundleIndex] = vanPosition
+                                logger.info("Recovery: bundle \(bundleIndex) VAN position recovered: \(vanPosition)")
+                            }
+                        }
+
+                        let bundleCount = (try? await votingCrypto.getBundleCount(roundId)) ?? 0
+                        if bundleCount > 0 && UInt32(recoveredPositions.count) >= bundleCount {
+                            // All bundles already on-chain — mark as complete and resume
+                            logger.info("Recovery: all \(bundleCount) bundles recovered from chain, resuming to proposal list")
+                            await votingCrypto.clearRecoveryState(roundId)
+                            await send(.roundResumeChecked(alreadyAuthorized: true))
+                            return
+                        } else if !recoveredPositions.isEmpty {
+                            // Partial — some bundles on-chain, some not. Resume delegation from next unsubmitted bundle.
+                            logger.info("Recovery: \(recoveredPositions.count)/\(bundleCount) bundles recovered, resuming delegation")
+                            await send(.witnessPreparationStarted)
+                            let count = try await votingCrypto.getBundleCount(roundId)
+                            await send(.witnessVerificationCompleted([], [], .init(treeStateFetchMs: 0, witnessGenerationMs: 0, verificationMs: 0), count))
+                            return
+                        }
+                        // No TXs confirmed — fall through to fresh start
+                        logger.info("Recovery: no delegation TXs confirmed, proceeding with fresh start")
+                    }
+
                     // Fresh round — show witness preparation status
                     await send(.witnessPreparationStarted)
 
                     // Fresh round — clear and initialize
                     try? await votingCrypto.clearRound(roundId)
+                    await votingCrypto.clearRecoveryState(roundId)
                     let params = VotingRoundParams(
                         voteRoundId: activeSession.voteRoundId,
                         snapshotHeight: snapshotHeight,
@@ -1120,9 +1159,17 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 if !state.isKeystoneUser {
                     return .send(.startDelegationProof)
                 }
-                // Keystone fresh round: now show the delegation signing screen
-                state.screenStack = [.delegationSigning]
-                return .none
+                // Keystone: check for persisted signatures from a previous session
+                let roundId = state.roundId
+                return .run { [votingCrypto] send in
+                    let savedSigs = await votingCrypto.loadKeystoneBundleSignatures(roundId)
+                    if !savedSigs.isEmpty {
+                        logger.info("Keystone recovery: found \(savedSigs.count) persisted signatures, resuming batch prove")
+                        await send(.keystoneSignaturesRestored(savedSigs))
+                    } else {
+                        await send(.keystoneShowSigningScreen)
+                    }
+                }
 
             case .witnessVerificationFailed(let error):
                 let message = VotingErrorMapper.userFriendlyMessage(from: error)
@@ -1166,7 +1213,31 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
             case .bundleCountRestored(let count):
                 state.bundleCount = count
-                return .none
+                let roundId = state.roundId
+                return .run { [votingCrypto] send in
+                    let recovery = await votingCrypto.getRecoveryState(roundId)
+                    guard !recovery.voteTxHashes.isEmpty else { return }
+                    // Find the first in-flight vote: a TX hash exists but the vote
+                    // isn't marked as submitted in the DB yet.
+                    let votes = (try? await votingCrypto.getVotes(roundId)) ?? []
+                    let unsubmittedByProposal: [UInt32: VoteChoice] = {
+                        var result: [UInt32: VoteChoice] = [:]
+                        for vote in votes where !vote.submitted {
+                            result[vote.proposalId] = vote.choice
+                        }
+                        return result
+                    }()
+                    for (key, _) in recovery.voteTxHashes {
+                        let parts = key.split(separator: "-")
+                        guard parts.count == 2,
+                              let proposalId = UInt32(parts[1]),
+                              let choice = unsubmittedByProposal[proposalId]
+                        else { continue }
+                        logger.info("Vote resume: found in-flight vote for proposal \(proposalId), auto-resuming")
+                        await send(.resumePendingVote(proposalId: proposalId, choice: choice))
+                        return
+                    }
+                }
 
             // MARK: - DB State Stream
 
@@ -1336,10 +1407,21 @@ public struct Voting { // swiftlint:disable:this type_body_length
                             // buildGovernancePczt stores delegation data (alpha, padded note secrets,
                             // ZIP-244 sighash) in the DB, then buildAndProveDelegation uses it for
                             // the ZKP with deterministic randomness (ZCA-74 fix).
+                            // Bundles with stored TX hashes from a previous run are recovered
+                            // via the reconciliation in verifyWitnesses; any remaining bundles
+                            // are processed here starting from the first incomplete one.
                             let noteChunks = cachedNotes.smartBundles().bundles
                             let bundleCount = UInt32(noteChunks.count)
+                            let recoveryState = await votingCrypto.getRecoveryState(roundId)
+                            let completedBundles = Set(recoveryState.delegationTxHashes.keys)
 
                             for bundleIndex: UInt32 in 0..<bundleCount {
+                                if completedBundles.contains(bundleIndex) {
+                                    logger.debug("Delegation bundle \(bundleIndex + 1)/\(bundleCount) already submitted, skipping")
+                                    let overallProgress = Double(bundleIndex + 1) / Double(bundleCount)
+                                    await send(.delegationProofProgress(overallProgress))
+                                    continue
+                                }
                                 let bundleNotes = noteChunks[Int(bundleIndex)]
                                 logger.info("Delegation bundle \(bundleIndex + 1)/\(bundleCount) (\(bundleNotes.count) notes)")
 
@@ -1371,7 +1453,6 @@ public struct Voting { // swiftlint:disable:this type_body_length
                                 ) {
                                     switch event {
                                     case .progress(let progress):
-                                        // Scale progress: each bundle contributes 1/bundleCount of total
                                         let overallProgress = (Double(bundleIndex) + progress) / Double(bundleCount)
                                         logger.debug("ZKP #1 bundle \(bundleIndex) progress: \(Int(progress * 100))%")
                                         await send(.delegationProofProgress(overallProgress))
@@ -1386,6 +1467,10 @@ public struct Voting { // swiftlint:disable:this type_body_length
                                 )
                                 let delegTxResult = try await votingAPI.submitDelegation(registration)
                                 logger.info("Delegation TX \(bundleIndex) submitted: \(delegTxResult.txHash)")
+
+                                // Persist TX hash immediately so we can recover if the app
+                                // crashes before storeVanPosition completes.
+                                await votingCrypto.storeDelegationTxHash(roundId, bundleIndex, delegTxResult.txHash)
 
                                 // Poll until the TX lands, then extract the VAN leaf index
                                 // from the delegate_vote event rather than inferring from tree growth.
@@ -1498,19 +1583,31 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 state.pendingGovernancePczt = nil
                 state.pendingUnsignedDelegationPczt = nil
 
+                // Persist to recovery store so signatures survive app restarts
+                let roundId = state.roundId
+                let sigInfo = KeystoneBundleSignatureInfo(
+                    bundleIndex: bundleIndex,
+                    sig: signature.sig,
+                    sighash: signature.sighash,
+                    rk: signature.rk
+                )
+                let persistEffect: Effect<Action> = .run { [votingCrypto] _ in
+                    await votingCrypto.storeKeystoneBundleSignature(roundId, sigInfo)
+                }
+
                 if bundleIndex + 1 < bundleCount {
                     // More bundles to sign — advance index and reset to idle.
                     // User taps "Confirm with Keystone" to start the next bundle.
                     state.currentKeystoneBundleIndex += 1
                     state.isDelegationProofInFlight = false
                     state.keystoneSigningStatus = .idle
-                    return .none
+                    return persistEffect
                 } else {
                     // All bundles signed — navigate to proposal list and start batch proving
                     state.keystoneSigningStatus = .idle
                     state.screenStack = [.proposalList]
                     state.delegationProofStatus = .generating(progress: 0)
-                    return .send(.keystoneAllBundlesSigned)
+                    return .merge(persistEffect, .send(.keystoneAllBundlesSigned))
                 }
 
             case .keystoneAllBundlesSigned:
@@ -1538,13 +1635,20 @@ public struct Voting { // swiftlint:disable:this type_body_length
                         let hotkeyPhrase = try walletStorage.exportVotingHotkey().seedPhrase.value()
                         let hotkeySeed = try mnemonic.toSeed(hotkeyPhrase)
                         let noteChunks = cachedNotes.smartBundles().bundles
+                        let recoveryState = await votingCrypto.getRecoveryState(roundId)
+                        let completedBundles = Set(recoveryState.delegationTxHashes.keys)
 
                         for (bundleIndex, sig) in storedSignatures.enumerated() {
-                            let bundleNotes = noteChunks[bundleIndex]
                             let bundleIdx = UInt32(bundleIndex)
+                            if completedBundles.contains(bundleIdx) {
+                                logger.debug("Keystone delegation bundle \(bundleIdx) already submitted, skipping")
+                                let overallProgress = Double(bundleIndex + 1) / Double(signedCount)
+                                await send(.delegationProofProgress(overallProgress))
+                                continue
+                            }
+                            let bundleNotes = noteChunks[bundleIndex]
                             logger.info("Keystone batch: proving bundle \(bundleIndex + 1)/\(signedCount)")
 
-                            // buildGovernancePczt already stored the delegation data — just prove.
                             for try await event in votingCrypto.buildAndProveDelegation(
                                 roundId,
                                 bundleIdx,
@@ -1585,6 +1689,9 @@ public struct Voting { // swiftlint:disable:this type_body_length
                             let delegTxResult = try await votingAPI.submitDelegation(registration)
                             logger.info("Delegation TX \(bundleIdx) submitted: \(delegTxResult.txHash)")
 
+                            // Persist TX hash for crash recovery
+                            await votingCrypto.storeDelegationTxHash(roundId, bundleIdx, delegTxResult.txHash)
+
                             let delegDeadline = Date().addingTimeInterval(90)
                             var delegConfirmation: TxConfirmation?
                             repeat {
@@ -1614,6 +1721,29 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 } catch: { error, send in
                     await send(.delegationProofFailed(error.localizedDescription))
                 }
+
+            case .keystoneSignaturesRestored(let savedSigs):
+                // Restore in-memory signatures from persisted recovery state
+                state.keystoneBundleSignatures = savedSigs.map {
+                    State.KeystoneBundleSignature(sig: $0.sig, sighash: $0.sighash, rk: $0.rk)
+                }
+                state.currentKeystoneBundleIndex = UInt32(savedSigs.count)
+                if UInt32(savedSigs.count) >= state.bundleCount {
+                    // All bundles were signed — go straight to batch proving
+                    state.keystoneSigningStatus = .idle
+                    state.screenStack = [.proposalList]
+                    state.delegationProofStatus = .generating(progress: 0)
+                    return .send(.keystoneAllBundlesSigned)
+                } else {
+                    // Some bundles signed — show signing screen at the next bundle
+                    state.keystoneSigningStatus = .idle
+                    state.screenStack = [.delegationSigning]
+                    return .none
+                }
+
+            case .keystoneShowSigningScreen:
+                state.screenStack = [.delegationSigning]
+                return .none
 
             case .skipRemainingKeystoneBundles:
                 // Show confirmation alert with locked-in / giving-up amounts.
@@ -1682,7 +1812,10 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 state.isDelegationProofInFlight = false
                 state.currentKeystoneBundleIndex = 0
                 state.keystoneBundleSignatures = []
-                return .none
+                let roundId = state.roundId
+                return .run { [votingCrypto] _ in
+                    await votingCrypto.clearRecoveryState(roundId)
+                }
 
             case .delegationProofFailed(let error):
                 state.currentKeystoneBundleIndex = 0
@@ -1759,6 +1892,54 @@ public struct Voting { // swiftlint:disable:this type_body_length
                                 logger.debug("Vote bundle \(bundleIndex + 1)/\(bundleCount) already submitted, skipping")
                                 continue
                             }
+
+                            // --- Crash recovery: check if this bundle's vote TX landed on-chain
+                            // but wasn't marked as submitted (Dead State D/E). ---
+                            if let cachedTxHash = await votingCrypto.getVoteTxHash(roundId, bundleIndex, proposalId) {
+                                logger.info("Vote recovery: found cached TX hash for bundle \(bundleIndex), checking chain...")
+                                if let confirmation = try? await votingAPI.fetchTxConfirmation(cachedTxHash),
+                                   confirmation.code == 0,
+                                   let leafPair = confirmation.event(ofType: "cast_vote")?.attribute(forKey: "leaf_index") {
+                                    let leafParts = leafPair.split(separator: ",")
+                                    if leafParts.count == 2,
+                                       let vanIdx = UInt32(leafParts[0]),
+                                       let vcIdx = UInt64(leafParts[1]) {
+                                        try await votingCrypto.storeVanPosition(roundId, bundleIndex, vanIdx)
+                                        logger.info("Vote recovery: bundle \(bundleIndex) TX confirmed (VAN pos \(vanIdx))")
+
+                                        // Complete share delegation using the persisted bundle.
+                                        // Without shares, the tally cannot decrypt the vote.
+                                        if let savedBundle = await votingCrypto.getVoteCommitmentBundle(roundId, bundleIndex, proposalId) {
+                                            await send(.voteSubmissionStepUpdated(.sendingShares))
+                                            let payloads = try await votingCrypto.buildSharePayloads(
+                                                savedBundle.encShares, savedBundle, choice, numOptions, vcIdx
+                                            )
+                                            var lastShareError: Error?
+                                            for attempt in 1...3 {
+                                                do {
+                                                    try await votingAPI.delegateShares(payloads, roundId)
+                                                    lastShareError = nil
+                                                    break
+                                                } catch {
+                                                    lastShareError = error
+                                                    logger.warning("Vote recovery: delegateShares attempt \(attempt)/3 failed: \(error)")
+                                                    if attempt < 3 { try await Task.sleep(for: .seconds(2)) }
+                                                }
+                                            }
+                                            if let lastShareError { throw lastShareError }
+                                            logger.info("Vote recovery: shares sent for bundle \(bundleIndex)")
+                                        } else {
+                                            logger.error("Vote recovery: no persisted bundle for share delegation — vote will not count in tally")
+                                        }
+
+                                        try await votingCrypto.markVoteSubmitted(roundId, bundleIndex, proposalId)
+                                        continue
+                                    }
+                                }
+                                // TX not confirmed — fall through to re-submit
+                                logger.info("Vote recovery: TX \(cachedTxHash) not confirmed, re-submitting bundle \(bundleIndex)")
+                            }
+
                             logger.info("Vote bundle \(bundleIndex + 1)/\(bundleCount) for proposal \(proposalId)")
 
                             // Update progress per-bundle so the UI shows which bundle is being processed
@@ -1795,6 +1976,10 @@ public struct Voting { // swiftlint:disable:this type_body_length
                                 throw VotingFlowError.missingVoteCommitmentBundle
                             }
 
+                            // Persist the bundle before submission so encrypted shares survive a crash.
+                            // Share delegation requires the original ciphertexts committed on-chain.
+                            await votingCrypto.storeVoteCommitmentBundle(roundId, bundleIndex, proposalId, builtBundle)
+
                             // Sign the cast-vote TX (sighash + spend auth signature)
                             let castVoteSig = try await votingCrypto.signCastVote(
                                 hotkeySeed, networkId, builtBundle
@@ -1805,6 +1990,9 @@ public struct Voting { // swiftlint:disable:this type_body_length
                             let txResult = try await votingAPI.submitVoteCommitment(builtBundle, castVoteSig)
                             let txHash = txResult.txHash
                             await send(.voteCommitmentSubmitted(txHash))
+
+                            // Persist TX hash immediately for crash recovery
+                            await votingCrypto.storeVoteTxHash(roundId, bundleIndex, proposalId, txHash)
 
                             // Poll until our TX lands and extract exact leaf positions
                             // from the cast_vote event (emits "vanIdx,vcIdx").
@@ -1871,6 +2059,16 @@ public struct Voting { // swiftlint:disable:this type_body_length
                     logger.error("vote submission failed: \(error)")
                     await send(.voteSubmissionFailed(proposalId: proposalId, error: error.localizedDescription))
                 }
+
+            case let .resumePendingVote(proposalId, choice):
+                guard !state.isSubmittingVote else { return .none }
+                guard state.activeSession != nil else { return .none }
+                // Set up state as if the user just selected this vote, then
+                // delegate to confirmVote which runs the full submission loop
+                // (including TX hash recovery for the already-submitted bundles).
+                logger.info("Auto-resuming in-flight vote for proposal \(proposalId) (choice: \(String(describing: choice)))")
+                state.pendingVote = .init(proposalId: proposalId, choice: choice)
+                return .send(.confirmVote)
 
             case .voteCommitmentBuilt(let bundle):
                 state.lastVoteCommitmentBundle = bundle
