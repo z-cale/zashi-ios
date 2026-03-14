@@ -390,16 +390,12 @@ public struct EncryptedShare: Equatable, Sendable, Codable {
     public let c1: Data // swiftlint:disable:this identifier_name
     public let c2: Data // swiftlint:disable:this identifier_name
     public let shareIndex: UInt32
-    public let plaintextValue: UInt64
-    public let randomness: Data
 
     // swiftlint:disable:next identifier_name
-    public init(c1: Data, c2: Data, shareIndex: UInt32, plaintextValue: UInt64 = 0, randomness: Data = Data()) {
+    public init(c1: Data, c2: Data, shareIndex: UInt32) {
         self.c1 = c1
         self.c2 = c2
         self.shareIndex = shareIndex
-        self.plaintextValue = plaintextValue
-        self.randomness = randomness
     }
 }
 
