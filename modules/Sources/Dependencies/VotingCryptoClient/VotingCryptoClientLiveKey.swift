@@ -42,6 +42,10 @@ extension VotingCryptoClient: DependencyKey {
             openDatabase: { path in
                 try await dbActor.open(path: path)
             },
+            setWalletId: { walletId in
+                let backend = try await dbActor.backend()
+                try backend.setWalletId(walletId)
+            },
             initRound: { params, sessionJson in
                 let backend = try await dbActor.backend()
                 let roundIdHex = params.voteRoundId.hexString
@@ -91,14 +95,13 @@ extension VotingCryptoClient: DependencyKey {
                 let backend = try await dbActor.backend()
                 _ = try backend.deleteSkippedBundles(roundId: roundId, keepCount: keepCount)
             },
-            getWalletNotes: { walletDbPath, snapshotHeight, networkId, seedFingerprint, accountIndex in
+            getWalletNotes: { walletDbPath, snapshotHeight, networkId, accountUUID in
                 let backend = try await dbActor.backend()
                 let notes = try backend.getWalletNotes(
                     walletDbPath: walletDbPath,
                     snapshotHeight: snapshotHeight,
                     networkId: networkId,
-                    seedFingerprint: seedFingerprint,
-                    accountIndex: accountIndex.map { Int64($0) } ?? -1
+                    accountUUID: accountUUID
                 )
                 return notes.map {
                     NoteInfo(
