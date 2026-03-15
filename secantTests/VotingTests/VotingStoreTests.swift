@@ -418,6 +418,100 @@ final class VotingStoreTests: XCTestCase {
         }
     }
 
+    /// Skipped bundles: app relaunch via roundResumeChecked (Path A).
+    /// bundleCountRestored should recalculate votingWeight for the reduced bundle count.
+    func testBundleCountRestoredAdjustsWeightForSkippedBundles() async throws {
+        // 6 notes → 2 bundles: bundle 0 = 5×27.8M = 139M, bundle 1 = 1×12.5M = 12.5M
+        // eligibleWeight = floor(139M/12.5M)*12.5M + floor(12.5M/12.5M)*12.5M = 150M
+        let notes: [NoteInfo] = (0..<5).map { i in
+            NoteInfo(
+                commitment: Data(repeating: UInt8(i + 1), count: 32),
+                nullifier: Data(repeating: UInt8(i + 10), count: 32),
+                value: 27_800_000, position: UInt64(i),
+                diversifier: Data(repeating: 0x03, count: 11),
+                rho: Data(repeating: 0x04, count: 32),
+                rseed: Data(repeating: 0x05, count: 32), scope: 0, ufvkStr: "ufvk1"
+            )
+        } + [
+            NoteInfo(
+                commitment: Data(repeating: 0x06, count: 32),
+                nullifier: Data(repeating: 0x16, count: 32),
+                value: 12_500_000, position: 5,
+                diversifier: Data(repeating: 0x03, count: 11),
+                rho: Data(repeating: 0x04, count: 32),
+                rseed: Data(repeating: 0x05, count: 32), scope: 0, ufvkStr: "ufvk1"
+            )
+        ]
+
+        var initialState = Voting.State(
+            votingRound: MockVotingService.votingRound,
+            votingWeight: 150_000_000,
+            isKeystoneUser: true,
+            roundId: "aabb"
+        )
+        initialState.walletNotes = notes
+
+        let store = TestStore(initialState: initialState) {
+            Voting()
+        }
+        store.exhaustivity = .off
+        store.dependencies.votingCrypto.getRecoveryState = { _ in
+            RoundRecoveryState()
+        }
+
+        await store.send(.bundleCountRestored(1)) { state in
+            state.bundleCount = 1
+            state.votingWeight = 139_000_000
+        }
+    }
+
+    /// Skipped bundles: app relaunch via witnessVerificationCompleted (Path B).
+    /// Reduced bundleCount from DB should recalculate votingWeight.
+    func testWitnessVerificationCompletedAdjustsWeightForSkippedBundles() async throws {
+        let notes: [NoteInfo] = (0..<5).map { i in
+            NoteInfo(
+                commitment: Data(repeating: UInt8(i + 1), count: 32),
+                nullifier: Data(repeating: UInt8(i + 10), count: 32),
+                value: 27_800_000, position: UInt64(i),
+                diversifier: Data(repeating: 0x03, count: 11),
+                rho: Data(repeating: 0x04, count: 32),
+                rseed: Data(repeating: 0x05, count: 32), scope: 0, ufvkStr: "ufvk1"
+            )
+        } + [
+            NoteInfo(
+                commitment: Data(repeating: 0x06, count: 32),
+                nullifier: Data(repeating: 0x16, count: 32),
+                value: 12_500_000, position: 5,
+                diversifier: Data(repeating: 0x03, count: 11),
+                rho: Data(repeating: 0x04, count: 32),
+                rseed: Data(repeating: 0x05, count: 32), scope: 0, ufvkStr: "ufvk1"
+            )
+        ]
+
+        var initialState = Voting.State(
+            votingRound: MockVotingService.votingRound,
+            votingWeight: 150_000_000,
+            isKeystoneUser: true,
+            roundId: "aabb"
+        )
+        initialState.walletNotes = notes
+
+        let store = TestStore(initialState: initialState) {
+            Voting()
+        }
+        store.exhaustivity = .off
+        store.dependencies.votingCrypto.loadKeystoneBundleSignatures = { _ in [] }
+
+        let timing = Voting.State.WitnessTiming(treeStateFetchMs: 0, witnessGenerationMs: 0, verificationMs: 0)
+        await store.send(.witnessVerificationCompleted([], [], timing, 1)) { state in
+            state.noteWitnessResults = []
+            state.cachedWitnesses = []
+            state.witnessStatus = .completed
+            state.bundleCount = 1
+            state.votingWeight = 139_000_000
+        }
+    }
+
     /// Dead State B: Delegation TX hash stored but VAN position not stored before crash.
     /// On resume, verifyWitnesses should recover the VAN position from the chain event.
     func testDelegationTxHashRecoveryStoresVanPosition() async throws {

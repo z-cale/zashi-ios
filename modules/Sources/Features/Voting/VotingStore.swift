@@ -1162,6 +1162,15 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 state.witnessTiming = timing
                 state.witnessStatus = .completed
                 state.bundleCount = bundleCount
+                // If bundles were previously skipped, the DB count is less than the
+                // total from smartBundles(). Recalculate votingWeight to reflect only
+                // the kept bundles (raw note sums, matching skipRemainingKeystoneBundlesConfirmed).
+                let allBundles = state.walletNotes.smartBundles().bundles
+                if bundleCount > 0, Int(bundleCount) < allBundles.count {
+                    state.votingWeight = (0..<Int(bundleCount)).reduce(UInt64(0)) { total, i in
+                        allBundles[i].reduce(UInt64(0)) { $0 + $1.value }
+                    }
+                }
                 // Non-Keystone users skip the delegation signing screen entirely.
                 // Screen is already on .proposalList (set early in .votingWeightLoaded).
                 if !state.isKeystoneUser {
@@ -1221,6 +1230,15 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
             case .bundleCountRestored(let count):
                 state.bundleCount = count
+                // If bundles were previously skipped, the DB count is less than the
+                // total from smartBundles(). Recalculate votingWeight to reflect only
+                // the kept bundles (raw note sums, matching skipRemainingKeystoneBundlesConfirmed).
+                let allBundles = state.walletNotes.smartBundles().bundles
+                if count > 0, Int(count) < allBundles.count {
+                    state.votingWeight = (0..<Int(count)).reduce(UInt64(0)) { total, i in
+                        allBundles[i].reduce(UInt64(0)) { $0 + $1.value }
+                    }
+                }
                 let roundId = state.roundId
                 let recoveryRoundKey = state.recoveryKey(for: roundId)
                 return .run { [votingCrypto] send in
