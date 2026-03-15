@@ -42,6 +42,10 @@ extension VotingCryptoClient: DependencyKey {
             openDatabase: { path in
                 try await dbActor.open(path: path)
             },
+            setWalletId: { walletId in
+                let backend = try await dbActor.backend()
+                try backend.setWalletId(walletId)
+            },
             initRound: { params, sessionJson in
                 let backend = try await dbActor.backend()
                 let roundIdHex = params.voteRoundId.hexString
