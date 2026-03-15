@@ -18,6 +18,7 @@ let package = Package(
         .library(name: "AppVersion", targets: ["AppVersion"]),
         .library(name: "AudioServices", targets: ["AudioServices"]),
         .library(name: "AutolockHandler", targets: ["AutolockHandler"]),
+        .library(name: "BackgroundTaskClient", targets: ["BackgroundTaskClient"]),
         .library(name: "BalanceBreakdown", targets: ["BalanceBreakdown"]),
         .library(name: "BalanceFormatter", targets: ["BalanceFormatter"]),
         .library(name: "CaptureDevice", targets: ["CaptureDevice"]),
@@ -92,14 +93,18 @@ let package = Package(
         .library(name: "WhatsNew", targets: ["WhatsNew"]),
         .library(name: "WhatsNewProvider", targets: ["WhatsNewProvider"]),
         .library(name: "ZcashSDKEnvironment", targets: ["ZcashSDKEnvironment"]),
-        .library(name: "ZecKeyboard", targets: ["ZecKeyboard"])
+        .library(name: "ZecKeyboard", targets: ["ZecKeyboard"]),
+        .library(name: "Voting", targets: ["Voting"]),
+        .library(name: "VotingAPIClient", targets: ["VotingAPIClient"]),
+        .library(name: "VotingCryptoClient", targets: ["VotingCryptoClient"]),
+        .library(name: "VotingModels", targets: ["VotingModels"])
     ],
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-composable-architecture", from: "1.23.1"),
         .package(url: "https://github.com/pointfreeco/swift-case-paths", from: "1.7.2"),
         .package(url: "https://github.com/pointfreeco/swift-url-routing", from: "0.6.2"),
         .package(url: "https://github.com/zcash-hackworks/MnemonicSwift", from: "2.2.5"),
-        .package(url: "https://github.com/zcash/zcash-swift-wallet-sdk", from: "2.4.5"),
+        .package(url: "https://github.com/valargroup/zcash-swift-wallet-sdk.git", branch: "valargroup/governance-tree-state"),
         .package(url: "https://github.com/flexa/flexa-ios.git", exact: "1.1.4"),
         .package(url: "https://github.com/pacu/zcash-swift-payment-uri", from: "1.0.1"),
         .package(url: "https://github.com/airbnb/lottie-spm.git", from: "4.5.2"),
@@ -199,6 +204,13 @@ let package = Package(
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
             ],
             path: "Sources/Dependencies/AutolockHandler"
+        ),
+        .target(
+            name: "BackgroundTaskClient",
+            dependencies: [
+                .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
+            ],
+            path: "Sources/Dependencies/BackgroundTaskClient"
         ),
         .target(
             name: "BalanceBreakdown",
@@ -687,6 +699,7 @@ let package = Package(
                 "WhatsNew",
                 "ZcashSDKEnvironment",
                 "ZecKeyboard",
+                "Voting",
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
                 .product(name: "ZcashLightClientKit", package: "zcash-swift-wallet-sdk")
             ],
@@ -1194,6 +1207,52 @@ let package = Package(
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
             ],
             path: "Sources/Features/ZecKeyboard"
+        ),
+        .target(
+            name: "Voting",
+            dependencies: [
+                "BackgroundTaskClient",
+                "DatabaseFiles",
+                "Generated",
+                "KeystoneHandler",
+                "MnemonicClient",
+                "Models",
+                "Pasteboard",
+                "Scan",
+                "SDKSynchronizer",
+                "UIComponents",
+                "Vendors",
+                "VotingAPIClient",
+                "VotingCryptoClient",
+                "VotingModels",
+                "WalletStorage",
+                "ZcashSDKEnvironment",
+                .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+                .product(name: "ZcashLightClientKit", package: "zcash-swift-wallet-sdk"),
+            ],
+            path: "Sources/Features/Voting"
+        ),
+        .target(
+            name: "VotingAPIClient",
+            dependencies: [
+                "VotingModels",
+                .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+            ],
+            path: "Sources/Dependencies/VotingAPIClient"
+        ),
+        .target(
+            name: "VotingCryptoClient",
+            dependencies: [
+                "VotingModels",
+                .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+                .product(name: "ZcashLightClientKit", package: "zcash-swift-wallet-sdk"),
+            ],
+            path: "Sources/Dependencies/VotingCryptoClient"
+        ),
+        .target(
+            name: "VotingModels",
+            dependencies: [],
+            path: "Sources/Dependencies/VotingModels"
         )
     ]
 )

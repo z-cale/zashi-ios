@@ -180,6 +180,21 @@ extension Root {
                 state.path = .serverSwitch
                 return .none
 
+                // MARK: - Voting
+
+            case .home(.votingBannerTapped):
+                guard let account = state.selectedWalletAccount else { return .none }
+                state.homeState.moreRequest = false
+                state.votingState = .initial
+                state.votingState.isKeystoneUser = state.homeState.isKeystoneAccountActive
+                state.votingState.walletId = account.id.id.map { String(format: "%02x", $0) }.joined()
+                state.path = .voting
+                return .none
+
+            case .voting(.dismissFlow):
+                state.path = nil
+                return .none
+
                 // MARK: - Keystone
 
             case .sendCoordFlow(.path(.element(id: _, action: .confirmWithKeystone(.rejectTapped)))),

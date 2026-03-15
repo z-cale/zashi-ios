@@ -10,7 +10,7 @@ import ComposableArchitecture
 
 extension RemoteStorageClient: DependencyKey {
     private enum Constants {
-        static let ubiquityContainerIdentifier = "iCloud.com.electriccoinco.zashi"
+        static let ubiquityContainerIdentifier = "iCloud.co.valargroup.zodl-voting"
     }
     
     public enum RemoteStorageError: Error {

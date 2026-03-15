@@ -31,6 +31,7 @@ public struct WalletStorage {
         public static let zcashStoredShieldingAcknowledged = "zcashStoredShieldingAcknowledged"
         public static let zcashStoredTorSetupFlag = "zcashStoredTorSetupFlag"
         public static let zcashStoredZodlAnnouncementFlag = "zcashStoredZodlAnnouncementFlag"
+        public static let zcashStoredVotingHotkey = "zcashStoredVotingHotkey"
 
         /// Versioning of the stored data
         public static let zcashKeychainVersion = 1
@@ -184,6 +185,7 @@ public struct WalletStorage {
         try? deleteData(forKey: Constants.zcashStoredShieldingAcknowledged)
         try? deleteData(forKey: Constants.zcashStoredTorSetupFlag)
         try? deleteData(forKey: Constants.zcashStoredZodlAnnouncementFlag)
+        try? deleteData(forKey: Constants.zcashStoredVotingHotkey)
     }
     
     public func importAddressBookEncryptionKeys(_ keys: AddressBookEncryptionKeys) throws {
@@ -419,6 +421,53 @@ public struct WalletStorage {
         }
         
         return try? decode(json: reqData, as: Bool.self)
+    }
+
+    // MARK: - Voting Hotkey
+
+    public func importVotingHotkey(_ phrase: String) throws {
+        let hotkey = StoredVotingHotkey(
+            seedPhrase: SeedPhrase(phrase),
+            version: Constants.zcashKeychainVersion
+        )
+
+        do {
+            guard let data = try encode(object: hotkey) else {
+                throw KeychainError.encoding
+            }
+
+            try setData(data, forKey: Constants.zcashStoredVotingHotkey)
+        } catch KeychainError.duplicate {
+            throw WalletStorageError.alreadyImported
+        } catch {
+            throw WalletStorageError.storageError(error)
+        }
+    }
+
+    public func exportVotingHotkey() throws -> StoredVotingHotkey {
+        let reqData: Data?
+
+        do {
+            reqData = try data(forKey: Constants.zcashStoredVotingHotkey)
+        } catch KeychainError.noDataFound {
+            throw WalletStorageError.uninitializedWallet
+        } catch {
+            throw error
+        }
+
+        guard let reqData else {
+            throw WalletStorageError.uninitializedWallet
+        }
+
+        guard let hotkey = try decode(json: reqData, as: StoredVotingHotkey.self) else {
+            throw WalletStorageError.uninitializedWallet
+        }
+
+        guard hotkey.version == Constants.zcashKeychainVersion else {
+            throw WalletStorageError.unsupportedVersion(hotkey.version)
+        }
+
+        return hotkey
     }
 
     // MARK: - Wallet Storage Codable & Query helpers

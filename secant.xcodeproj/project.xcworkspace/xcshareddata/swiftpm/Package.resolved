@@ -95,8 +95,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/grpc/grpc-swift.git",
       "state" : {
-        "revision" : "5770e231585cb68388a6ae37ce36c4d8dbd46d90",
-        "version" : "1.27.2"
+        "revision" : "ac715c584bb1e2e5cdfb7684ccb46fab8dafc641",
+        "version" : "1.27.4"
       }
     },
     {
@@ -140,8 +140,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/stephencelis/SQLite.swift.git",
       "state" : {
-        "revision" : "0c08856385fe24f7b76d8c51842d78a196e8e817",
-        "version" : "0.15.5"
+        "revision" : "964c300fb0736699ce945c9edb56ecd62eba27a3",
+        "version" : "0.16.0"
       }
     },
     {
@@ -293,8 +293,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-nio.git",
       "state" : {
-        "revision" : "e932d3c4d8f77433c8f7093b5ebcbf91463948a0",
-        "version" : "2.95.0"
+        "revision" : "b31565862a8f39866af50bc6676160d8dda7de35",
+        "version" : "2.96.0"
       }
     },
     {
@@ -374,8 +374,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-protobuf.git",
       "state" : {
-        "revision" : "9bbb079b69af9d66470ced85461bf13bb40becac",
-        "version" : "1.35.0"
+        "revision" : "a008af1a102ff3dd6cc3764bb69bf63226d0f5f6",
+        "version" : "1.36.1"
       }
     },
     {
@@ -469,15 +469,6 @@
       }
     },
     {
-      "identity" : "zcash-light-client-ffi",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Electric-Coin-Company/zcash-light-client-ffi",
-      "state" : {
-        "revision" : "5994278d739644f0e19673a8f4f8371fb3f2c5f4",
-        "version" : "0.19.2"
-      }
-    },
-    {
       "identity" : "zcash-swift-payment-uri",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pacu/zcash-swift-payment-uri",
@@ -489,10 +480,10 @@
     {
       "identity" : "zcash-swift-wallet-sdk",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/zcash/zcash-swift-wallet-sdk",
+      "location" : "https://github.com/valargroup/zcash-swift-wallet-sdk.git",
       "state" : {
-        "revision" : "43e2ace646c00ac3955e5717db18474e91512949",
-        "version" : "2.4.5"
+        "branch" : "valargroup/governance-tree-state",
+        "revision" : "a687f6654baa02728317cc5221700a8758c2cccb"
       }
     }
   ],
