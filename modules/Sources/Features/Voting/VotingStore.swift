@@ -212,6 +212,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
         public var votes: [UInt32: VoteChoice] = [:]
         public var votingWeight: UInt64
         public var isKeystoneUser: Bool
+        public var walletId: String
         public var roundId: String
         public var activeSession: VotingSession?
 
@@ -426,6 +427,11 @@ public struct Voting { // swiftlint:disable:this type_body_length
             return nil
         }
 
+        /// Compound key scoping recovery files by both round and wallet.
+        func recoveryKey(for roundId: String) -> String {
+            "\(roundId)_\(walletId)"
+        }
+
         public init(
             votingRound: VotingRound = VotingRound(
                 id: "",
@@ -439,11 +445,13 @@ public struct Voting { // swiftlint:disable:this type_body_length
             ),
             votingWeight: UInt64 = 0,
             isKeystoneUser: Bool = false,
+            walletId: String = "",
             roundId: String = ""
         ) {
             self.votingRound = votingRound
             self.votingWeight = votingWeight
             self.isKeystoneUser = isKeystoneUser
+            self.walletId = walletId
             self.roundId = roundId
         }
     }
@@ -691,14 +699,15 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
             case .serviceConfigLoaded(let config):
                 state.serviceConfig = config
+                let walletId = state.walletId
                 return .run { [votingAPI, votingCrypto] send in
                     // 2. Configure API client URLs
                     await votingAPI.configureURLs(config)
 
-                    // 3. Open voting database
+                    // 3. Open voting database (per-wallet)
                     let dbPath = FileManager.default
                         .urls(for: .documentDirectory, in: .userDomainMask)[0]
-                        .appendingPathComponent("voting.sqlite3").path
+                        .appendingPathComponent("voting-\(walletId).sqlite3").path
                     try await votingCrypto.openDatabase(dbPath)
 
                     // 4. Fetch all rounds and populate the list
@@ -723,9 +732,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 let networkId: UInt32 = network.networkType == .mainnet ? 0 : 1
                 let snapshotHeight = session.snapshotHeight
                 let roundId = session.voteRoundId.hexString
-                // Capture account identity for filtering notes to the selected account
-                let accountSeedFingerprint: [UInt8]? = state.selectedWalletAccount?.seedFingerprint
-                let accountIndex: UInt32? = state.selectedWalletAccount?.zip32AccountIndex.map { UInt32($0.index) }
+                let accountUUID: [UInt8] = state.selectedWalletAccount?.id.id ?? []
                 return .run { [votingCrypto, mnemonic, walletStorage, sdkSynchronizer] send in
                     // Check wallet sync progress before querying notes
                     let walletScannedHeight = UInt64(sdkSynchronizer.latestState().latestBlockHeight)
@@ -739,8 +746,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                         walletDbPath,
                         snapshotHeight,
                         networkId,
-                        accountSeedFingerprint,
-                        accountIndex
+                        accountUUID
                     )
                     let totalWeight = notes.reduce(UInt64(0)) { $0 + $1.value }
                     logger.info("Loaded \(notes.count) notes at height \(snapshotHeight), total weight: \(totalWeight)")
@@ -1004,6 +1010,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 }
                 state.witnessTiming = nil
                 let roundId = activeSession.voteRoundId.hexString
+                let recoveryRoundKey = state.recoveryKey(for: roundId)
                 let snapshotHeight = activeSession.snapshotHeight
                 let notes = state.walletNotes
                 let network = zcashSDKEnvironment.network
@@ -1019,7 +1026,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                     }
 
                     // --- Crash recovery: check if some delegation TXs already landed on-chain ---
-                    let recovery = await votingCrypto.getRecoveryState(roundId)
+                    let recovery = await votingCrypto.getRecoveryState(recoveryRoundKey)
                     if !recovery.delegationTxHashes.isEmpty {
                         logger.info("Recovery: found \(recovery.delegationTxHashes.count) stored delegation TX hashes, reconciling...")
                         var recoveredPositions: [UInt32: UInt32] = [:]
@@ -1038,7 +1045,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                         if bundleCount > 0 && UInt32(recoveredPositions.count) >= bundleCount {
                             // All bundles already on-chain — mark as complete and resume
                             logger.info("Recovery: all \(bundleCount) bundles recovered from chain, resuming to proposal list")
-                            await votingCrypto.clearRecoveryState(roundId)
+                            await votingCrypto.clearRecoveryState(recoveryRoundKey)
                             await send(.roundResumeChecked(alreadyAuthorized: true))
                             return
                         } else if !recoveredPositions.isEmpty {
@@ -1058,7 +1065,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
                     // Fresh round — clear and initialize
                     try? await votingCrypto.clearRound(roundId)
-                    await votingCrypto.clearRecoveryState(roundId)
+                    await votingCrypto.clearRecoveryState(recoveryRoundKey)
                     let params = VotingRoundParams(
                         voteRoundId: activeSession.voteRoundId,
                         snapshotHeight: snapshotHeight,
@@ -1160,9 +1167,9 @@ public struct Voting { // swiftlint:disable:this type_body_length
                     return .send(.startDelegationProof)
                 }
                 // Keystone: check for persisted signatures from a previous session
-                let roundId = state.roundId
+                let recoveryRoundKey = state.recoveryKey(for: state.roundId)
                 return .run { [votingCrypto] send in
-                    let savedSigs = await votingCrypto.loadKeystoneBundleSignatures(roundId)
+                    let savedSigs = await votingCrypto.loadKeystoneBundleSignatures(recoveryRoundKey)
                     if !savedSigs.isEmpty {
                         logger.info("Keystone recovery: found \(savedSigs.count) persisted signatures, resuming batch prove")
                         await send(.keystoneSignaturesRestored(savedSigs))
@@ -1214,8 +1221,9 @@ public struct Voting { // swiftlint:disable:this type_body_length
             case .bundleCountRestored(let count):
                 state.bundleCount = count
                 let roundId = state.roundId
+                let recoveryRoundKey = state.recoveryKey(for: roundId)
                 return .run { [votingCrypto] send in
-                    let recovery = await votingCrypto.getRecoveryState(roundId)
+                    let recovery = await votingCrypto.getRecoveryState(recoveryRoundKey)
                     guard !recovery.voteTxHashes.isEmpty else { return }
                     // Find the first in-flight vote: a TX hash exists but the vote
                     // isn't marked as submitted in the DB yet.
@@ -1335,6 +1343,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                     state.delegationProofStatus = .generating(progress: 0)
                 }
                 let roundId = activeSession.voteRoundId.hexString
+                let recoveryRoundKey = state.recoveryKey(for: roundId)
                 let cachedNotes = state.walletNotes
                 let network = zcashSDKEnvironment.network
                 let walletDbPath = databaseFiles.dataDbURLFor(network).path
@@ -1412,7 +1421,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                             // are processed here starting from the first incomplete one.
                             let noteChunks = cachedNotes.smartBundles().bundles
                             let bundleCount = UInt32(noteChunks.count)
-                            let recoveryState = await votingCrypto.getRecoveryState(roundId)
+                            let recoveryState = await votingCrypto.getRecoveryState(recoveryRoundKey)
                             let completedBundles = Set(recoveryState.delegationTxHashes.keys)
 
                             for bundleIndex: UInt32 in 0..<bundleCount {
@@ -1470,7 +1479,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
                                 // Persist TX hash immediately so we can recover if the app
                                 // crashes before storeVanPosition completes.
-                                await votingCrypto.storeDelegationTxHash(roundId, bundleIndex, delegTxResult.txHash)
+                                await votingCrypto.storeDelegationTxHash(recoveryRoundKey, bundleIndex, delegTxResult.txHash)
 
                                 // Poll until the TX lands, then extract the VAN leaf index
                                 // from the delegate_vote event rather than inferring from tree growth.
@@ -1584,7 +1593,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 state.pendingUnsignedDelegationPczt = nil
 
                 // Persist to recovery store so signatures survive app restarts
-                let roundId = state.roundId
+                let recoveryRoundKey = state.recoveryKey(for: state.roundId)
                 let sigInfo = KeystoneBundleSignatureInfo(
                     bundleIndex: bundleIndex,
                     sig: signature.sig,
@@ -1592,7 +1601,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                     rk: signature.rk
                 )
                 let persistEffect: Effect<Action> = .run { [votingCrypto] _ in
-                    await votingCrypto.storeKeystoneBundleSignature(roundId, sigInfo)
+                    await votingCrypto.storeKeystoneBundleSignature(recoveryRoundKey, sigInfo)
                 }
 
                 if bundleIndex + 1 < bundleCount {
@@ -1618,6 +1627,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 }
 
                 let roundId = activeSession.voteRoundId.hexString
+                let recoveryRoundKey = state.recoveryKey(for: roundId)
                 let cachedNotes = state.walletNotes
                 let network = zcashSDKEnvironment.network
                 let walletDbPath = databaseFiles.dataDbURLFor(network).path
@@ -1635,7 +1645,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                         let hotkeyPhrase = try walletStorage.exportVotingHotkey().seedPhrase.value()
                         let hotkeySeed = try mnemonic.toSeed(hotkeyPhrase)
                         let noteChunks = cachedNotes.smartBundles().bundles
-                        let recoveryState = await votingCrypto.getRecoveryState(roundId)
+                        let recoveryState = await votingCrypto.getRecoveryState(recoveryRoundKey)
                         let completedBundles = Set(recoveryState.delegationTxHashes.keys)
 
                         for (bundleIndex, sig) in storedSignatures.enumerated() {
@@ -1690,7 +1700,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                             logger.info("Delegation TX \(bundleIdx) submitted: \(delegTxResult.txHash)")
 
                             // Persist TX hash for crash recovery
-                            await votingCrypto.storeDelegationTxHash(roundId, bundleIdx, delegTxResult.txHash)
+                            await votingCrypto.storeDelegationTxHash(recoveryRoundKey, bundleIdx, delegTxResult.txHash)
 
                             let delegDeadline = Date().addingTimeInterval(90)
                             var delegConfirmation: TxConfirmation?
@@ -1812,9 +1822,9 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 state.isDelegationProofInFlight = false
                 state.currentKeystoneBundleIndex = 0
                 state.keystoneBundleSignatures = []
-                let roundId = state.roundId
+                let recoveryRoundKey = state.recoveryKey(for: state.roundId)
                 return .run { [votingCrypto] _ in
-                    await votingCrypto.clearRecoveryState(roundId)
+                    await votingCrypto.clearRecoveryState(recoveryRoundKey)
                 }
 
             case .delegationProofFailed(let error):
@@ -1868,6 +1878,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 let choice = pending.choice
                 let numOptions = UInt32(state.votingRound.proposals.first { $0.id == proposalId }?.options.count ?? 3)
                 let roundId = state.roundId
+                let recoveryRoundKey = state.recoveryKey(for: roundId)
                 let network = zcashSDKEnvironment.network
                 let networkId: UInt32 = network.networkType == .mainnet ? 0 : 1
                 let chainNodeUrl = state.serviceConfig?.voteServers.first?.url ?? "https://46-101-255-48.sslip.io"
@@ -1895,7 +1906,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
                             // --- Crash recovery: check if this bundle's vote TX landed on-chain
                             // but wasn't marked as submitted (Dead State D/E). ---
-                            if let cachedTxHash = await votingCrypto.getVoteTxHash(roundId, bundleIndex, proposalId) {
+                            if let cachedTxHash = await votingCrypto.getVoteTxHash(recoveryRoundKey, bundleIndex, proposalId) {
                                 logger.info("Vote recovery: found cached TX hash for bundle \(bundleIndex), checking chain...")
                                 if let confirmation = try? await votingAPI.fetchTxConfirmation(cachedTxHash),
                                    confirmation.code == 0,
@@ -1909,7 +1920,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
                                         // Complete share delegation using the persisted bundle.
                                         // Without shares, the tally cannot decrypt the vote.
-                                        if let savedBundle = await votingCrypto.getVoteCommitmentBundle(roundId, bundleIndex, proposalId) {
+                                        if let savedBundle = await votingCrypto.getVoteCommitmentBundle(recoveryRoundKey, bundleIndex, proposalId) {
                                             await send(.voteSubmissionStepUpdated(.sendingShares))
                                             let payloads = try await votingCrypto.buildSharePayloads(
                                                 savedBundle.encShares, savedBundle, choice, numOptions, vcIdx
@@ -1978,7 +1989,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
                             // Persist the bundle before submission so encrypted shares survive a crash.
                             // Share delegation requires the original ciphertexts committed on-chain.
-                            await votingCrypto.storeVoteCommitmentBundle(roundId, bundleIndex, proposalId, builtBundle)
+                            await votingCrypto.storeVoteCommitmentBundle(recoveryRoundKey, bundleIndex, proposalId, builtBundle)
 
                             // Sign the cast-vote TX (sighash + spend auth signature)
                             let castVoteSig = try await votingCrypto.signCastVote(
@@ -1992,7 +2003,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                             await send(.voteCommitmentSubmitted(txHash))
 
                             // Persist TX hash immediately for crash recovery
-                            await votingCrypto.storeVoteTxHash(roundId, bundleIndex, proposalId, txHash)
+                            await votingCrypto.storeVoteTxHash(recoveryRoundKey, bundleIndex, proposalId, txHash)
 
                             // Poll until our TX lands and extract exact leaf positions
                             // from the cast_vote event (emits "vanIdx,vcIdx").
