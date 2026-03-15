@@ -21,6 +21,7 @@ public struct VotingCryptoClient {
 
     // --- Database lifecycle ---
     public var openDatabase: @Sendable (_ path: String) async throws -> Void
+    public var setWalletId: @Sendable (_ walletId: String) async throws -> Void
     public var initRound: @Sendable (_ params: VotingRoundParams, _ sessionJson: String?) async throws -> Void
     public var getRoundState: @Sendable (_ roundId: String) async throws -> RoundStateInfo
     public var getVotes: @Sendable (_ roundId: String) async throws -> [VoteRecord]

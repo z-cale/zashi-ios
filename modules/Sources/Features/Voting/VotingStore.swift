@@ -704,11 +704,12 @@ public struct Voting { // swiftlint:disable:this type_body_length
                     // 2. Configure API client URLs
                     await votingAPI.configureURLs(config)
 
-                    // 3. Open voting database (per-wallet)
+                    // 3. Open voting database and scope to current wallet
                     let dbPath = FileManager.default
                         .urls(for: .documentDirectory, in: .userDomainMask)[0]
-                        .appendingPathComponent("voting-\(walletId).sqlite3").path
+                        .appendingPathComponent("voting.sqlite3").path
                     try await votingCrypto.openDatabase(dbPath)
+                    try await votingCrypto.setWalletId(walletId)
 
                     // 4. Fetch all rounds and populate the list
                     let allRounds = try await votingAPI.fetchAllRounds()
