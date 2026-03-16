@@ -15,6 +15,7 @@ extension VotingCryptoClient: DependencyKey {
         func publishState(backend: VotingRustBackend, roundId: String) {
             guard let roundState = try? backend.getRoundState(roundId: roundId) else { return }
             let votes = (try? backend.getVotes(roundId: roundId)) ?? []
+            let bundleCount = (try? backend.getBundleCount(roundId: roundId)) ?? 0
             let dbState = VotingDbState(
                 roundState: RoundStateInfo(
                     roundId: roundState.roundId,
@@ -24,7 +25,8 @@ extension VotingCryptoClient: DependencyKey {
                     delegatedWeight: roundState.delegatedWeight,
                     proofGenerated: roundState.proofGenerated
                 ),
-                votes: votes.map { $0.toModel() }
+                votes: votes.map { $0.toModel() },
+                bundleCount: bundleCount
             )
             stateSubject.send(dbState)
         }

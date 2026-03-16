@@ -1236,17 +1236,38 @@ public struct Voting { // swiftlint:disable:this type_body_length
                     }
                 }
                 let roundId = state.roundId
+                let bundleCount = count
                 return .run { [votingCrypto] send in
-                    // Find the first in-flight vote: a TX hash exists but the vote
-                    // isn't marked as submitted in the DB yet.
                     let votes = (try? await votingCrypto.getVotes(roundId)) ?? []
+
+                    // Check 1: a TX hash exists but the vote isn't marked as submitted
+                    // in the DB yet (crash during step 2 or 3 of a bundle).
                     let unsubmitted = votes.filter { !$0.submitted }
-                    guard !unsubmitted.isEmpty else { return }
                     for vote in unsubmitted {
                         if let _ = try? await votingCrypto.getVoteTxHash(roundId, vote.bundleIndex, vote.proposalId) {
                             logger.info("Vote resume: found in-flight vote for proposal \(vote.proposalId), auto-resuming")
                             await send(.resumePendingVote(proposalId: vote.proposalId, choice: vote.choice))
                             return
+                        }
+                    }
+
+                    // Check 2: partial vote — some bundles submitted, but fewer
+                    // VoteRecords than bundleCount (crash before a later bundle's
+                    // buildVoteCommitment created a VoteRecord).
+                    if bundleCount > 1 {
+                        var byProposal: [UInt32: (submitted: Int, total: Int, choice: VoteChoice)] = [:]
+                        for vote in votes {
+                            var entry = byProposal[vote.proposalId] ?? (submitted: 0, total: 0, choice: vote.choice)
+                            entry.total += 1
+                            if vote.submitted { entry.submitted += 1 }
+                            byProposal[vote.proposalId] = entry
+                        }
+                        for (proposalId, info) in byProposal {
+                            if info.submitted > 0, info.total < Int(bundleCount) {
+                                logger.info("Vote resume: proposal \(proposalId) has \(info.total)/\(bundleCount) bundle records, resuming")
+                                await send(.resumePendingVote(proposalId: proposalId, choice: info.choice))
+                                return
+                            }
                         }
                     }
                 }
