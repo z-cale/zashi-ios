@@ -161,14 +161,7 @@ struct DelegationSigningView: View {
         if store.isKeystoneUser {
             VStack(spacing: 8) {
                 switch store.keystoneSigningStatus {
-                case .idle:
-                    ZashiButton("Confirm with Keystone") {
-                        store.send(.delegationApproved)
-                    }
-                    .disabled(!witnessReady)
-                    .opacity(witnessReady ? 1.0 : 0.5)
-
-                case .preparingRequest:
+                case .idle, .preparingRequest:
                     ZashiButton("Preparing Keystone request...") { }
                         .disabled(true)
                         .opacity(0.5)
@@ -349,13 +342,10 @@ extension DelegationSigningView {
             }
 
             switch store.keystoneSigningStatus {
-            case .idle:
-                Text("Generate the delegation signing request to continue on Keystone.")
-                    .zFont(size: 12, style: Design.Text.tertiary)
-            case .preparingRequest:
+            case .idle, .preparingRequest:
                 HStack(spacing: 8) {
                     ProgressView()
-                    Text("Building 1-zatoshi delegation PCZT for Keystone...")
+                    Text("Building delegation PCZT for Keystone...")
                         .zFont(.medium, size: 13, style: Design.Text.tertiary)
                 }
             case .awaitingSignature:
