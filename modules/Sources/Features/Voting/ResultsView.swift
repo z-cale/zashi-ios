@@ -9,7 +9,7 @@ private let tallyValueMultiplier: UInt64 = 12_500_000 // zatoshi per tally unit
 private func tallyToZEC(_ value: UInt64) -> String {
     let zatoshi = value * tallyValueMultiplier
     let zec = Double(zatoshi) / 100_000_000.0
-    return String(format: "%.2f ZEC", zec)
+    return String(format: "%.3f ZEC", zec)
 }
 
 struct ResultsView: View {

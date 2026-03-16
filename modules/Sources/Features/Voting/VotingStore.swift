@@ -336,37 +336,37 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
         public var votingWeightZECString: String {
             let zec = Double(votingWeight) / 100_000_000.0
-            return String(format: "%.2f", zec)
+            return String(format: "%.3f", zec)
         }
 
-        /// ZEC value for the current Keystone bundle (or total if single-bundle / non-Keystone).
+        /// ZEC value for the current Keystone bundle (raw note sum).
         public var currentBundleZECString: String? {
             guard isKeystoneUser, bundleCount > 1 else { return nil }
             let bundles = walletNotes.smartBundles().bundles
             let idx = Int(currentKeystoneBundleIndex)
             guard idx < bundles.count else { return nil }
             let weight = bundles[idx].reduce(UInt64(0)) { $0 + $1.value }
-            return String(format: "%.2f", Double(weight) / 100_000_000.0)
+            return String(format: "%.3f", Double(weight) / 100_000_000.0)
         }
 
-        /// Total ZEC weight already signed across collected Keystone bundle signatures.
+        /// Total ZEC weight already signed across collected Keystone bundle signatures (raw note sum).
         public var signedBundlesZECString: String {
             let bundles = walletNotes.smartBundles().bundles
             let signedWeight = keystoneBundleSignatures.indices.reduce(UInt64(0)) { total, i in
                 guard i < bundles.count else { return total }
                 return total + bundles[i].reduce(UInt64(0)) { $0 + $1.value }
             }
-            return String(format: "%.2f", Double(signedWeight) / 100_000_000.0)
+            return String(format: "%.3f", Double(signedWeight) / 100_000_000.0)
         }
 
-        /// Total ZEC weight in unsigned bundles that would be given up by skipping.
+        /// Total ZEC weight in unsigned bundles that would be given up by skipping (raw note sum).
         public var skippedBundlesZECString: String {
             let bundles = walletNotes.smartBundles().bundles
             let signedCount = keystoneBundleSignatures.count
             let skippedWeight = (signedCount..<bundles.count).reduce(UInt64(0)) { total, i in
                 total + bundles[i].reduce(UInt64(0)) { $0 + $1.value }
             }
-            return String(format: "%.2f", Double(skippedWeight) / 100_000_000.0)
+            return String(format: "%.3f", Double(skippedWeight) / 100_000_000.0)
         }
 
         /// Raw ZEC weight for the memo — per-bundle for Keystone multi-bundle, total otherwise.
@@ -800,7 +800,10 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 // Use smart bundling to determine eligible weight (excluding dust bundles)
                 let bundleResult = notes.smartBundles()
                 let eligibleWeight = bundleResult.eligibleWeight
-                state.votingWeight = eligibleWeight
+                let rawSurvivingWeight = bundleResult.bundles.reduce(UInt64(0)) { total, bundle in
+                    total + bundle.reduce(UInt64(0)) { $0 + $1.value }
+                }
+                state.votingWeight = rawSurvivingWeight
                 if bundleResult.droppedCount > 0 {
                     let dropped = bundleResult.droppedCount
                     logger.info("Smart bundling: dropped \(dropped) notes in sub-threshold bundles (eligible: \(eligibleWeight) of \(weight) total)")
@@ -2328,7 +2331,7 @@ extension AlertState where Action == Voting.Action {
                 TextState("Cancel")
             }
         } message: {
-            TextState("You will lock in \(lockedIn) ZEC from signed bundles and give up \(givingUp) ZEC. This cannot be undone for this round.")
+            TextState("You will vote with \(lockedIn) ZEC from your signed bundles. The remaining \(givingUp) ZEC in unsigned bundles will not be included. This cannot be changed for this round.")
         }
     }
 }
