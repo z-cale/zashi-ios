@@ -256,8 +256,12 @@ final class VotingStoreTests: XCTestCase {
             RoundStateInfo(roundId: "aabb", phase: .delegationConstructed, snapshotHeight: 100,
                            hotkeyAddress: nil, delegatedWeight: nil, proofGenerated: false)
         }
-        store.dependencies.votingCrypto.getRecoveryState = { _ in
-            RoundRecoveryState(delegationTxHashes: [0: "tx-hash-0", 1: "tx-hash-1"])
+        store.dependencies.votingCrypto.getDelegationTxHash = { _, bundleIndex in
+            switch bundleIndex {
+            case 0: return "tx-hash-0"
+            case 1: return "tx-hash-1"
+            default: return nil
+            }
         }
         store.dependencies.votingCrypto.storeVanPosition = { _, _, _ in }
         store.dependencies.votingCrypto.getBundleCount = { _ in 3 }
@@ -320,8 +324,8 @@ final class VotingStoreTests: XCTestCase {
             RoundStateInfo(roundId: "aabb", phase: .delegationConstructed, snapshotHeight: 100,
                            hotkeyAddress: nil, delegatedWeight: nil, proofGenerated: false)
         }
-        store.dependencies.votingCrypto.getRecoveryState = { _ in
-            RoundRecoveryState(delegationTxHashes: [0: "tx-0"])
+        store.dependencies.votingCrypto.getDelegationTxHash = { _, bundleIndex in
+            bundleIndex == 0 ? "tx-0" : nil
         }
         store.dependencies.votingCrypto.getBundleCount = { _ in 1 }
         store.dependencies.votingCrypto.storeVanPosition = { _, bundleIdx, pos in
@@ -455,9 +459,6 @@ final class VotingStoreTests: XCTestCase {
             Voting()
         }
         store.exhaustivity = .off
-        store.dependencies.votingCrypto.getRecoveryState = { _ in
-            RoundRecoveryState()
-        }
 
         await store.send(.bundleCountRestored(1)) { state in
             state.bundleCount = 1
@@ -551,8 +552,8 @@ final class VotingStoreTests: XCTestCase {
             RoundStateInfo(roundId: "aabb", phase: .delegationProved, snapshotHeight: 100,
                            hotkeyAddress: nil, delegatedWeight: nil, proofGenerated: false)
         }
-        store.dependencies.votingCrypto.getRecoveryState = { _ in
-            RoundRecoveryState(delegationTxHashes: [0: "delegation-tx-42"])
+        store.dependencies.votingCrypto.getDelegationTxHash = { _, bundleIndex in
+            bundleIndex == 0 ? "delegation-tx-42" : nil
         }
         store.dependencies.votingCrypto.getBundleCount = { _ in 1 }
         store.dependencies.votingCrypto.storeVanPosition = { _, bundleIdx, pos in

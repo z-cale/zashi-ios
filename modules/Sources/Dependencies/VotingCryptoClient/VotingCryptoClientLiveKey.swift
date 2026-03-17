@@ -15,6 +15,7 @@ extension VotingCryptoClient: DependencyKey {
         func publishState(backend: VotingRustBackend, roundId: String) {
             guard let roundState = try? backend.getRoundState(roundId: roundId) else { return }
             let votes = (try? backend.getVotes(roundId: roundId)) ?? []
+            let bundleCount = (try? backend.getBundleCount(roundId: roundId)) ?? 0
             let dbState = VotingDbState(
                 roundState: RoundStateInfo(
                     roundId: roundState.roundId,
@@ -24,7 +25,8 @@ extension VotingCryptoClient: DependencyKey {
                     delegatedWeight: roundState.delegatedWeight,
                     proofGenerated: roundState.proofGenerated
                 ),
-                votes: votes.map { $0.toModel() }
+                votes: votes.map { $0.toModel() },
+                bundleCount: bundleCount
             )
             stateSubject.send(dbState)
         }
@@ -487,48 +489,49 @@ extension VotingCryptoClient: DependencyKey {
                 Data(try VotingRustBackend.extractNcRoot(treeStateBytes: [UInt8](treeStateBytes)))
             },
             storeDelegationTxHash: { roundId, bundleIndex, txHash in
-                await RecoveryFileStore.shared.update(roundId: roundId) { state in
-                    state.delegationTxHashes[bundleIndex] = txHash
-                }
+                let backend = try await dbActor.backend()
+                try backend.storeDelegationTxHash(roundId: roundId, bundleIndex: bundleIndex, txHash: txHash)
             },
             getDelegationTxHash: { roundId, bundleIndex in
-                await RecoveryFileStore.shared.load(roundId: roundId).delegationTxHashes[bundleIndex]
+                let backend = try await dbActor.backend()
+                return try backend.getDelegationTxHash(roundId: roundId, bundleIndex: bundleIndex)
             },
             storeVoteTxHash: { roundId, bundleIndex, proposalId, txHash in
-                let key = RoundRecoveryState.voteTxKey(bundleIndex: bundleIndex, proposalId: proposalId)
-                await RecoveryFileStore.shared.update(roundId: roundId) { state in
-                    state.voteTxHashes[key] = txHash
-                }
+                let backend = try await dbActor.backend()
+                try backend.storeVoteTxHash(roundId: roundId, bundleIndex: bundleIndex, proposalId: proposalId, txHash: txHash)
             },
             getVoteTxHash: { roundId, bundleIndex, proposalId in
-                let key = RoundRecoveryState.voteTxKey(bundleIndex: bundleIndex, proposalId: proposalId)
-                return await RecoveryFileStore.shared.load(roundId: roundId).voteTxHashes[key]
+                let backend = try await dbActor.backend()
+                return try backend.getVoteTxHash(roundId: roundId, bundleIndex: bundleIndex, proposalId: proposalId)
             },
             storeKeystoneBundleSignature: { roundId, info in
-                await RecoveryFileStore.shared.update(roundId: roundId) { state in
-                    state.keystoneSignatures.removeAll { $0.bundleIndex == info.bundleIndex }
-                    state.keystoneSignatures.append(info)
-                    state.keystoneSignatures.sort { $0.bundleIndex < $1.bundleIndex }
-                }
+                let backend = try await dbActor.backend()
+                try backend.storeKeystoneSignature(roundId: roundId, bundleIndex: info.bundleIndex, sig: info.sig, sighash: info.sighash, rk: info.rk)
             },
             loadKeystoneBundleSignatures: { roundId in
-                await RecoveryFileStore.shared.load(roundId: roundId).keystoneSignatures
-            },
-            storeVoteCommitmentBundle: { roundId, bundleIndex, proposalId, bundle in
-                let key = RoundRecoveryState.voteTxKey(bundleIndex: bundleIndex, proposalId: proposalId)
-                await RecoveryFileStore.shared.update(roundId: roundId) { state in
-                    state.voteCommitmentBundles[key] = bundle
+                let backend = try await dbActor.backend()
+                return try backend.getKeystoneSignatures(roundId: roundId).map {
+                    KeystoneBundleSignatureInfo(
+                        bundleIndex: $0.bundleIndex,
+                        sig: Data($0.sig),
+                        sighash: Data($0.sighash),
+                        rk: Data($0.rk)
+                    )
                 }
             },
-            getVoteCommitmentBundle: { roundId, bundleIndex, proposalId in
-                let key = RoundRecoveryState.voteTxKey(bundleIndex: bundleIndex, proposalId: proposalId)
-                return await RecoveryFileStore.shared.load(roundId: roundId).voteCommitmentBundles[key]
+            storeVoteCommitmentBundle: { roundId, bundleIndex, proposalId, bundle, vcTreePosition in
+                let backend = try await dbActor.backend()
+                let json = String(data: try JSONEncoder().encode(bundle), encoding: .utf8) ?? "{}"
+                try backend.storeCommitmentBundle(roundId: roundId, bundleIndex: bundleIndex, proposalId: proposalId, bundleJson: json, vcTreePosition: vcTreePosition)
             },
-            getRecoveryState: { roundId in
-                await RecoveryFileStore.shared.load(roundId: roundId)
+            getVoteCommitmentBundle: { roundId, bundleIndex, proposalId in
+                let backend = try await dbActor.backend()
+                guard let result = try backend.getCommitmentBundle(roundId: roundId, bundleIndex: bundleIndex, proposalId: proposalId) else { return nil }
+                return try JSONDecoder().decode(VoteCommitmentBundle.self, from: Data(result.json.utf8))
             },
             clearRecoveryState: { roundId in
-                await RecoveryFileStore.shared.clear(roundId: roundId)
+                let backend = try await dbActor.backend()
+                try backend.clearRecoveryState(roundId: roundId)
             }
         )
     }
@@ -557,48 +560,6 @@ private actor DatabaseActor {
             throw VotingCryptoError.databaseNotOpen
         }
         return _backend
-    }
-}
-
-// MARK: - RecoveryFileStore
-
-/// Persists per-round recovery state (TX hashes, Keystone signatures) to a JSON file
-/// in the Documents directory. Sits alongside the voting SQLite DB and survives app
-/// restarts without requiring Rust backend changes.
-private actor RecoveryFileStore {
-    static let shared = RecoveryFileStore()
-    private var cache: [String: RoundRecoveryState] = [:]
-
-    private func fileURL(roundId: String) -> URL {
-        FileManager.default
-            .urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("voting-recovery-\(roundId).json")
-    }
-
-    func load(roundId: String) -> RoundRecoveryState {
-        if let cached = cache[roundId] { return cached }
-        let url = fileURL(roundId: roundId)
-        guard let data = try? Data(contentsOf: url),
-              let state = try? JSONDecoder().decode(RoundRecoveryState.self, from: data)
-        else { return RoundRecoveryState() }
-        cache[roundId] = state
-        return state
-    }
-
-    func update(roundId: String, _ mutation: (inout RoundRecoveryState) -> Void) {
-        var state = load(roundId: roundId)
-        mutation(&state)
-        cache[roundId] = state
-        let url = fileURL(roundId: roundId)
-        if let data = try? JSONEncoder().encode(state) {
-            try? data.write(to: url, options: .atomic)
-        }
-    }
-
-    func clear(roundId: String) {
-        cache.removeValue(forKey: roundId)
-        let url = fileURL(roundId: roundId)
-        try? FileManager.default.removeItem(at: url)
     }
 }
 

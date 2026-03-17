@@ -1,5 +1,16 @@
 import Foundation
 
+// MARK: - Ballot Constants
+
+/// Ballot divisor in zatoshi (0.125 ZEC). Must match `librustvoting::governance::BALLOT_DIVISOR`.
+/// One ballot = this many zatoshi. Used for quantizing note bundle weights and tally display.
+public let ballotDivisor: UInt64 = 12_500_000
+
+/// Quantizes a zatoshi amount down to the nearest ballot boundary.
+public func quantizeWeight(_ zatoshi: UInt64) -> UInt64 {
+    (zatoshi / ballotDivisor) * ballotDivisor
+}
+
 // MARK: - Session & Round
 
 /// Full on-chain representation from VoteRound proto (zvote/v1/types.proto).
@@ -163,25 +174,31 @@ public struct VoteRecord: Equatable, Sendable {
 public struct VotingDbState: Equatable, Sendable {
     public let roundState: RoundStateInfo
     public let votes: [VoteRecord]
+    public let bundleCount: UInt32
 
-    public init(roundState: RoundStateInfo, votes: [VoteRecord]) {
+    public init(roundState: RoundStateInfo, votes: [VoteRecord], bundleCount: UInt32 = 0) {
         self.roundState = roundState
         self.votes = votes
+        self.bundleCount = bundleCount
     }
 
     /// Convenience: build the votes dictionary the UI needs.
     /// With multi-bundle, multiple VoteRecords may exist per proposal (one per bundle).
-    /// A proposal is only considered "voted" when ALL of its bundle votes are submitted.
+    /// A proposal is only considered "voted" when ALL of its bundle votes are submitted
+    /// AND the expected number of bundle records exist (guards against crash before a
+    /// later bundle's buildVoteCommitment creates its VoteRecord).
     public var votesByProposal: [UInt32: VoteChoice] {
-        // Group vote records by proposal
         var byProposal: [UInt32: [VoteRecord]] = [:]
         for vote in votes {
             byProposal[vote.proposalId, default: []].append(vote)
         }
-        // Only include proposals where every bundle's vote has been submitted
         var result: [UInt32: VoteChoice] = [:]
-        for (proposalId, records) in byProposal where records.allSatisfy(\.submitted) {
-            result[proposalId] = records.first?.choice
+        for (proposalId, records) in byProposal {
+            let allSubmitted = records.allSatisfy(\.submitted)
+            let hasAllBundles = bundleCount == 0 || UInt32(records.count) >= bundleCount
+            if allSubmitted && hasAllBundles {
+                result[proposalId] = records.first?.choice
+            }
         }
         return result
     }
@@ -195,7 +212,8 @@ public struct VotingDbState: Equatable, Sendable {
             delegatedWeight: nil,
             proofGenerated: false
         ),
-        votes: []
+        votes: [],
+        bundleCount: 0
     )
 }
 
@@ -709,36 +727,6 @@ public struct KeystoneBundleSignatureInfo: Equatable, Sendable, Codable {
         self.sig = sig
         self.sighash = sighash
         self.rk = rk
-    }
-}
-
-/// Lightweight state persisted to a JSON file alongside the SQLite DB to track
-/// in-flight TX hashes and Keystone signatures that would otherwise be lost on crash.
-public struct RoundRecoveryState: Equatable, Sendable, Codable {
-    /// Delegation TX hashes by bundle index, stored immediately after submitDelegation returns.
-    public var delegationTxHashes: [UInt32: String]
-    /// Vote TX hashes by bundle index + proposal ID: "bundleIndex-proposalId" -> txHash.
-    public var voteTxHashes: [String: String]
-    /// Vote commitment bundles (containing encrypted shares) persisted before TX submission.
-    /// Keyed the same as voteTxHashes. Required for share delegation after crash recovery.
-    public var voteCommitmentBundles: [String: VoteCommitmentBundle]
-    /// Keystone signatures collected during the multi-bundle signing loop.
-    public var keystoneSignatures: [KeystoneBundleSignatureInfo]
-
-    public init(
-        delegationTxHashes: [UInt32: String] = [:],
-        voteTxHashes: [String: String] = [:],
-        voteCommitmentBundles: [String: VoteCommitmentBundle] = [:],
-        keystoneSignatures: [KeystoneBundleSignatureInfo] = []
-    ) {
-        self.delegationTxHashes = delegationTxHashes
-        self.voteTxHashes = voteTxHashes
-        self.voteCommitmentBundles = voteCommitmentBundles
-        self.keystoneSignatures = keystoneSignatures
-    }
-
-    public static func voteTxKey(bundleIndex: UInt32, proposalId: UInt32) -> String {
-        "\(bundleIndex)-\(proposalId)"
     }
 }
 

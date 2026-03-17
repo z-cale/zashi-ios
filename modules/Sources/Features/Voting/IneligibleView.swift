@@ -144,6 +144,6 @@ struct IneligibleView: View {
 
     private var balanceFormatted: String {
         let zec = Double(store.votingWeight) / 100_000_000.0
-        return String(format: "%.2f", zec)
+        return String(format: "%.3f", zec)
     }
 }
