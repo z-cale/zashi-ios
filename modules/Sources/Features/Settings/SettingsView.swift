@@ -21,6 +21,8 @@ import TorSetup
 public struct SettingsView: View {
     @Environment(\.colorScheme) var colorScheme
     
+    @State private var showMultiOptionDemo = false
+    @State private var showShareSubmissionDemo = false
     @Perception.Bindable var store: StoreOf<Settings>
     
     public init(store: StoreOf<Settings>) {
@@ -70,6 +72,20 @@ public struct SettingsView: View {
                                 store.send(.aboutTapped)
                             }
                             
+                            ActionRow(
+                                icon: Asset.Assets.Icons.settings.image,
+                                title: "Multi-Option Vote Demo"
+                            ) {
+                                showMultiOptionDemo = true
+                            }
+
+                            ActionRow(
+                                icon: Asset.Assets.Icons.settings.image,
+                                title: "Share Submission Demo"
+                            ) {
+                                showShareSubmissionDemo = true
+                            }
+
                             ActionRow(
                                 icon: Asset.Assets.Icons.messageSmile.image,
                                 title: L10n.Settings.feedback,
@@ -147,6 +163,12 @@ public struct SettingsView: View {
                 }
             }
             .applyScreenBackground()
+            .sheet(isPresented: $showMultiOptionDemo) {
+                MultiOptionDemoView()
+            }
+            .sheet(isPresented: $showShareSubmissionDemo) {
+                ShareSubmissionDemoView()
+            }
             .zashiSheet(isPresented: $store.isInRecoverFundsMode) {
                 recoverFundsSheetContent()
             }
