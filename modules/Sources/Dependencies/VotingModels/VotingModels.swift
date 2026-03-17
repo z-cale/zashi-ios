@@ -1,5 +1,16 @@
 import Foundation
 
+// MARK: - Ballot Constants
+
+/// Ballot divisor in zatoshi (0.125 ZEC). Must match `librustvoting::governance::BALLOT_DIVISOR`.
+/// One ballot = this many zatoshi. Used for quantizing note bundle weights and tally display.
+public let ballotDivisor: UInt64 = 12_500_000
+
+/// Quantizes a zatoshi amount down to the nearest ballot boundary.
+public func quantizeWeight(_ zatoshi: UInt64) -> UInt64 {
+    (zatoshi / ballotDivisor) * ballotDivisor
+}
+
 // MARK: - Session & Round
 
 /// Full on-chain representation from VoteRound proto (zvote/v1/types.proto).
