@@ -228,11 +228,12 @@ struct ResultsView: View {
 
     @ViewBuilder
     private func resultHighlightAndBars(proposal: Proposal, entries: [TallyResult.Entry], totalAmount: UInt64, winningEntry: TallyResult.Entry?) -> some View {
-        let colorMap = buildDisplayColorMap(proposal: proposal, entries: entries)
+        let layout = buildDisplayLayout(proposal: proposal, entries: entries, winningEntry: winningEntry)
 
         if let winner = winningEntry, totalAmount > 0 {
             let winnerLabel = optionLabel(for: winner.decision, proposal: proposal)
-            let winnerColor = colorMap[winner.decision] ?? colorForDecision(winner.decision, proposal: proposal)
+            let winnerColor = layout.colorMap[winner.decision]
+                ?? voteOptionColor(for: winner.decision, total: proposal.options.count)
             HStack(spacing: 6) {
                 Image(systemName: "checkmark.seal.fill")
                     .foregroundStyle(winnerColor)
@@ -245,71 +246,20 @@ struct ResultsView: View {
             .clipShape(RoundedRectangle(cornerRadius: 8))
         }
 
-        groupAwareResults(proposal: proposal, entries: entries, totalAmount: totalAmount, winningEntry: winningEntry, colorMap: colorMap)
-    }
-
-    private func buildDisplayColorMap(proposal: Proposal, entries: [TallyResult.Entry]) -> [UInt32: Color] {
-        let groupedIndices = Set(proposal.optionGroups.flatMap(\.optionIndices))
-        let groupByFirst: [UInt32: OptionGroup] = Dictionary(
-            proposal.optionGroups.compactMap { g in g.optionIndices.min().map { ($0, g) } },
-            uniquingKeysWith: { a, _ in a }
-        )
-        let sortedEntries = entries.sorted { $0.decision < $1.decision }
-
-        var displayItems: [(decision: UInt32, group: OptionGroup?)] = []
-        for entry in sortedEntries {
-            if let group = groupByFirst[entry.decision] {
-                displayItems.append((entry.decision, group))
-            } else if !groupedIndices.contains(entry.decision) {
-                displayItems.append((entry.decision, nil))
-            }
-        }
-        let topLevelCount = displayItems.count
-        let totalSubOptions = displayItems.compactMap(\.group).reduce(0) { $0 + $1.optionIndices.count }
-        let colorSlots = topLevelCount + totalSubOptions
-
-        var colorMap: [UInt32: Color] = [:]
-        var subOffset = topLevelCount
-        for (di, item) in displayItems.enumerated() {
-            let dc = voteOptionColor(for: UInt32(di), total: topLevelCount)
-            if let group = item.group {
-                for (si, idx) in group.optionIndices.enumerated() {
-                    colorMap[idx] = voteOptionColor(for: UInt32(subOffset + si), total: colorSlots)
-                }
-                subOffset += group.optionIndices.count
-            } else {
-                colorMap[item.decision] = dc
-            }
-        }
-        return colorMap
-    }
-
-    @ViewBuilder
-    private func groupAwareResults(proposal: Proposal, entries: [TallyResult.Entry], totalAmount: UInt64, winningEntry: TallyResult.Entry?, colorMap: [UInt32: Color]) -> some View {
-        let entryByDecision = Dictionary(entries.map { ($0.decision, $0.amount) }, uniquingKeysWith: { a, _ in a })
-        let groupedIndices = Set(proposal.optionGroups.flatMap(\.optionIndices))
-        let groupByFirst: [UInt32: OptionGroup] = Dictionary(
-            proposal.optionGroups.compactMap { g in g.optionIndices.min().map { ($0, g) } },
-            uniquingKeysWith: { a, _ in a }
-        )
-
-        let displayItems = buildDisplayItems(proposal: proposal, entries: entries, entryByDecision: entryByDecision, groupedIndices: groupedIndices, groupByFirst: groupByFirst, winningEntry: winningEntry)
-        let topLevelCount = displayItems.count
-
-        ForEach(Array(displayItems.enumerated()), id: \.offset) { displayIdx, item in
-            let displayColor = voteOptionColor(for: UInt32(displayIdx), total: topLevelCount)
+        ForEach(layout.items) { item in
             if let group = item.group {
                 VStack(alignment: .leading, spacing: 6) {
                     resultRow(
                         label: group.label,
                         amount: item.amount,
-                        color: displayColor,
+                        color: item.color,
                         isWinner: false
                     )
                     ForEach(Array(group.optionIndices.enumerated()), id: \.element) { _, idx in
-                        let subAmount = entryByDecision[idx] ?? 0
+                        let subAmount = layout.entryByDecision[idx] ?? 0
                         let subLabel = optionLabel(for: idx, proposal: proposal)
-                        let subColor = colorMap[idx] ?? colorForDecision(idx, proposal: proposal)
+                        let subColor = layout.colorMap[idx]
+                            ?? voteOptionColor(for: idx, total: proposal.options.count)
                         HStack(spacing: 8) {
                             Circle()
                                 .fill(subColor)
@@ -329,33 +279,49 @@ struct ResultsView: View {
                 resultRow(
                     label: item.label,
                     amount: item.amount,
-                    color: displayColor,
+                    color: item.color,
                     isWinner: item.isWinner
                 )
             }
         }
     }
 
-    private struct DisplayItem {
-        let label: String
-        let amount: UInt64
-        let isWinner: Bool
-        let group: OptionGroup?
+    // MARK: - Display Layout
+
+    private struct DisplayLayout {
+        struct Item: Identifiable {
+            let id: Int
+            let label: String
+            let amount: UInt64
+            let isWinner: Bool
+            let group: OptionGroup?
+            let color: Color
+        }
+        let items: [Item]
+        let colorMap: [UInt32: Color]
+        let entryByDecision: [UInt32: UInt64]
     }
 
-    private func buildDisplayItems(proposal: Proposal, entries: [TallyResult.Entry], entryByDecision: [UInt32: UInt64], groupedIndices: Set<UInt32>, groupByFirst: [UInt32: OptionGroup], winningEntry: TallyResult.Entry?) -> [DisplayItem] {
-        let sortedEntries = entries.sorted { $0.decision < $1.decision }
-        var items: [DisplayItem] = []
-        for entry in sortedEntries {
-            if let group = groupByFirst[entry.decision] {
+    private func buildDisplayLayout(proposal: Proposal, entries: [TallyResult.Entry], winningEntry: TallyResult.Entry?) -> DisplayLayout {
+        let topo = GroupTopology(proposal: proposal)
+        let colors = proposalColors(for: proposal)
+        let entryByDecision = Dictionary(entries.map { ($0.decision, $0.amount) }, uniquingKeysWith: { a, _ in a })
+
+        var items: [DisplayLayout.Item] = []
+        for (di, entry) in topo.topLevel.enumerated() {
+            let headerColor = voteOptionColor(for: UInt32(di), total: topo.topLevelCount)
+            if let group = entry.group {
                 let groupTotal = group.optionIndices.reduce(UInt64(0)) { $0 + (entryByDecision[$1] ?? 0) }
-                items.append(DisplayItem(label: group.label, amount: groupTotal, isWinner: false, group: group))
-            } else if !groupedIndices.contains(entry.decision) {
-                let label = optionLabel(for: entry.decision, proposal: proposal)
-                items.append(DisplayItem(label: label, amount: entry.amount, isWinner: entry.decision == winningEntry?.decision, group: nil))
+                items.append(.init(id: di, label: group.label, amount: groupTotal, isWinner: false, group: group, color: headerColor))
+            } else {
+                let label = optionLabel(for: entry.index, proposal: proposal)
+                let color = colors.options[entry.index] ?? headerColor
+                let amount = entryByDecision[entry.index] ?? 0
+                items.append(.init(id: di, label: label, amount: amount, isWinner: entry.index == winningEntry?.decision, group: nil, color: color))
             }
         }
-        return items
+
+        return DisplayLayout(items: items, colorMap: colors.options, entryByDecision: entryByDecision)
     }
 
     // MARK: - Helpers
@@ -370,9 +336,5 @@ struct ResultsView: View {
         case 1: return "Oppose"
         default: return "Option \(decision)"
         }
-    }
-
-    private func colorForDecision(_ decision: UInt32, proposal: Proposal) -> Color {
-        voteOptionColor(for: decision, total: proposal.options.count)
     }
 }

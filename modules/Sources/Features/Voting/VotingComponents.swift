@@ -32,6 +32,79 @@ func voteOptionColor(for index: UInt32, total: Int) -> Color {
     return palette[Int(index) % palette.count]
 }
 
+// MARK: - Group Topology
+
+/// Pre-computes the display-order topology for a proposal's option groups.
+/// Computed once and shared across color mapping, vote selection, and results display.
+struct GroupTopology {
+    struct Item {
+        let index: UInt32
+        let group: OptionGroup?
+    }
+    let groupedIndices: Set<UInt32>
+    let groupByFirst: [UInt32: OptionGroup]
+    let topLevel: [Item]
+    var topLevelCount: Int { topLevel.count }
+
+    init(proposal: Proposal) {
+        groupedIndices = Set(proposal.optionGroups.flatMap(\.optionIndices))
+        groupByFirst = Dictionary(
+            proposal.optionGroups.compactMap { g in g.optionIndices.min().map { ($0, g) } },
+            uniquingKeysWith: { a, _ in a }
+        )
+        var items: [Item] = []
+        for option in proposal.options.sorted(by: { $0.index < $1.index }) {
+            if let group = groupByFirst[option.index] {
+                items.append(Item(index: option.index, group: group))
+            } else if !groupedIndices.contains(option.index) {
+                items.append(Item(index: option.index, group: nil))
+            }
+        }
+        topLevel = items
+    }
+}
+
+// MARK: - Proposal Color Scheme
+
+/// All colors derived from a proposal's group topology. Computed once and shared
+/// across vote selection, list chips, and results display.
+struct ProposalColors {
+    /// Option index → color for individual vote options (sub-options get sub-palette slots).
+    let options: [UInt32: Color]
+    /// Group ID → display-order header color for group rows.
+    let groupHeaders: [UInt32: Color]
+}
+
+func proposalColors(for proposal: Proposal) -> ProposalColors {
+    guard !proposal.optionGroups.isEmpty else {
+        let map = Dictionary(uniqueKeysWithValues: proposal.options.map {
+            ($0.index, voteOptionColor(for: $0.index, total: proposal.options.count))
+        })
+        return ProposalColors(options: map, groupHeaders: [:])
+    }
+
+    let topo = GroupTopology(proposal: proposal)
+    let totalSubOptions = topo.topLevel.compactMap(\.group).reduce(0) { $0 + $1.optionIndices.count }
+    let colorSlots = topo.topLevelCount + totalSubOptions
+
+    var optionColors: [UInt32: Color] = [:]
+    var groupColors: [UInt32: Color] = [:]
+    var subOffset = topo.topLevelCount
+    for (di, item) in topo.topLevel.enumerated() {
+        let topColor = voteOptionColor(for: UInt32(di), total: topo.topLevelCount)
+        if let group = item.group {
+            groupColors[group.id] = topColor
+            for (si, idx) in group.optionIndices.enumerated() {
+                optionColors[idx] = voteOptionColor(for: UInt32(subOffset + si), total: colorSlots)
+            }
+            subOffset += group.optionIndices.count
+        } else {
+            optionColors[item.index] = topColor
+        }
+    }
+    return ProposalColors(options: optionColors, groupHeaders: groupColors)
+}
+
 /// SF Symbol for a vote option index. For 2-option proposals this preserves the classic
 /// thumbs-up / thumbs-down icons; for 3+ options it uses numbered circles.
 func voteOptionIcon(for index: UInt32, total: Int) -> String {

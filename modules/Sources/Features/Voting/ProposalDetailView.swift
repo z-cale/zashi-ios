@@ -165,7 +165,7 @@ struct ProposalDetailView: View {
                         voteButton(
                             title: option.label,
                             icon: voteOptionIcon(for: option.index, total: proposal.options.count),
-                            color: voteOptionColor(for: option.index, total: proposal.options.count),
+                            color: voteColor(choice),
                             isSelected: pendingChoice == choice,
                             enabled: votingEnabled
                         ) {
@@ -173,21 +173,17 @@ struct ProposalDetailView: View {
                         }
                     }
                 } else {
-                    let groupedIndices = Set(proposal.optionGroups.flatMap(\.optionIndices))
-                    let groupByFirstIndex: [UInt32: OptionGroup] = Dictionary(
-                        proposal.optionGroups.compactMap { g in
-                            g.optionIndices.min().map { ($0, g) }
-                        },
-                        uniquingKeysWith: { a, _ in a }
-                    )
+                    let topo = GroupTopology(proposal: proposal)
+                    let colors = proposalColors(for: proposal)
 
                     ForEach(proposal.options, id: \.index) { option in
-                        if let group = groupByFirstIndex[option.index] {
+                        if let group = topo.groupByFirst[option.index] {
                             let memberOptions = group.optionIndices.compactMap { idx in
                                 proposal.options.first { $0.index == idx }
                             }
                             let isExpanded = expandedGroupId == group.id
                             let hasSelectedSub = memberOptions.contains { pendingChoice == .option($0.index) }
+                            let headerColor = colors.groupHeaders[group.id] ?? .secondary
 
                             VStack(spacing: 6) {
                                 Button {
@@ -199,13 +195,13 @@ struct ProposalDetailView: View {
                                     HStack(spacing: 10) {
                                         Image(systemName: isExpanded ? "chevron.down.circle.fill" : "chevron.right.circle.fill")
                                             .font(.system(size: 18))
-                                            .foregroundStyle(hasSelectedSub ? .green : Design.Text.primary.color(colorScheme))
+                                            .foregroundStyle(hasSelectedSub ? headerColor : Design.Text.primary.color(colorScheme))
                                         Text(group.label)
                                             .zFont(.semiBold, size: 15, style: hasSelectedSub ? Design.Text.primary : Design.Text.secondary)
                                         Spacer()
                                         if hasSelectedSub {
                                             Image(systemName: "checkmark.circle.fill")
-                                                .foregroundStyle(.green)
+                                                .foregroundStyle(headerColor)
                                         }
                                     }
                                     .padding(14)
@@ -213,7 +209,7 @@ struct ProposalDetailView: View {
                                     .clipShape(RoundedRectangle(cornerRadius: 14))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 14)
-                                            .stroke(hasSelectedSub ? Color.green.opacity(0.4) : Design.Surfaces.strokeSecondary.color(colorScheme), lineWidth: 1)
+                                            .stroke(hasSelectedSub ? headerColor.opacity(0.4) : Design.Surfaces.strokeSecondary.color(colorScheme), lineWidth: 1)
                                     )
                                 }
                                 .buttonStyle(.plain)
@@ -224,7 +220,7 @@ struct ProposalDetailView: View {
                                         voteButton(
                                             title: subOption.label,
                                             icon: voteOptionIcon(for: subOption.index, total: proposal.options.count),
-                                            color: voteOptionColor(for: subOption.index, total: proposal.options.count),
+                                            color: voteColor(choice),
                                             isSelected: pendingChoice == choice,
                                             enabled: votingEnabled
                                         ) {
@@ -234,12 +230,12 @@ struct ProposalDetailView: View {
                                     }
                                 }
                             }
-                        } else if !groupedIndices.contains(option.index) {
+                        } else if !topo.groupedIndices.contains(option.index) {
                             let choice = VoteChoice.option(option.index)
                             voteButton(
                                 title: option.label,
                                 icon: voteOptionIcon(for: option.index, total: proposal.options.count),
-                                color: voteOptionColor(for: option.index, total: proposal.options.count),
+                                color: voteColor(choice),
                                 isSelected: pendingChoice == choice,
                                 enabled: votingEnabled
                             ) {
@@ -500,7 +496,8 @@ extension ProposalDetailView {
     }
 
     func voteColor(_ choice: VoteChoice) -> Color {
-        voteOptionColor(for: choice.index, total: proposal.options.count)
+        proposalColors(for: proposal).options[choice.index]
+            ?? voteOptionColor(for: choice.index, total: proposal.options.count)
     }
 
     func optionLabel(for choice: VoteChoice) -> String {

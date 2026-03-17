@@ -254,14 +254,14 @@ extension ProposalListView {
                             VoteChip(
                                 choice: vote,
                                 label: vote.flatMap { voteChoice in proposal.options.first { $0.index == voteChoice.index }?.label },
-                                color: vote.map { voteOptionColor(for: $0.index, total: proposal.options.count) }
+                                color: vote.map { proposalColors(for: proposal).options[$0.index] ?? .gray }
                             )
                         }
                     } else {
                         VoteChip(
                             choice: vote,
                             label: vote.flatMap { voteChoice in proposal.options.first { $0.index == voteChoice.index }?.label },
-                            color: vote.map { voteOptionColor(for: $0.index, total: proposal.options.count) }
+                            color: vote.map { proposalColors(for: proposal).options[$0.index] ?? .gray }
                         )
                     }
                 }
@@ -300,7 +300,8 @@ extension ProposalListView {
 extension ProposalListView {
     func voteColor(_ vote: VoteChoice?, proposal: Proposal) -> Color {
         guard let vote else { return .clear }
-        return voteOptionColor(for: vote.index, total: proposal.options.count)
+        return proposalColors(for: proposal).options[vote.index]
+            ?? voteOptionColor(for: vote.index, total: proposal.options.count)
     }
 }
 
