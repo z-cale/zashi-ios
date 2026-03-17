@@ -53,6 +53,15 @@ extension HomeView {
             }
 
             ActionRow(
+                icon: Image(systemName: "bolt.fill"),
+                title: "Tachyon",
+                desc: "Out-of-band payment demos",
+                divider: true
+            ) {
+                store.send(.tachyonDemoTapped)
+            }
+
+            ActionRow(
                 icon: Asset.Assets.Icons.settings.image,
                 title: L10n.HomeScreen.moreDotted,
                 divider: false

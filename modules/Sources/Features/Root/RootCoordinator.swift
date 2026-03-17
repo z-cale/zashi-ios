@@ -180,6 +180,18 @@ extension Root {
                 state.path = .serverSwitch
                 return .none
 
+                // MARK: - Tachyon Demo
+
+            case .home(.tachyonDemoTapped):
+                state.homeState.moreRequest = false
+                state.tachyonDemoState = .initial
+                state.path = .tachyonDemo
+                return .none
+
+            case .tachyonDemo(.dismissFlow):
+                state.path = nil
+                return .none
+
                 // MARK: - Voting
 
             case .home(.votingBannerTapped):

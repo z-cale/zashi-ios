@@ -97,7 +97,8 @@ let package = Package(
         .library(name: "Voting", targets: ["Voting"]),
         .library(name: "VotingAPIClient", targets: ["VotingAPIClient"]),
         .library(name: "VotingCryptoClient", targets: ["VotingCryptoClient"]),
-        .library(name: "VotingModels", targets: ["VotingModels"])
+        .library(name: "VotingModels", targets: ["VotingModels"]),
+        .library(name: "TachyonDemo", targets: ["TachyonDemo"])
     ],
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-composable-architecture", from: "1.23.1"),
@@ -700,6 +701,7 @@ let package = Package(
                 "ZcashSDKEnvironment",
                 "ZecKeyboard",
                 "Voting",
+                "TachyonDemo",
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
                 .product(name: "ZcashLightClientKit", package: "zcash-swift-wallet-sdk")
             ],
@@ -1253,6 +1255,17 @@ let package = Package(
             name: "VotingModels",
             dependencies: [],
             path: "Sources/Dependencies/VotingModels"
+        ),
+        .target(
+            name: "TachyonDemo",
+            dependencies: [
+                "Generated",
+                "Models",
+                "UIComponents",
+                "Utils",
+                .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+            ],
+            path: "Sources/Features/TachyonDemo"
         )
     ]
 )

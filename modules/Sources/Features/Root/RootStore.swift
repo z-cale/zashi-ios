@@ -33,6 +33,7 @@ import ShieldingProcessor
 import SupportDataGenerator
 import SwapAndPay
 import Voting
+import TachyonDemo
 
 // Path
 import CurrencyConversionSetup
@@ -73,6 +74,7 @@ public struct Root {
             case swapAndPayCoordFlow
             case torSetup
             case transactionsCoordFlow
+            case tachyonDemo
             case voting
             case walletBackup
         }
@@ -123,6 +125,7 @@ public struct Root {
         public var wasRestoringWhenDisconnected = false
         public var welcomeState: Welcome.State
         @Shared(.inMemory(.zashiWalletAccount)) public var zashiWalletAccount: WalletAccount? = nil
+        public var tachyonDemoState = TachyonDemo.State.initial
         public var votingState = Voting.State.initial
 
 
@@ -219,6 +222,7 @@ public struct Root {
         case updateStateAfterConfigUpdate(WalletConfig)
         case walletConfigLoaded(WalletConfig)
         case welcome(Welcome.Action)
+        case tachyonDemo(TachyonDemo.Action)
         case voting(Voting.Action)
 
 
@@ -396,6 +400,10 @@ public struct Root {
 
         Scope(state: \.swapAndPayCoordFlowState, action: \.swapAndPayCoordFlow) {
             SwapAndPayCoordFlow()
+        }
+
+        Scope(state: \.tachyonDemoState, action: \.tachyonDemo) {
+            TachyonDemo()
         }
 
         Scope(state: \.votingState, action: \.voting) {
