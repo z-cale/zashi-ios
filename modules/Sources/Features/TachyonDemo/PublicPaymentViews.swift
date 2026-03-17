@@ -1,5 +1,6 @@
 import SwiftUI
 import ComposableArchitecture
+import Generated
 import UIComponents
 
 // MARK: - Recipient: Register
@@ -9,7 +10,7 @@ struct PPRecipientRegisterView: View {
 
     var body: some View {
         WithPerceptionTracking {
-            VStack(spacing: 24) {
+            VStack(spacing: 0) {
                 Spacer()
 
                 Image(systemName: "antenna.radiowaves.left.and.right")
@@ -17,44 +18,30 @@ struct PPRecipientRegisterView: View {
                     .foregroundStyle(.orange)
 
                 Text("Create Public Payment Address")
-                    .font(.title3.weight(.semibold))
+                    .zFont(.semiBold, size: 24, style: Design.Text.primary)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 16)
 
                 Text("Register your payment key with a relay service. Anyone can send you payments by scanning the QR — even while you're offline.")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
+                    .zFont(size: 14, style: Design.Text.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
+                    .padding(.top, 8)
 
                 TruncatedKeyView(label: "Payment key:", key: MockData.recipientKey)
+                    .padding(.top, 16)
 
                 Spacer()
 
-                Button {
+                ZashiButton("Register with Relay") {
                     store.send(.registerWithRelay)
-                } label: {
-                    Text("Register with Relay")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.orange)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .padding(.horizontal, 20)
                 .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button { store.send(.goBack) } label: {
-                        Image(systemName: "chevron.left").foregroundStyle(.primary)
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("Public Payment").font(.headline)
-                }
-            }
+            .screenHorizontalPadding()
+            .zashiBack { store.send(.goBack) }
+            .screenTitle("Public Payment")
         }
+        .applyScreenBackground()
     }
 }
 
@@ -65,76 +52,56 @@ struct PPRecipientShowURLView: View {
 
     var body: some View {
         WithPerceptionTracking {
-            VStack(spacing: 20) {
+            VStack(spacing: 0) {
                 Spacer()
 
                 ViaRelayBadge()
 
                 Text("Your Public Payment Address")
-                    .font(.title3.weight(.semibold))
+                    .zFont(.semiBold, size: 24, style: Design.Text.primary)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 12)
 
                 TachyonQRCodeView(content: store.relayURL, size: 220)
                     .padding(20)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .background {
+                        RoundedRectangle(cornerRadius: Design.Radius._2xl)
+                            .fill(Color.white)
+                    }
+                    .padding(.top, 16)
 
                 Text(store.relayURL)
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 32)
+                    .zFont(fontFamily: .robotoMono, size: 12, style: Design.Text.tertiary)
+                    .padding(.top, 8)
 
                 Text("Post this anywhere. Anyone can scan and pay.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .zFont(size: 14, style: Design.Text.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
+                    .padding(.top, 8)
 
                 Spacer()
 
                 VStack(spacing: 12) {
-                    Button {
+                    ZashiButton("Share", prefixView: Image(systemName: "square.and.arrow.up")) {
                         store.send(.sharePayment)
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "square.and.arrow.up")
-                            Text("Share")
-                        }
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.orange)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
 
-                    Button {
+                    ZashiButton("Done", type: .ghost) {
                         store.send(.backToFlowPicker)
-                    } label: {
-                        Text("Done")
-                            .font(.body.weight(.medium))
-                            .foregroundStyle(Color.accentColor)
                     }
                 }
-                .padding(.horizontal, 20)
                 .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
+            .screenHorizontalPadding()
             .sheet(isPresented: .constant(store.isSharePresented)) {
                 ShareSheet(items: [store.relayURL]) {
                     store.send(.shareFinished)
                 }
             }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button { store.send(.goBack) } label: {
-                        Image(systemName: "chevron.left").foregroundStyle(.primary)
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("Public Payment").font(.headline)
-                }
-            }
+            .zashiBack { store.send(.goBack) }
+            .screenTitle("Public Payment")
         }
+        .applyScreenBackground()
     }
 }
 
@@ -145,54 +112,26 @@ struct PPSenderScanView: View {
 
     var body: some View {
         WithPerceptionTracking {
-            VStack(spacing: 24) {
+            VStack(spacing: 0) {
                 Spacer()
 
-                RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [8]))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 240, height: 240)
-                    .overlay {
-                        VStack(spacing: 12) {
-                            Image(systemName: "camera.viewfinder")
-                                .font(.system(size: 48))
-                                .foregroundStyle(.secondary)
-                            Text("Scan public payment QR")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
+                MockScanView(label: "Scan public payment QR")
 
                 ViaRelayBadge()
+                    .padding(.top, 16)
 
                 Spacer()
 
-                Button {
+                ZashiButton("Simulate Scan") {
                     store.send(.proceedTapped)
-                } label: {
-                    Text("Simulate Scan")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.accentColor)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .padding(.horizontal, 20)
                 .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button { store.send(.goBack) } label: {
-                        Image(systemName: "chevron.left").foregroundStyle(.primary)
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("Public Payment").font(.headline)
-                }
-            }
+            .screenHorizontalPadding()
+            .zashiBack { store.send(.goBack) }
+            .screenTitle("Public Payment")
         }
+        .applyScreenBackground()
     }
 }
 
@@ -203,59 +142,43 @@ struct PPSenderEnterAmountView: View {
 
     var body: some View {
         WithPerceptionTracking {
-            VStack(spacing: 24) {
+            VStack(spacing: 0) {
                 Spacer()
 
                 ViaRelayBadge()
 
                 Text("Send to Public Address")
-                    .font(.title3.weight(.semibold))
+                    .zFont(.semiBold, size: 24, style: Design.Text.primary)
+                    .padding(.top, 12)
 
                 Text(TachyonURI.relayURL(relayId: MockData.relayId))
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.secondary)
+                    .zFont(fontFamily: .robotoMono, size: 12, style: Design.Text.tertiary)
+                    .padding(.top, 4)
 
                 VStack(spacing: 8) {
                     TextField("Amount (ZEC)", text: $store.amount.sending(\.amountChanged))
                         .keyboardType(.decimalPad)
-                        .font(.system(.title, design: .monospaced))
+                        .zFont(.semiBold, fontFamily: .robotoMono, size: 32, style: Design.Text.primary)
                         .multilineTextAlignment(.center)
-                        .padding()
-                        .background(Color(.secondarySystemGroupedBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .padding(16)
+                        .background { RoundedRectangle(cornerRadius: Design.Radius._xl).fill().zForegroundColor(Design.Surfaces.bgSecondary) }
 
                     MockBalanceView()
                 }
-                .padding(.horizontal, 32)
+                .padding(.top, 24)
 
                 Spacer()
 
-                Button {
+                ZashiButton("Continue") {
                     store.send(.proceedTapped)
-                } label: {
-                    Text("Continue")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.accentColor)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .padding(.horizontal, 20)
                 .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button { store.send(.goBack) } label: {
-                        Image(systemName: "chevron.left").foregroundStyle(.primary)
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("Public Payment").font(.headline)
-                }
-            }
+            .screenHorizontalPadding()
+            .zashiBack { store.send(.goBack) }
+            .screenTitle("Public Payment")
         }
+        .applyScreenBackground()
     }
 }
 
@@ -269,69 +192,38 @@ struct PPSenderConfirmView: View {
             VStack(spacing: 0) {
                 Spacer()
 
-                VStack(spacing: 16) {
-                    Text("Confirm Payment")
-                        .font(.title3.weight(.semibold))
+                Text("Confirm Payment")
+                    .zFont(.semiBold, size: 24, style: Design.Text.primary)
 
-                    ViaRelayBadge()
+                ViaRelayBadge()
+                    .padding(.top, 8)
 
-                    VStack(spacing: 12) {
-                        confirmRow("Relay", value: MockData.relayBaseURL)
-                        confirmRow("Amount", value: "\(store.amount.isEmpty ? "1.0" : store.amount) ZEC")
-                        confirmRow("Fee", value: "\(MockData.mockFee) ZEC")
-                    }
-                    .padding(16)
-                    .background(Color(.secondarySystemGroupedBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-
-                    Text("The relay will store your payment until the recipient comes online.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
+                VStack(spacing: 12) {
+                    ConfirmRow(label: "Relay", value: MockData.relayBaseURL)
+                    ConfirmRow(label: "Amount", value: "\(store.amount.isEmpty ? "1.0" : store.amount) ZEC")
+                    ConfirmRow(label: "Fee", value: "\(MockData.mockFee) ZEC")
                 }
-                .padding(.horizontal, 20)
+                .padding(16)
+                .background { RoundedRectangle(cornerRadius: Design.Radius._xl).fill().zForegroundColor(Design.Surfaces.bgSecondary) }
+                .padding(.top, 16)
+
+                Text("The relay will store your payment until the recipient comes online.")
+                    .zFont(size: 14, style: Design.Text.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 12)
 
                 Spacer()
 
-                Button {
+                ZashiButton("Send via Relay") {
                     store.send(.proceedTapped)
-                } label: {
-                    Text("Send via Relay")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.orange)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .padding(.horizontal, 20)
                 .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button { store.send(.goBack) } label: {
-                        Image(systemName: "chevron.left").foregroundStyle(.primary)
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("Public Payment").font(.headline)
-                }
-            }
+            .screenHorizontalPadding()
+            .zashiBack { store.send(.goBack) }
+            .screenTitle("Public Payment")
         }
-    }
-
-    private func confirmRow(_ label: String, value: String) -> some View {
-        HStack {
-            Text(label)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Text(value)
-                .font(.system(.footnote, design: .monospaced))
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-        }
+        .applyScreenBackground()
     }
 }
 
@@ -342,7 +234,7 @@ struct PPRecipientCheckRelayView: View {
 
     var body: some View {
         WithPerceptionTracking {
-            VStack(spacing: 24) {
+            VStack(spacing: 0) {
                 Spacer()
 
                 Image(systemName: "antenna.radiowaves.left.and.right")
@@ -350,42 +242,26 @@ struct PPRecipientCheckRelayView: View {
                     .foregroundStyle(.orange)
 
                 Text("Check for Payments")
-                    .font(.title3.weight(.semibold))
+                    .zFont(.semiBold, size: 24, style: Design.Text.primary)
+                    .padding(.top, 16)
 
-                Text("Query the relay service for any payments sent to your public address while you were offline.")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
+                Text("Query the relay for payments sent to your public address while you were offline.")
+                    .zFont(size: 14, style: Design.Text.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
+                    .padding(.top, 8)
 
                 Spacer()
 
-                Button {
+                ZashiButton("Check Relay") {
                     store.send(.checkRelay)
-                } label: {
-                    Text("Check Relay")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.orange)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .padding(.horizontal, 20)
                 .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button { store.send(.goBack) } label: {
-                        Image(systemName: "chevron.left").foregroundStyle(.primary)
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("Public Payment").font(.headline)
-                }
-            }
+            .screenHorizontalPadding()
+            .zashiBack { store.send(.goBack) }
+            .screenTitle("Public Payment")
         }
+        .applyScreenBackground()
     }
 }
 
@@ -396,16 +272,17 @@ struct PPRecipientPaymentsArrivedView: View {
 
     var body: some View {
         WithPerceptionTracking {
-            VStack(spacing: 16) {
+            VStack(spacing: 0) {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                        .foregroundStyle(Color.green)
                     Text("\(store.receivedPayments.count) payments received")
-                        .font(.title3.weight(.semibold))
+                        .zFont(.semiBold, size: 20, style: Design.Text.primary)
                 }
                 .padding(.top, 24)
 
                 ViaRelayBadge()
+                    .padding(.top, 8)
 
                 ScrollView {
                     VStack(spacing: 8) {
@@ -413,48 +290,37 @@ struct PPRecipientPaymentsArrivedView: View {
                             paymentRow(payment)
                         }
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
                 }
 
                 Spacer()
 
-                Button {
+                ZashiButton("Done") {
                     store.send(.backToFlowPicker)
-                } label: {
-                    Text("Done")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.accentColor)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .padding(.horizontal, 20)
                 .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
+            .screenHorizontalPadding()
             .navigationBarBackButtonHidden(true)
         }
+        .applyScreenBackground()
     }
 
     private func paymentRow(_ payment: MockPayment) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text("+\(payment.amount) ZEC")
-                    .font(.body.weight(.semibold))
+                    .zFont(.semiBold, size: 16, style: Design.Text.primary)
                 Text(payment.senderLabel)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .zFont(size: 14, style: Design.Text.tertiary)
             }
 
             Spacer()
 
             Text(payment.timestamp, style: .relative)
-                .font(.footnote)
-                .foregroundStyle(.tertiary)
+                .zFont(size: 12, style: Design.Text.quaternary)
         }
         .padding(12)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .background { RoundedRectangle(cornerRadius: Design.Radius._lg).fill().zForegroundColor(Design.Surfaces.bgSecondary) }
     }
 }

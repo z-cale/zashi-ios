@@ -9,7 +9,7 @@ struct FlowPickerView: View {
     var body: some View {
         WithPerceptionTracking {
             VStack(spacing: 0) {
-                demoBanner
+                DemoBanner()
 
                 ScrollView {
                     VStack(spacing: 12) {
@@ -17,39 +17,24 @@ struct FlowPickerView: View {
                             flowCard(flow)
                         }
                     }
-                    .padding(.horizontal, 20)
                     .padding(.top, 16)
                 }
+                .screenHorizontalPadding()
             }
-            .background(Color(.systemGroupedBackground))
+            .zashiBack(hidden: true)
+            .screenTitle("Tachyon")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button {
                         store.send(.dismissFlow)
                     } label: {
                         Image(systemName: "xmark")
-                            .foregroundStyle(.primary)
+                            .zImage(size: 16, style: Design.Text.primary)
                     }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("Tachyon")
-                        .font(.headline)
                 }
             }
         }
-    }
-
-    private var demoBanner: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "flask.fill")
-                .foregroundStyle(.orange)
-            Text("Prototype — all crypto is mocked")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
-        .background(Color.orange.opacity(0.1))
+        .applyScreenBackground()
     }
 
     private func flowCard(_ flow: TachyonDemo.State.Flow) -> some View {
@@ -58,29 +43,25 @@ struct FlowPickerView: View {
         } label: {
             HStack(spacing: 16) {
                 Image(systemName: flow.systemImage)
-                    .font(.title2)
-                    .foregroundStyle(.primary)
+                    .zImage(size: 24, style: Design.Text.primary)
                     .frame(width: 40, height: 40)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(flow.title)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.primary)
+                        .zFont(.semiBold, size: 16, style: Design.Text.primary)
 
                     Text(flow.description)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .zFont(size: 14, style: Design.Text.tertiary)
                 }
 
                 Spacer()
 
                 Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+                    .zImage(size: 12, style: Design.Text.quaternary)
             }
             .padding(16)
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .background { RoundedRectangle(cornerRadius: Design.Radius._xl).fill().zForegroundColor(Design.Surfaces.bgSecondary) }
         }
+        .buttonStyle(.plain)
     }
 }

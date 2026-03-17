@@ -16,14 +16,13 @@ struct TachyonProcessingView: View {
                 .controlSize(.large)
 
             Text(message)
-                .font(.body)
-                .foregroundStyle(.secondary)
+                .zFont(size: 14, style: Design.Text.secondary)
 
             Spacer()
         }
         .frame(maxWidth: .infinity)
-        .background(Color(.systemGroupedBackground))
         .navigationBarBackButtonHidden(true)
+        .applyScreenBackground()
     }
 }
 
@@ -36,40 +35,32 @@ struct TachyonSuccessView: View {
 
     var body: some View {
         WithPerceptionTracking {
-            VStack(spacing: 24) {
+            VStack(spacing: 0) {
                 Spacer()
 
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 64))
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Color.green)
 
                 Text(title)
-                    .font(.title2.weight(.bold))
+                    .zFont(.semiBold, size: 24, style: Design.Text.primary)
+                    .padding(.top, 16)
 
                 Text(subtitle)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
+                    .zFont(size: 14, style: Design.Text.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
+                    .padding(.top, 8)
 
                 Spacer()
 
-                Button {
+                ZashiButton("Done") {
                     store.send(.backToFlowPicker)
-                } label: {
-                    Text("Done")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.accentColor)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .padding(.horizontal, 20)
                 .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
+            .screenHorizontalPadding()
             .navigationBarBackButtonHidden(true)
+            .applyScreenBackground()
         }
     }
 }
@@ -93,12 +84,12 @@ struct TachyonQRCodeView: View {
                 .scaledToFit()
                 .frame(width: size, height: size)
         } else {
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: Design.Radius._md)
                 .fill(Color(.tertiarySystemFill))
                 .frame(width: size, height: size)
                 .overlay {
                     Text("QR")
-                        .foregroundStyle(.secondary)
+                        .zFont(size: 14, style: Design.Text.support)
                 }
         }
     }
@@ -126,11 +117,9 @@ struct MockBalanceView: View {
     var body: some View {
         HStack(spacing: 4) {
             Text("Balance:")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                .zFont(size: 14, style: Design.Text.tertiary)
             Text("\(MockData.mockBalance) ZEC")
-                .font(.footnote.weight(.medium))
-                .foregroundStyle(.primary)
+                .zFont(.medium, size: 14, style: Design.Text.primary)
         }
     }
 }
@@ -144,11 +133,9 @@ struct TruncatedKeyView: View {
     var body: some View {
         HStack(spacing: 8) {
             Text(label)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                .zFont(size: 14, style: Design.Text.tertiary)
             Text(key.truncated)
-                .font(.system(.footnote, design: .monospaced))
-                .foregroundStyle(.primary)
+                .zFont(fontFamily: .robotoMono, size: 14, style: Design.Text.primary)
         }
     }
 }
@@ -159,14 +146,71 @@ struct ViaRelayBadge: View {
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: "antenna.radiowaves.left.and.right")
-                .font(.caption2)
+                .font(.system(size: 10))
             Text("via relay")
-                .font(.caption2)
+                .zFont(.medium, size: 12, color: .orange)
         }
         .foregroundStyle(.orange)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(Color.orange.opacity(0.1))
         .clipShape(Capsule())
+    }
+}
+
+// MARK: - Demo Banner
+
+struct DemoBanner: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "flask.fill")
+                .font(.system(size: 12))
+                .foregroundStyle(.orange)
+            Text("Prototype — all crypto is mocked")
+                .zFont(size: 12, style: Design.Text.tertiary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(Color.orange.opacity(0.08))
+    }
+}
+
+// MARK: - Confirm Row
+
+struct ConfirmRow: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .zFont(size: 14, style: Design.Text.tertiary)
+            Spacer()
+            Text(value)
+                .zFont(fontFamily: .robotoMono, size: 14, style: Design.Text.primary)
+                .lineLimit(1)
+        }
+    }
+}
+
+// MARK: - Mock Scan Placeholder
+
+struct MockScanView: View {
+    let label: String
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: Design.Radius._2xl)
+            .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [8]))
+            .zForegroundColor(Design.Surfaces.strokePrimary)
+            .frame(width: 240, height: 240)
+            .overlay {
+                VStack(spacing: 12) {
+                    Image(systemName: "camera.viewfinder")
+                        .font(.system(size: 48))
+                        .zForegroundColor(Design.Text.support)
+                    Text(label)
+                        .zFont(size: 14, style: Design.Text.support)
+                }
+            }
     }
 }

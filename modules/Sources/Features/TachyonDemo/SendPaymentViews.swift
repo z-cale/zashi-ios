@@ -1,5 +1,6 @@
 import SwiftUI
 import ComposableArchitecture
+import Generated
 import UIComponents
 
 // MARK: - Sender: Enter Amount
@@ -9,57 +10,40 @@ struct LCSenderEnterAmountView: View {
 
     var body: some View {
         WithPerceptionTracking {
-            VStack(spacing: 24) {
+            VStack(spacing: 0) {
                 Spacer()
 
                 Text("Create Payment")
-                    .font(.title3.weight(.semibold))
+                    .zFont(.semiBold, size: 24, style: Design.Text.primary)
 
                 Text("The recipient will claim this via link or QR")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .zFont(size: 14, style: Design.Text.secondary)
+                    .padding(.top, 8)
 
                 VStack(spacing: 8) {
                     TextField("Amount (ZEC)", text: $store.amount.sending(\.amountChanged))
                         .keyboardType(.decimalPad)
-                        .font(.system(.title, design: .monospaced))
+                        .zFont(.semiBold, fontFamily: .robotoMono, size: 32, style: Design.Text.primary)
                         .multilineTextAlignment(.center)
-                        .padding()
-                        .background(Color(.secondarySystemGroupedBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .padding(16)
+                        .background { RoundedRectangle(cornerRadius: Design.Radius._xl).fill().zForegroundColor(Design.Surfaces.bgSecondary) }
 
                     MockBalanceView()
                 }
-                .padding(.horizontal, 32)
+                .padding(.top, 24)
 
                 Spacer()
 
-                Button {
+                ZashiButton("Create Payment") {
                     store.send(.proceedTapped)
-                } label: {
-                    Text("Create Payment")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.accentColor)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .padding(.horizontal, 20)
                 .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button { store.send(.goBack) } label: {
-                        Image(systemName: "chevron.left").foregroundStyle(.primary)
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("Send Payment").font(.headline)
-                }
-            }
+            .screenHorizontalPadding()
+            .zashiBack { store.send(.goBack) }
+            .screenTitle("Send Payment")
         }
+        .applyScreenBackground()
     }
 }
 
@@ -70,77 +54,56 @@ struct LCSenderShowPaymentView: View {
 
     var body: some View {
         WithPerceptionTracking {
-            VStack(spacing: 20) {
+            VStack(spacing: 0) {
                 Spacer()
 
-                // Local Cash branding
                 HStack(spacing: 8) {
                     Image(systemName: "banknote.fill")
-                        .foregroundStyle(.green)
+                        .foregroundStyle(Color.green)
                     Text("Local Cash")
-                        .font(.title3.weight(.bold))
+                        .zFont(.semiBold, size: 24, style: Design.Text.primary)
                 }
 
                 TachyonQRCodeView(content: store.qrContent, size: 240)
                     .padding(20)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .background {
+                        RoundedRectangle(cornerRadius: Design.Radius._2xl)
+                            .fill(Color.white)
+                    }
+                    .padding(.top, 16)
 
                 Text("\(store.amount.isEmpty ? "1.0" : store.amount) ZEC")
-                    .font(.title2.weight(.bold))
+                    .zFont(.semiBold, size: 24, style: Design.Text.primary)
+                    .padding(.top, 16)
 
                 Text("Show this QR to the recipient, or share the link")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .zFont(size: 14, style: Design.Text.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
+                    .padding(.top, 8)
 
                 Spacer()
 
                 VStack(spacing: 12) {
-                    Button {
+                    ZashiButton("Share Link", prefixView: Image(systemName: "square.and.arrow.up")) {
                         store.send(.sharePayment)
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "square.and.arrow.up")
-                            Text("Share Link")
-                        }
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.accentColor)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
 
-                    Button {
+                    ZashiButton("Done", type: .ghost) {
                         store.send(.backToFlowPicker)
-                    } label: {
-                        Text("Done")
-                            .font(.body.weight(.medium))
-                            .foregroundStyle(Color.accentColor)
                     }
                 }
-                .padding(.horizontal, 20)
                 .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
+            .screenHorizontalPadding()
             .sheet(isPresented: .constant(store.isSharePresented)) {
                 ShareSheet(items: [store.qrContent]) {
                     store.send(.shareFinished)
                 }
             }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button { store.send(.goBack) } label: {
-                        Image(systemName: "chevron.left").foregroundStyle(.primary)
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("Local Cash").font(.headline)
-                }
-            }
+            .zashiBack { store.send(.goBack) }
+            .screenTitle("Local Cash")
         }
+        .applyScreenBackground()
     }
 }
 
@@ -151,53 +114,37 @@ struct LCRecipientClaimView: View {
 
     var body: some View {
         WithPerceptionTracking {
-            VStack(spacing: 24) {
+            VStack(spacing: 0) {
                 Spacer()
 
                 Image(systemName: "gift.fill")
-                    .font(.system(size: 48))
-                    .foregroundStyle(Color.accentColor)
+                    .zImage(size: 48, style: Design.Surfaces.brandPrimary)
 
                 Text("You received a payment!")
-                    .font(.title3.weight(.semibold))
+                    .zFont(.semiBold, size: 24, style: Design.Text.primary)
+                    .padding(.top, 16)
 
                 Text("1.0 ZEC")
-                    .font(.title.weight(.bold))
+                    .zFont(.bold, size: 32, style: Design.Text.primary)
+                    .padding(.top, 12)
 
                 Text("Tap claim to add these funds to your wallet")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .zFont(size: 14, style: Design.Text.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
+                    .padding(.top, 8)
 
                 Spacer()
 
-                Button {
+                ZashiButton("Claim", type: .brand) {
                     store.send(.proceedTapped)
-                } label: {
-                    Text("Claim")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.green)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .padding(.horizontal, 20)
                 .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button { store.send(.goBack) } label: {
-                        Image(systemName: "chevron.left").foregroundStyle(.primary)
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("Claim Payment").font(.headline)
-                }
-            }
+            .screenHorizontalPadding()
+            .zashiBack { store.send(.goBack) }
+            .screenTitle("Claim Payment")
         }
+        .applyScreenBackground()
     }
 }
 

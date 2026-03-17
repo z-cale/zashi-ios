@@ -1,5 +1,6 @@
 import SwiftUI
 import ComposableArchitecture
+import Generated
 import UIComponents
 
 // MARK: - Recipient: Create Request
@@ -9,55 +10,39 @@ struct PRRecipientCreateView: View {
 
     var body: some View {
         WithPerceptionTracking {
-            VStack(spacing: 24) {
+            VStack(spacing: 0) {
                 Spacer()
 
                 Text("Create Payment Request")
-                    .font(.title3.weight(.semibold))
+                    .zFont(.semiBold, size: 24, style: Design.Text.primary)
 
                 TruncatedKeyView(label: "Your payment key:", key: MockData.recipientKey)
+                    .padding(.top, 12)
 
                 VStack(spacing: 8) {
                     TextField("Amount (ZEC)", text: $store.amount.sending(\.amountChanged))
                         .keyboardType(.decimalPad)
-                        .font(.system(.title, design: .monospaced))
+                        .zFont(.semiBold, fontFamily: .robotoMono, size: 32, style: Design.Text.primary)
                         .multilineTextAlignment(.center)
-                        .padding()
-                        .background(Color(.secondarySystemGroupedBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .padding(16)
+                        .background { RoundedRectangle(cornerRadius: Design.Radius._xl).fill().zForegroundColor(Design.Surfaces.bgSecondary) }
 
                     MockBalanceView()
                 }
-                .padding(.horizontal, 32)
+                .padding(.top, 24)
 
                 Spacer()
 
-                Button {
+                ZashiButton("Generate Request") {
                     store.send(.proceedTapped)
-                } label: {
-                    Text("Generate Request")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.accentColor)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .padding(.horizontal, 20)
                 .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button { store.send(.goBack) } label: {
-                        Image(systemName: "chevron.left").foregroundStyle(.primary)
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("Payment Request").font(.headline)
-                }
-            }
+            .screenHorizontalPadding()
+            .zashiBack { store.send(.goBack) }
+            .screenTitle("Payment Request")
         }
+        .applyScreenBackground()
     }
 }
 
@@ -68,49 +53,36 @@ struct PRRecipientShowQRView: View {
 
     var body: some View {
         WithPerceptionTracking {
-            VStack(spacing: 24) {
+            VStack(spacing: 0) {
                 Spacer()
 
                 TachyonQRCodeView(content: store.qrContent, size: 240)
                     .padding(20)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .background {
+                        RoundedRectangle(cornerRadius: Design.Radius._2xl)
+                            .fill(Color.white)
+                    }
 
                 Text("\(store.amount.isEmpty ? "1.0" : store.amount) ZEC")
-                    .font(.title2.weight(.bold))
+                    .zFont(.semiBold, size: 24, style: Design.Text.primary)
+                    .padding(.top, 16)
 
                 Text("Waiting for payment...")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
+                    .zFont(size: 14, style: Design.Text.support)
+                    .padding(.top, 8)
 
                 Spacer()
 
-                Button {
+                ZashiButton("Simulate Payment Received", type: .secondary) {
                     store.send(.simulateReceived)
-                } label: {
-                    Text("Simulate Payment Received")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.green.opacity(0.15))
-                        .foregroundStyle(.green)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .padding(.horizontal, 20)
                 .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button { store.send(.goBack) } label: {
-                        Image(systemName: "chevron.left").foregroundStyle(.primary)
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("Payment Request").font(.headline)
-                }
-            }
+            .screenHorizontalPadding()
+            .zashiBack { store.send(.goBack) }
+            .screenTitle("Payment Request")
         }
+        .applyScreenBackground()
     }
 }
 
@@ -121,52 +93,23 @@ struct PRSenderScanView: View {
 
     var body: some View {
         WithPerceptionTracking {
-            VStack(spacing: 24) {
+            VStack(spacing: 0) {
                 Spacer()
 
-                RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [8]))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 240, height: 240)
-                    .overlay {
-                        VStack(spacing: 12) {
-                            Image(systemName: "camera.viewfinder")
-                                .font(.system(size: 48))
-                                .foregroundStyle(.secondary)
-                            Text("Scan payment request QR")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
+                MockScanView(label: "Scan payment request QR")
 
                 Spacer()
 
-                Button {
+                ZashiButton("Simulate Scan") {
                     store.send(.proceedTapped)
-                } label: {
-                    Text("Simulate Scan")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.accentColor)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .padding(.horizontal, 20)
                 .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button { store.send(.goBack) } label: {
-                        Image(systemName: "chevron.left").foregroundStyle(.primary)
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("Payment Request").font(.headline)
-                }
-            }
+            .screenHorizontalPadding()
+            .zashiBack { store.send(.goBack) }
+            .screenTitle("Payment Request")
         }
+        .applyScreenBackground()
     }
 }
 
@@ -180,63 +123,32 @@ struct PRSenderConfirmView: View {
             VStack(spacing: 0) {
                 Spacer()
 
-                VStack(spacing: 16) {
-                    Text("Confirm Payment")
-                        .font(.title3.weight(.semibold))
+                Text("Confirm Payment")
+                    .zFont(.semiBold, size: 24, style: Design.Text.primary)
 
-                    VStack(spacing: 12) {
-                        confirmRow("To", value: MockData.recipientKey.truncated)
-                        confirmRow("Amount", value: "\(store.amount.isEmpty ? "1.0" : store.amount) ZEC")
-                        confirmRow("Fee", value: "\(MockData.mockFee) ZEC")
-                    }
-                    .padding(16)
-                    .background(Color(.secondarySystemGroupedBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                VStack(spacing: 12) {
+                    ConfirmRow(label: "To", value: MockData.recipientKey.truncated)
+                    ConfirmRow(label: "Amount", value: "\(store.amount.isEmpty ? "1.0" : store.amount) ZEC")
+                    ConfirmRow(label: "Fee", value: "\(MockData.mockFee) ZEC")
                 }
-                .padding(.horizontal, 20)
+                .padding(16)
+                .background { RoundedRectangle(cornerRadius: Design.Radius._xl).fill().zForegroundColor(Design.Surfaces.bgSecondary) }
+                .padding(.top, 24)
 
                 Spacer()
 
                 MockBalanceView()
                     .padding(.bottom, 12)
 
-                Button {
+                ZashiButton("Pay") {
                     store.send(.proceedTapped)
-                } label: {
-                    Text("Pay")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.accentColor)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .padding(.horizontal, 20)
                 .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button { store.send(.goBack) } label: {
-                        Image(systemName: "chevron.left").foregroundStyle(.primary)
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("Payment Request").font(.headline)
-                }
-            }
+            .screenHorizontalPadding()
+            .zashiBack { store.send(.goBack) }
+            .screenTitle("Payment Request")
         }
-    }
-
-    private func confirmRow(_ label: String, value: String) -> some View {
-        HStack {
-            Text(label)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Text(value)
-                .font(.system(.footnote, design: .monospaced))
-                .foregroundStyle(.primary)
-        }
+        .applyScreenBackground()
     }
 }

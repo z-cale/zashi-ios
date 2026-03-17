@@ -9,48 +9,35 @@ struct RolePickerView: View {
 
     var body: some View {
         WithPerceptionTracking {
-            VStack(spacing: 24) {
+            VStack(spacing: 0) {
                 Spacer()
 
                 Image(systemName: flow.systemImage)
-                    .font(.system(size: 48))
-                    .foregroundStyle(.secondary)
+                    .zImage(size: 48, style: Design.Text.support)
 
                 Text(flow.title)
-                    .font(.title2.weight(.bold))
+                    .zFont(.semiBold, size: 24, style: Design.Text.primary)
+                    .padding(.top, 16)
 
                 Text(roleExplanation)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
+                    .zFont(size: 14, style: Design.Text.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
+                    .padding(.top, 8)
 
                 VStack(spacing: 12) {
                     roleButton(.recipient)
                     roleButton(.sender)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
+                .padding(.top, 24)
 
                 Spacer()
                 Spacer()
             }
-            .background(Color(.systemGroupedBackground))
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        store.send(.goBack)
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .foregroundStyle(.primary)
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text(flow.title)
-                        .font(.headline)
-                }
-            }
+            .screenHorizontalPadding()
+            .zashiBack { store.send(.goBack) }
+            .screenTitle(flow.title)
         }
+        .applyScreenBackground()
     }
 
     private var roleExplanation: String {
@@ -68,28 +55,25 @@ struct RolePickerView: View {
         Button {
             store.send(.roleSelected(role))
         } label: {
-            HStack {
+            HStack(spacing: 12) {
                 Image(systemName: role == .recipient ? "arrow.down.circle.fill" : "arrow.up.circle.fill")
-                    .font(.title3)
+                    .zImage(size: 24, style: Design.Text.primary)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(role.title)
-                        .font(.body.weight(.semibold))
+                        .zFont(.semiBold, size: 16, style: Design.Text.primary)
 
                     Text(roleSubtitle(role))
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .zFont(size: 14, style: Design.Text.tertiary)
                 }
 
                 Spacer()
 
                 Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+                    .zImage(size: 12, style: Design.Text.quaternary)
             }
             .padding(16)
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .background { RoundedRectangle(cornerRadius: Design.Radius._xl).fill().zForegroundColor(Design.Surfaces.bgSecondary) }
         }
         .buttonStyle(.plain)
     }
