@@ -339,32 +339,35 @@ public struct Voting { // swiftlint:disable:this type_body_length
             return String(format: "%.3f", zec)
         }
 
-        /// ZEC value for the current Keystone bundle (raw note sum).
+        /// Quantized ZEC value for the current Keystone bundle.
         public var currentBundleZECString: String? {
             guard isKeystoneUser, bundleCount > 1 else { return nil }
             let bundles = walletNotes.smartBundles().bundles
             let idx = Int(currentKeystoneBundleIndex)
             guard idx < bundles.count else { return nil }
-            let weight = bundles[idx].reduce(UInt64(0)) { $0 + $1.value }
+            let raw = bundles[idx].reduce(UInt64(0)) { $0 + $1.value }
+            let weight = (raw / 12_500_000) * 12_500_000
             return String(format: "%.3f", Double(weight) / 100_000_000.0)
         }
 
-        /// Total ZEC weight already signed across collected Keystone bundle signatures (raw note sum).
+        /// Quantized ZEC weight already signed across collected Keystone bundle signatures.
         public var signedBundlesZECString: String {
             let bundles = walletNotes.smartBundles().bundles
             let signedWeight = keystoneBundleSignatures.indices.reduce(UInt64(0)) { total, i in
                 guard i < bundles.count else { return total }
-                return total + bundles[i].reduce(UInt64(0)) { $0 + $1.value }
+                let raw = bundles[i].reduce(UInt64(0)) { $0 + $1.value }
+                return total + (raw / 12_500_000) * 12_500_000
             }
             return String(format: "%.3f", Double(signedWeight) / 100_000_000.0)
         }
 
-        /// Total ZEC weight in unsigned bundles that would be given up by skipping (raw note sum).
+        /// Quantized ZEC weight in unsigned bundles that would be given up by skipping.
         public var skippedBundlesZECString: String {
             let bundles = walletNotes.smartBundles().bundles
             let signedCount = keystoneBundleSignatures.count
             let skippedWeight = (signedCount..<bundles.count).reduce(UInt64(0)) { total, i in
-                total + bundles[i].reduce(UInt64(0)) { $0 + $1.value }
+                let raw = bundles[i].reduce(UInt64(0)) { $0 + $1.value }
+                return total + (raw / 12_500_000) * 12_500_000
             }
             return String(format: "%.3f", Double(skippedWeight) / 100_000_000.0)
         }
@@ -795,10 +798,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 // Use smart bundling to determine eligible weight (excluding dust bundles)
                 let bundleResult = notes.smartBundles()
                 let eligibleWeight = bundleResult.eligibleWeight
-                let rawSurvivingWeight = bundleResult.bundles.reduce(UInt64(0)) { total, bundle in
-                    total + bundle.reduce(UInt64(0)) { $0 + $1.value }
-                }
-                state.votingWeight = rawSurvivingWeight
+                state.votingWeight = eligibleWeight
                 if bundleResult.droppedCount > 0 {
                     let dropped = bundleResult.droppedCount
                     logger.info("Smart bundling: dropped \(dropped) notes in sub-threshold bundles (eligible: \(eligibleWeight) of \(weight) total)")
@@ -1158,11 +1158,12 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 state.bundleCount = bundleCount
                 // If bundles were previously skipped, the DB count is less than the
                 // total from smartBundles(). Recalculate votingWeight to reflect only
-                // the kept bundles (raw note sums, matching skipRemainingKeystoneBundlesConfirmed).
+                // the kept bundles (quantized per bundle).
                 let allBundles = state.walletNotes.smartBundles().bundles
                 if bundleCount > 0, Int(bundleCount) < allBundles.count {
                     state.votingWeight = (0..<Int(bundleCount)).reduce(UInt64(0)) { total, i in
-                        allBundles[i].reduce(UInt64(0)) { $0 + $1.value }
+                        let raw = allBundles[i].reduce(UInt64(0)) { $0 + $1.value }
+                        return total + (raw / 12_500_000) * 12_500_000
                     }
                 }
                 // Non-Keystone users skip the delegation signing screen entirely.
@@ -1226,11 +1227,12 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 state.bundleCount = count
                 // If bundles were previously skipped, the DB count is less than the
                 // total from smartBundles(). Recalculate votingWeight to reflect only
-                // the kept bundles (raw note sums, matching skipRemainingKeystoneBundlesConfirmed).
+                // the kept bundles (quantized per bundle).
                 let allBundles = state.walletNotes.smartBundles().bundles
                 if count > 0, Int(count) < allBundles.count {
                     state.votingWeight = (0..<Int(count)).reduce(UInt64(0)) { total, i in
-                        allBundles[i].reduce(UInt64(0)) { $0 + $1.value }
+                        let raw = allBundles[i].reduce(UInt64(0)) { $0 + $1.value }
+                        return total + (raw / 12_500_000) * 12_500_000
                     }
                 }
                 let roundId = state.roundId
@@ -1789,11 +1791,12 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 guard signedCount > 0 else { return .none }
                 state.bundleCount = signedCount
 
-                // Recalculate votingWeight to reflect only signed bundles' weight
+                // Recalculate votingWeight to reflect only signed bundles' quantized weight
                 let bundles = state.walletNotes.smartBundles().bundles
                 let signedWeight = state.keystoneBundleSignatures.indices.reduce(UInt64(0)) { total, i in
                     guard i < bundles.count else { return total }
-                    return total + bundles[i].reduce(UInt64(0)) { $0 + $1.value }
+                    let raw = bundles[i].reduce(UInt64(0)) { $0 + $1.value }
+                    return total + (raw / 12_500_000) * 12_500_000
                 }
                 state.votingWeight = signedWeight
 
