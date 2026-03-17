@@ -346,7 +346,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
             let idx = Int(currentKeystoneBundleIndex)
             guard idx < bundles.count else { return nil }
             let raw = bundles[idx].reduce(UInt64(0)) { $0 + $1.value }
-            let weight = (raw / 12_500_000) * 12_500_000
+            let weight = quantizeWeight(raw)
             return String(format: "%.3f", Double(weight) / 100_000_000.0)
         }
 
@@ -356,7 +356,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
             let signedWeight = keystoneBundleSignatures.indices.reduce(UInt64(0)) { total, i in
                 guard i < bundles.count else { return total }
                 let raw = bundles[i].reduce(UInt64(0)) { $0 + $1.value }
-                return total + (raw / 12_500_000) * 12_500_000
+                return total + quantizeWeight(raw)
             }
             return String(format: "%.3f", Double(signedWeight) / 100_000_000.0)
         }
@@ -367,7 +367,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
             let signedCount = keystoneBundleSignatures.count
             let skippedWeight = (signedCount..<bundles.count).reduce(UInt64(0)) { total, i in
                 let raw = bundles[i].reduce(UInt64(0)) { $0 + $1.value }
-                return total + (raw / 12_500_000) * 12_500_000
+                return total + quantizeWeight(raw)
             }
             return String(format: "%.3f", Double(skippedWeight) / 100_000_000.0)
         }
@@ -803,7 +803,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                     let dropped = bundleResult.droppedCount
                     logger.info("Smart bundling: dropped \(dropped) notes in sub-threshold bundles (eligible: \(eligibleWeight) of \(weight) total)")
                 }
-                if eligibleWeight < 12_500_000 {
+                if eligibleWeight < ballotDivisor {
                     state.ineligibilityReason = .balanceTooLow
                     state.screenStack = [.ineligible]
                     return .none
@@ -1163,7 +1163,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 if bundleCount > 0, Int(bundleCount) < allBundles.count {
                     state.votingWeight = (0..<Int(bundleCount)).reduce(UInt64(0)) { total, i in
                         let raw = allBundles[i].reduce(UInt64(0)) { $0 + $1.value }
-                        return total + (raw / 12_500_000) * 12_500_000
+                        return total + quantizeWeight(raw)
                     }
                 }
                 // Non-Keystone users skip the delegation signing screen entirely.
@@ -1232,7 +1232,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 if count > 0, Int(count) < allBundles.count {
                     state.votingWeight = (0..<Int(count)).reduce(UInt64(0)) { total, i in
                         let raw = allBundles[i].reduce(UInt64(0)) { $0 + $1.value }
-                        return total + (raw / 12_500_000) * 12_500_000
+                        return total + quantizeWeight(raw)
                     }
                 }
                 let roundId = state.roundId
@@ -1796,7 +1796,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 let signedWeight = state.keystoneBundleSignatures.indices.reduce(UInt64(0)) { total, i in
                     guard i < bundles.count else { return total }
                     let raw = bundles[i].reduce(UInt64(0)) { $0 + $1.value }
-                    return total + (raw / 12_500_000) * 12_500_000
+                    return total + quantizeWeight(raw)
                 }
                 state.votingWeight = signedWeight
 
@@ -1843,7 +1843,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 let userMessage: String
                 if error.contains("total_weight must yield at least 1 ballot") {
                     let weightStr = Zatoshi(Int64(state.votingWeight)).decimalString()
-                    let requiredStr = Zatoshi(12_500_000).decimalString()
+                    let requiredStr = Zatoshi(Int64(ballotDivisor)).decimalString()
                     userMessage = """
                         Your shielded balance at the snapshot (\(weightStr) ZEC) \
                         is below the minimum required to vote (\(requiredStr) ZEC).
@@ -2224,9 +2224,6 @@ private struct BundleResult {
 }
 
 private extension Array where Element == NoteInfo {
-    /// Ballot divisor — must match `librustvoting::governance::BALLOT_DIVISOR`.
-    static var ballotDivisor: UInt64 { 12_500_000 }
-
     /// Value-aware bundling using greedy min-total assignment.
     ///
     /// Algorithm mirrors the Rust `chunk_notes` for client-side use:
@@ -2266,10 +2263,9 @@ private extension Array where Element == NoteInfo {
         var eligibleWeight: UInt64 = 0
         var survivingNoteCount = 0
 
-        for i in 0..<numBundles where bundleTotals[i] >= Self.ballotDivisor {
+        for i in 0..<numBundles where bundleTotals[i] >= ballotDivisor {
             surviving.append((bundleTotals[i], bundleNotes[i]))
-            // Quantize per bundle: VAN weight = floor(total / ballotDivisor) * ballotDivisor
-            eligibleWeight += (bundleTotals[i] / Self.ballotDivisor) * Self.ballotDivisor
+            eligibleWeight += quantizeWeight(bundleTotals[i])
             survivingNoteCount += bundleNotes[i].count
         }
         let droppedCount = count - survivingNoteCount
