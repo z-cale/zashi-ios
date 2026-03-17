@@ -4,80 +4,90 @@ import UIComponents
 
 // MARK: - Data Model
 
-private struct DemoVote: Identifiable, Equatable {
+private struct DemoProposal: Identifiable, Equatable {
     let id: String
-    let proposalName: String
+    let title: String
     let choice: String
-    let totalShares = 5
-    var sharesReceived: Int
-    var sharesSubmitted: Int
+    var status: VoteStatus
+    var chainProgress: Double // 0.0–1.0 — how much is confirmed on chain
+    var willFail: Bool = false
 
-    var phase: VotePhase {
-        if sharesSubmitted == totalShares { return .complete }
-        if sharesReceived < totalShares { return .sending }
-        if sharesSubmitted > 0 { return .submitting }
-        return .received
-    }
-
-    var statusColor: Color {
-        switch phase {
-        case .sending: return .blue
-        case .received, .submitting: return .orange
-        case .complete: return .green
-        }
-    }
-
-    var isComplete: Bool { sharesSubmitted == totalShares }
-
-    @discardableResult
-    mutating func advanceOne() -> Bool {
-        if sharesReceived < totalShares {
-            sharesReceived += 1
-            return true
-        }
-        if sharesSubmitted < totalShares {
-            sharesSubmitted += 1
-            return true
-        }
-        return false
-    }
-
-    mutating func reset() {
-        sharesReceived = 0
-        sharesSubmitted = 0
+    var isTerminal: Bool {
+        status == .confirmed || status == .failed
     }
 }
 
-private enum VotePhase {
-    case sending, received, submitting, complete
+private enum VoteStatus: Equatable {
+    case preparing   // client building proof
+    case submitted   // sent to servers, awaiting chain confirmation
+    case confirmed   // all confirmed on chain
+    case failed      // retries exhausted
+
+    var label: String {
+        switch self {
+        case .preparing: return "Preparing"
+        case .submitted: return "Submitted"
+        case .confirmed: return "Confirmed"
+        case .failed: return "Needs Attention"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .preparing: return "circle.dotted"
+        case .submitted: return "checkmark.circle"
+        case .confirmed: return "checkmark.circle.fill"
+        case .failed: return "exclamationmark.triangle.fill"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .preparing: return .secondary
+        case .submitted, .confirmed: return .green
+        case .failed: return .orange
+        }
+    }
 }
 
 // MARK: - Initial Demo Data
 
-private let initialVotes: [DemoVote] = [
-    DemoVote(
+private let initialProposals: [DemoProposal] = [
+    DemoProposal(
         id: "sprout",
-        proposalName: "Sprout Deprecation",
+        title: "Sprout Deprecation",
         choice: "Immediately upon NU7 activation",
-        sharesReceived: 5, sharesSubmitted: 5
+        status: .confirmed,
+        chainProgress: 1.0
     ),
-    DemoVote(
+    DemoProposal(
         id: "memo",
-        proposalName: "Memo Bundles",
+        title: "Memo Bundles",
         choice: "Yes — 16 KiB memo size limit",
-        sharesReceived: 5, sharesSubmitted: 3
+        status: .submitted,
+        chainProgress: 0.6
     ),
-    DemoVote(
+    DemoProposal(
         id: "fee",
-        proposalName: "Fee Burn",
+        title: "Fee Burn",
         choice: "Yes — 60% of fees burned",
-        sharesReceived: 5, sharesSubmitted: 0
+        status: .submitted,
+        chainProgress: 0.0
     ),
-    DemoVote(
+    DemoProposal(
         id: "nsm",
-        proposalName: "NSM Activation",
+        title: "NSM Activation",
         choice: "Support activation",
-        sharesReceived: 2, sharesSubmitted: 0
+        status: .preparing,
+        chainProgress: 0.0
+    ),
+    DemoProposal(
+        id: "blocktime",
+        title: "Lower Block Times",
+        choice: "Yes — reduce to 30 seconds",
+        status: .submitted,
+        chainProgress: 0.75,
+        willFail: true
     ),
 ]
 
@@ -87,9 +97,10 @@ struct ShareSubmissionDemoView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
 
-    @State private var votes = initialVotes
+    @State private var proposals = initialProposals
     @State private var selectedIndex: Int?
     @State private var autoPlaying = false
+    @State private var expandedInfoId: String?
 
     private var isDetailPresented: Binding<Bool> {
         Binding(
@@ -103,17 +114,32 @@ struct ShareSubmissionDemoView: View {
             VStack(spacing: 0) {
                 ScrollView {
                     VStack(spacing: 12) {
-                        Text("After you cast a vote, it is split into encrypted shares distributed to helper servers. Each server submits its share to the blockchain over a period of days to protect your privacy.")
+                        Text("Status is shown per proposal while the voting round stays active.")
                             .zFont(.regular, size: 14, style: Design.Text.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                             .padding(.horizontal, 20)
                             .padding(.top, 8)
                             .padding(.bottom, 4)
 
-                        ForEach(Array(votes.enumerated()), id: \.element.id) { index, vote in
-                            VoteStatusCard(vote: vote, colorScheme: colorScheme)
-                                .contentShape(Rectangle())
-                                .onTapGesture { selectedIndex = index }
+                        ForEach(Array(proposals.enumerated()), id: \.element.id) { index, proposal in
+                            ProposalStatusCard(
+                                proposal: proposal,
+                                colorScheme: colorScheme,
+                                isInfoExpanded: expandedInfoId == proposal.id,
+                                onInfoToggle: {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        expandedInfoId = expandedInfoId == proposal.id ? nil : proposal.id
+                                    }
+                                },
+                                onRetry: {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        proposals[index].status = .submitted
+                                        proposals[index].willFail = false
+                                    }
+                                }
+                            )
+                            .contentShape(Rectangle())
+                            .onTapGesture { selectedIndex = index }
                         }
                         .padding(.horizontal, 20)
                     }
@@ -122,7 +148,7 @@ struct ShareSubmissionDemoView: View {
 
                 simulationControls()
             }
-            .navigationTitle("Share Submission")
+            .navigationTitle("Vote Status")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -132,8 +158,8 @@ struct ShareSubmissionDemoView: View {
                 }
             }
             .sheet(isPresented: isDetailPresented) {
-                if let idx = selectedIndex, idx < votes.count {
-                    VoteSubmissionDetailView(vote: $votes[idx])
+                if let idx = selectedIndex, idx < proposals.count {
+                    VoteStatusDetailView(proposal: $proposals[idx])
                 }
             }
         }
@@ -149,7 +175,7 @@ struct ShareSubmissionDemoView: View {
 
             HStack(spacing: 12) {
                 Button {
-                    stepNextVote()
+                    stepNext()
                 } label: {
                     Label("Step", systemImage: "forward.frame.fill")
                         .zFont(.medium, size: 14, style: Design.Text.primary)
@@ -158,7 +184,7 @@ struct ShareSubmissionDemoView: View {
                         .background(Color.secondary.opacity(0.1))
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
-                .disabled(votes.allSatisfy(\.isComplete))
+                .disabled(proposals.allSatisfy(\.isTerminal))
 
                 Button {
                     autoPlaying.toggle()
@@ -174,13 +200,14 @@ struct ShareSubmissionDemoView: View {
                     .background(autoPlaying ? Color.blue.opacity(0.15) : Color.secondary.opacity(0.1))
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
-                .disabled(votes.allSatisfy(\.isComplete) && !autoPlaying)
+                .disabled(proposals.allSatisfy(\.isTerminal) && !autoPlaying)
 
                 Spacer()
 
                 Button {
                     autoPlaying = false
-                    withAnimation { votes = initialVotes }
+                    expandedInfoId = nil
+                    withAnimation { proposals = initialProposals }
                 } label: {
                     Label("Reset All", systemImage: "arrow.counterclockwise")
                         .zFont(.medium, size: 13, style: Design.Text.tertiary)
@@ -192,10 +219,12 @@ struct ShareSubmissionDemoView: View {
         .background(Design.Surfaces.bgPrimary.color(colorScheme))
     }
 
-    private func stepNextVote() {
+    private func stepNext() {
         withAnimation(.easeInOut(duration: 0.3)) {
-            for i in votes.indices {
-                if votes[i].advanceOne() { return }
+            // Advance the first non-terminal proposal (sequential order)
+            for i in proposals.indices where !proposals[i].isTerminal {
+                advanceProposal(at: i)
+                return
             }
         }
     }
@@ -204,10 +233,10 @@ struct ShareSubmissionDemoView: View {
         guard autoPlaying else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             guard autoPlaying else { return }
-            let incomplete = votes.enumerated().filter { !$0.element.isComplete }
-            if let pick = incomplete.randomElement() {
+            let nonTerminal = proposals.enumerated().filter { !$0.element.isTerminal }
+            if let pick = nonTerminal.randomElement() {
                 withAnimation(.easeInOut(duration: 0.3)) {
-                    votes[pick.offset].advanceOne()
+                    advanceProposal(at: pick.offset)
                 }
                 scheduleAutoStep()
             } else {
@@ -215,21 +244,45 @@ struct ShareSubmissionDemoView: View {
             }
         }
     }
+
+    private func advanceProposal(at index: Int) {
+        switch proposals[index].status {
+        case .preparing:
+            proposals[index].status = .submitted
+        case .submitted:
+            if proposals[index].willFail && proposals[index].chainProgress >= 0.6 {
+                proposals[index].status = .failed
+                return
+            }
+            let increment = Double.random(in: 0.15...0.30)
+            proposals[index].chainProgress = min(1.0, proposals[index].chainProgress + increment)
+            if proposals[index].chainProgress >= 1.0 {
+                proposals[index].chainProgress = 1.0
+                proposals[index].status = .confirmed
+            }
+        case .confirmed, .failed:
+            break
+        }
+    }
 }
 
-// MARK: - Vote Status Card (list item)
+// MARK: - Proposal Status Card
 
-private struct VoteStatusCard: View {
-    let vote: DemoVote
+private struct ProposalStatusCard: View {
+    let proposal: DemoProposal
     let colorScheme: ColorScheme
+    let isInfoExpanded: Bool
+    let onInfoToggle: () -> Void
+    let onRetry: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            // Title row
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(vote.proposalName)
+                    Text(proposal.title)
                         .zFont(.semiBold, size: 16, style: Design.Text.primary)
-                    Text(vote.choice)
+                    Text(proposal.choice)
                         .zFont(.regular, size: 13, style: Design.Text.secondary)
                         .lineLimit(1)
                 }
@@ -239,20 +292,17 @@ private struct VoteStatusCard: View {
                     .foregroundStyle(Design.Text.tertiary.color(colorScheme))
             }
 
-            HStack(spacing: 16) {
-                MiniProgress(
-                    label: "Received",
-                    filled: vote.sharesReceived,
-                    total: vote.totalShares,
-                    color: vote.sharesReceived == vote.totalShares ? .green : .blue
-                )
+            // Status badge
+            statusBadge()
 
-                MiniProgress(
-                    label: "Submitted",
-                    filled: vote.sharesSubmitted,
-                    total: vote.totalShares,
-                    color: vote.sharesSubmitted == vote.totalShares ? .green : .orange
-                )
+            // Progress bar (submitted with chain progress, or failed)
+            if showsProgressBar {
+                progressBar()
+            }
+
+            // Inline info expansion
+            if isInfoExpanded && proposal.status == .submitted {
+                infoContent()
             }
         }
         .padding(16)
@@ -260,46 +310,132 @@ private struct VoteStatusCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .stroke(vote.statusColor.opacity(0.25), lineWidth: 1)
+                .stroke(proposal.status.color.opacity(0.2), lineWidth: 1)
         )
     }
-}
 
-// MARK: - Mini Progress (compact bar + label)
+    private var showsProgressBar: Bool {
+        switch proposal.status {
+        case .submitted: return proposal.chainProgress > 0
+        case .failed: return true
+        default: return false
+        }
+    }
 
-private struct MiniProgress: View {
-    let label: String
-    let filled: Int
-    let total: Int
-    let color: Color
+    @ViewBuilder
+    private func statusBadge() -> some View {
+        HStack(spacing: 8) {
+            if proposal.status == .preparing {
+                ProgressView()
+                    .scaleEffect(0.8)
+            } else {
+                Image(systemName: proposal.status.icon)
+                    .font(.system(size: 16))
+                    .foregroundStyle(proposal.status.color)
+            }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("\(label) \(filled)/\(total)")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(filled == total ? .green : .secondary)
+            Text(proposal.status.label)
+                .zFont(.medium, size: 14, style: proposal.status == .preparing
+                    ? Design.Text.secondary : Design.Text.primary)
 
-            HStack(spacing: 2) {
-                ForEach(0..<total, id: \.self) { i in
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(i < filled ? color : Color.secondary.opacity(0.2))
-                        .frame(height: 4)
+            Spacer()
+
+            // Info button for submitted with progress
+            if proposal.status == .submitted && proposal.chainProgress > 0 {
+                Button {
+                    onInfoToggle()
+                } label: {
+                    Image(systemName: isInfoExpanded ? "info.circle.fill" : "info.circle")
+                        .font(.system(size: 16))
+                        .foregroundStyle(.secondary)
                 }
+                .buttonStyle(.plain)
+            }
+
+            // Retry for failed
+            if proposal.status == .failed {
+                Button {
+                    onRetry()
+                } label: {
+                    Text("Retry")
+                        .zFont(.medium, size: 13, style: Design.Text.primary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.orange.opacity(0.12))
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
             }
         }
+    }
+
+    @ViewBuilder
+    private func progressBar() -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Color.secondary.opacity(0.12))
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(proposal.status == .failed ? Color.orange : Color.green)
+                        .frame(width: geo.size.width * proposal.chainProgress)
+                        .animation(.easeInOut(duration: 0.3), value: proposal.chainProgress)
+                }
+            }
+            .frame(height: 4)
+
+            Text(proposal.status == .failed
+                ? "Confirmation incomplete"
+                : "Privately confirming on chain")
+                .zFont(.regular, size: 11, style: Design.Text.tertiary)
+        }
+    }
+
+    @ViewBuilder
+    private func infoContent() -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "lock.shield")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+                .padding(.top, 1)
+
+            Text("Your vote is being privately confirmed on the blockchain over time to protect your voting privacy. No action needed.")
+                .zFont(.regular, size: 12, style: Design.Text.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(10)
+        .background(Color.secondary.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }
 
 // MARK: - Detail View
 
-private struct VoteSubmissionDetailView: View {
-    @Binding var vote: DemoVote
+private struct VoteStatusDetailView: View {
+    @Binding var proposal: DemoProposal
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
         NavigationStack {
-            scrollContent()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    voteHeader()
+                    statusSection()
+
+                    if proposal.status != .confirmed {
+                        privacyExplanation()
+                    }
+
+                    if proposal.status == .failed {
+                        failedActions()
+                    }
+
+                    Spacer()
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 16)
+            }
             .navigationTitle("Vote Status")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -312,17 +448,18 @@ private struct VoteSubmissionDetailView: View {
                     HStack(spacing: 12) {
                         Button {
                             withAnimation(.easeInOut(duration: 0.3)) {
-                                _ = vote.advanceOne()
+                                advanceInDetail()
                             }
                         } label: {
                             Image(systemName: "forward.frame.fill")
                                 .font(.system(size: 14))
                         }
-                        .disabled(vote.isComplete)
+                        .disabled(proposal.isTerminal)
 
                         Button {
                             withAnimation(.easeInOut(duration: 0.3)) {
-                                vote.reset()
+                                proposal.status = .preparing
+                                proposal.chainProgress = 0
                             }
                         } label: {
                             Image(systemName: "arrow.counterclockwise")
@@ -334,200 +471,184 @@ private struct VoteSubmissionDetailView: View {
         }
     }
 
-    // MARK: - Scroll Content
-
-    @ViewBuilder
-    private func scrollContent() -> some View {
-        ScrollView(.vertical) {
-            VStack(alignment: .leading, spacing: 24) {
-                voteHeader()
-
-                phaseCard(
-                    title: "Delivery to Helpers",
-                    icon: "arrow.up.circle.fill",
-                    filled: vote.sharesReceived,
-                    total: vote.totalShares,
-                    activeColor: .blue,
-                    doneMessage: "All shares delivered",
-                    activeMessage: "Sending shares to helper servers…",
-                    waitingMessage: nil,
-                    isActive: vote.sharesReceived < vote.totalShares
-                )
-
-                HStack {
-                    Spacer()
-                    Image(systemName: "arrow.down")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(Color.secondary.opacity(0.3))
-                    Spacer()
-                }
-
-                phaseCard(
-                    title: "Submission to Chain",
-                    icon: "link.circle.fill",
-                    filled: vote.sharesSubmitted,
-                    total: vote.totalShares,
-                    activeColor: .orange,
-                    doneMessage: "All shares on-chain",
-                    activeMessage: "Helper servers submitting to blockchain…",
-                    waitingMessage: "Waiting for delivery to complete…",
-                    isActive: vote.sharesReceived == vote.totalShares
-                        && vote.sharesSubmitted < vote.totalShares
-                )
-
-                if vote.isComplete {
-                    completeBanner()
-                } else {
-                    infoNote()
-                }
-
-                Spacer()
-            }
-            .padding(.horizontal, 24)
-            .padding(.top, 16)
-        }
-    }
+    // MARK: - Header
 
     @ViewBuilder
     private func voteHeader() -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(vote.proposalName)
+            Text(proposal.title)
                 .zFont(.semiBold, size: 22, style: Design.Text.primary)
 
             HStack(spacing: 8) {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
                     .font(.system(size: 14))
-                Text(vote.choice)
+                Text(proposal.choice)
                     .zFont(.medium, size: 15, style: Design.Text.secondary)
             }
         }
         .padding(.bottom, 8)
     }
 
-    // MARK: - Phase Card
+    // MARK: - Status Section
 
     @ViewBuilder
-    private func phaseCard(
-        title: String,
-        icon: String,
-        filled: Int,
-        total: Int,
-        activeColor: Color,
-        doneMessage: String,
-        activeMessage: String,
-        waitingMessage: String?,
-        isActive: Bool
-    ) -> some View {
-        let isDone = filled == total
-        let displayColor = isDone ? Color.green : activeColor
-        let isWaiting = !isActive && !isDone
+    private func statusSection() -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(proposal.status.color.opacity(0.12))
+                        .frame(width: 44, height: 44)
 
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                Image(systemName: icon)
-                    .font(.system(size: 20))
-                    .foregroundStyle(displayColor)
+                    if proposal.status == .preparing {
+                        ProgressView()
+                    } else {
+                        Image(systemName: proposal.status.icon)
+                            .font(.system(size: 22))
+                            .foregroundStyle(proposal.status.color)
+                    }
+                }
 
-                Text(title)
-                    .zFont(.semiBold, size: 17, style: Design.Text.primary)
-
-                Spacer()
-
-                if isDone {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(proposal.status.label)
+                        .zFont(.semiBold, size: 18, style: Design.Text.primary)
+                    Text(statusDescription)
+                        .zFont(.regular, size: 14, style: Design.Text.secondary)
                 }
             }
 
-            // Segmented bar
-            HStack(spacing: 3) {
-                ForEach(0..<total, id: \.self) { i in
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(i < filled ? displayColor : Color.secondary.opacity(0.15))
-                        .frame(height: 8)
+            if proposal.status == .submitted || proposal.status == .failed {
+                VStack(alignment: .leading, spacing: 6) {
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.secondary.opacity(0.12))
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(proposal.status == .failed ? Color.orange : Color.green)
+                                .frame(width: geo.size.width * proposal.chainProgress)
+                                .animation(.easeInOut(duration: 0.3), value: proposal.chainProgress)
+                        }
+                    }
+                    .frame(height: 6)
+
+                    if proposal.chainProgress > 0 {
+                        Text(progressLabel)
+                            .zFont(.regular, size: 12, style: Design.Text.tertiary)
+                    }
                 }
-            }
-
-            // Status line
-            HStack {
-                if isActive {
-                    ProgressView()
-                        .scaleEffect(0.7)
-                        .padding(.trailing, 2)
-                }
-
-                if isDone {
-                    Text(doneMessage)
-                        .zFont(.regular, size: 13, style: Design.Text.secondary)
-                } else if isWaiting {
-                    Text(waitingMessage ?? "")
-                        .zFont(.regular, size: 13, style: Design.Text.tertiary)
-                } else {
-                    Text(activeMessage)
-                        .zFont(.regular, size: 13, style: Design.Text.tertiary)
-                }
-
-                Spacer()
-
-                Text("\(filled)/\(total)")
-                    .zFont(.medium, size: 13, style: Design.Text.tertiary)
             }
         }
-        .padding(16)
-        .background(displayColor.opacity(0.04))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .padding(20)
+        .background(proposal.status.color.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(displayColor.opacity(0.15), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(proposal.status.color.opacity(0.15), lineWidth: 1)
         )
     }
 
-    // MARK: - Footer Banners
+    private var statusDescription: String {
+        switch proposal.status {
+        case .preparing:
+            return "Building your vote proof"
+        case .submitted:
+            return proposal.chainProgress > 0
+                ? "Privately confirming on chain"
+                : "Your vote has been submitted"
+        case .confirmed:
+            return "Confirmed on the blockchain"
+        case .failed:
+            return "Confirmation could not be completed"
+        }
+    }
+
+    private var progressLabel: String {
+        let pct = Int(proposal.chainProgress * 100)
+        if proposal.status == .failed {
+            return "\(pct)% confirmed before failure"
+        }
+        return "\(pct)% confirmed on chain"
+    }
+
+    // MARK: - Privacy Explanation
 
     @ViewBuilder
-    private func infoNote() -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "info.circle.fill")
-                .foregroundStyle(.blue.opacity(0.7))
-                .font(.system(size: 16))
+    private func privacyExplanation() -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "lock.shield.fill")
+                    .foregroundStyle(.blue.opacity(0.7))
+                    .font(.system(size: 16))
+                Text("Why does this take time?")
+                    .zFont(.semiBold, size: 14, style: Design.Text.primary)
+            }
 
-            Text("Shares are submitted to the blockchain over several days. This delay is intentional and protects your voting privacy.")
+            Text("To protect your privacy, your vote is distributed to the blockchain incrementally over several days. This prevents observers from determining your full voting weight.\n\nNo action is needed — this happens automatically in the background.")
                 .zFont(.regular, size: 13, style: Design.Text.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(14)
-        .background(Color.blue.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(16)
+        .background(Color.blue.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
-    @ViewBuilder
-    private func completeBanner() -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: "checkmark.seal.fill")
-                .font(.system(size: 22))
-                .foregroundStyle(.green)
+    // MARK: - Failed Actions
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Vote fully submitted")
+    @ViewBuilder
+    private func failedActions() -> some View {
+        VStack(spacing: 10) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    proposal.status = .submitted
+                    proposal.willFail = false
+                }
+            } label: {
+                Text("Retry Submission")
                     .zFont(.semiBold, size: 15, style: Design.Text.primary)
-                Text("All shares have been posted to the blockchain.")
-                    .zFont(.regular, size: 13, style: Design.Text.secondary)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Color.orange)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
             }
-            Spacer()
+
+            Button {
+                // No-op in demo
+            } label: {
+                Text("Contact Support")
+                    .zFont(.medium, size: 14, style: Design.Text.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+            }
         }
-        .padding(16)
-        .background(Color.green.opacity(0.06))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(Color.green.opacity(0.2), lineWidth: 1)
-        )
+    }
+
+    // MARK: - Simulation
+
+    private func advanceInDetail() {
+        switch proposal.status {
+        case .preparing:
+            proposal.status = .submitted
+        case .submitted:
+            if proposal.willFail && proposal.chainProgress >= 0.6 {
+                proposal.status = .failed
+                return
+            }
+            let increment = Double.random(in: 0.15...0.30)
+            proposal.chainProgress = min(1.0, proposal.chainProgress + increment)
+            if proposal.chainProgress >= 1.0 {
+                proposal.chainProgress = 1.0
+                proposal.status = .confirmed
+            }
+        case .confirmed, .failed:
+            break
+        }
     }
 }
 
 // MARK: - Preview
 
-#Preview("Share Submission Demo") {
+#Preview("Vote Status Demo") {
     ShareSubmissionDemoView()
 }

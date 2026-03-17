@@ -81,7 +81,7 @@ public struct SettingsView: View {
 
                             ActionRow(
                                 icon: Asset.Assets.Icons.settings.image,
-                                title: "Share Submission Demo"
+                                title: "Vote Status Demo"
                             ) {
                                 showShareSubmissionDemo = true
                             }
