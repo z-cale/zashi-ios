@@ -730,36 +730,6 @@ public struct KeystoneBundleSignatureInfo: Equatable, Sendable, Codable {
     }
 }
 
-/// Lightweight state persisted to a JSON file alongside the SQLite DB to track
-/// in-flight TX hashes and Keystone signatures that would otherwise be lost on crash.
-public struct RoundRecoveryState: Equatable, Sendable, Codable {
-    /// Delegation TX hashes by bundle index, stored immediately after submitDelegation returns.
-    public var delegationTxHashes: [UInt32: String]
-    /// Vote TX hashes by bundle index + proposal ID: "bundleIndex-proposalId" -> txHash.
-    public var voteTxHashes: [String: String]
-    /// Vote commitment bundles (containing encrypted shares) persisted before TX submission.
-    /// Keyed the same as voteTxHashes. Required for share delegation after crash recovery.
-    public var voteCommitmentBundles: [String: VoteCommitmentBundle]
-    /// Keystone signatures collected during the multi-bundle signing loop.
-    public var keystoneSignatures: [KeystoneBundleSignatureInfo]
-
-    public init(
-        delegationTxHashes: [UInt32: String] = [:],
-        voteTxHashes: [String: String] = [:],
-        voteCommitmentBundles: [String: VoteCommitmentBundle] = [:],
-        keystoneSignatures: [KeystoneBundleSignatureInfo] = []
-    ) {
-        self.delegationTxHashes = delegationTxHashes
-        self.voteTxHashes = voteTxHashes
-        self.voteCommitmentBundles = voteCommitmentBundles
-        self.keystoneSignatures = keystoneSignatures
-    }
-
-    public static func voteTxKey(bundleIndex: UInt32, proposalId: UInt32) -> String {
-        "\(bundleIndex)-\(proposalId)"
-    }
-}
-
 // MARK: - Proof Events
 
 public enum ProofEvent: Equatable, Sendable {

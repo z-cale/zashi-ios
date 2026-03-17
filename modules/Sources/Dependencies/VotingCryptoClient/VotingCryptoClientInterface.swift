@@ -155,61 +155,58 @@ public struct VotingCryptoClient {
     /// Extract the Orchard nc_root from a protobuf-encoded TreeState.
     public var extractNcRoot: @Sendable (_ treeStateBytes: Data) throws -> Data
 
-    // --- Crash recovery (Swift-side JSON file alongside SQLite DB) ---
+    // --- Recovery state (stored in the voting SQLite DB) ---
 
-    /// Persist a delegation TX hash for a bundle immediately after submission.
+    /// Store the TX hash of a delegation bundle that has been submitted to the chain.
     public var storeDelegationTxHash: @Sendable (
         _ roundId: String,
         _ bundleIndex: UInt32,
         _ txHash: String
-    ) async -> Void = { _, _, _ in }
+    ) async throws -> Void
     /// Load a previously stored delegation TX hash for a bundle (nil if never stored).
     public var getDelegationTxHash: @Sendable (
         _ roundId: String,
         _ bundleIndex: UInt32
-    ) async -> String? = { _, _ in nil }
+    ) async throws -> String?
     /// Persist a vote TX hash for a bundle + proposal immediately after submission.
     public var storeVoteTxHash: @Sendable (
         _ roundId: String,
         _ bundleIndex: UInt32,
         _ proposalId: UInt32,
         _ txHash: String
-    ) async -> Void = { _, _, _, _ in }
+    ) async throws -> Void
     /// Load a previously stored vote TX hash (nil if never stored).
     public var getVoteTxHash: @Sendable (
         _ roundId: String,
         _ bundleIndex: UInt32,
         _ proposalId: UInt32
-    ) async -> String? = { _, _, _ in nil }
+    ) async throws -> String?
     /// Persist a Keystone bundle signature so it survives app restarts.
     public var storeKeystoneBundleSignature: @Sendable (
         _ roundId: String,
         _ info: KeystoneBundleSignatureInfo
-    ) async -> Void = { _, _ in }
+    ) async throws -> Void
     /// Load all persisted Keystone bundle signatures for a round.
     public var loadKeystoneBundleSignatures: @Sendable (
         _ roundId: String
-    ) async -> [KeystoneBundleSignatureInfo] = { _ in [] }
-    /// Persist the vote commitment bundle (with encrypted shares) before TX submission.
+    ) async throws -> [KeystoneBundleSignatureInfo]
+    /// Persist the vote commitment bundle + VC tree position before TX submission.
     /// Required for share delegation if the app crashes between TX confirm and share send.
     public var storeVoteCommitmentBundle: @Sendable (
         _ roundId: String,
         _ bundleIndex: UInt32,
         _ proposalId: UInt32,
-        _ bundle: VoteCommitmentBundle
-    ) async -> Void = { _, _, _, _ in }
+        _ bundle: VoteCommitmentBundle,
+        _ vcTreePosition: UInt64
+    ) async throws -> Void
     /// Load a persisted vote commitment bundle (nil if never stored).
     public var getVoteCommitmentBundle: @Sendable (
         _ roundId: String,
         _ bundleIndex: UInt32,
         _ proposalId: UInt32
-    ) async -> VoteCommitmentBundle? = { _, _, _ in nil }
-    /// Load the full recovery state for a round.
-    public var getRecoveryState: @Sendable (
-        _ roundId: String
-    ) async -> RoundRecoveryState = { _ in RoundRecoveryState() }
-    /// Clear recovery state for a round (called after successful completion).
+    ) async throws -> VoteCommitmentBundle?
+    /// Clear recovery state for a round (keystone sigs, TX hashes).
     public var clearRecoveryState: @Sendable (
         _ roundId: String
-    ) async -> Void = { _ in }
+    ) async throws -> Void
 }
