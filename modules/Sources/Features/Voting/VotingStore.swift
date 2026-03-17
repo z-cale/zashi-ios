@@ -1607,12 +1607,11 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 }
 
                 if bundleIndex + 1 < bundleCount {
-                    // More bundles to sign — advance index and reset to idle.
-                    // User taps "Confirm with Keystone" to start the next bundle.
+                    // More bundles to sign — advance index, then auto-start the next bundle's PCZT.
                     state.currentKeystoneBundleIndex += 1
                     state.isDelegationProofInFlight = false
                     state.keystoneSigningStatus = .idle
-                    return persistEffect
+                    return .merge(persistEffect, .send(.delegationApproved))
                 } else {
                     // All bundles signed — navigate to proposal list and start batch proving
                     state.keystoneSigningStatus = .idle
@@ -1750,15 +1749,15 @@ public struct Voting { // swiftlint:disable:this type_body_length
                     state.delegationProofStatus = .generating(progress: 0)
                     return .send(.keystoneAllBundlesSigned)
                 } else {
-                    // Some bundles signed — show signing screen at the next bundle
+                    // Some bundles signed — show signing screen and auto-start next PCZT build
                     state.keystoneSigningStatus = .idle
                     state.screenStack = [.delegationSigning]
-                    return .none
+                    return .send(.delegationApproved)
                 }
 
             case .keystoneShowSigningScreen:
                 state.screenStack = [.delegationSigning]
-                return .none
+                return .send(.delegationApproved)
 
             case .skipRemainingKeystoneBundles:
                 // Show confirmation alert with locked-in / giving-up amounts.
