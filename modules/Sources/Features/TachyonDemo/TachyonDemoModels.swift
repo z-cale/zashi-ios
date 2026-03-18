@@ -23,17 +23,29 @@ public struct MockPayment: Equatable, Identifiable {
     public let viaRelay: Bool
 }
 
-// MARK: - Tachyon URI Helpers
+// MARK: - URI Helpers
 
 public enum TachyonURI {
+    /// ZIP-321: Payment Request URI (recipient-initiated)
     public static func paymentRequest(pk: String, amount: String) -> String {
-        "tachyon:pay?pk=\(pk)&amount=\(amount)"
+        "zcash:\(pk)?amount=\(amount)"
     }
 
-    public static func encapsulatedPayment(noteHex: String) -> String {
-        "tachyon:claim?note=\(noteHex)"
+    /// ZIP-324: URI-Encapsulated Payment
+    /// Format: https://pay.withzcash.com:65536/payment/v1#amount=X&key=Z&desc=Y
+    /// - Port 65536 is intentionally invalid (prevents network leakage)
+    /// - Fragment params (#) stay local — never sent over the network
+    /// - Amount includes fee: recipient gets amount - 0.00001
+    public static func encapsulatedPayment(amount: String, key: String, desc: String? = nil) -> String {
+        var fragment = "amount=\(amount)&key=\(key)"
+        if let desc, !desc.isEmpty {
+            let encoded = desc.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed) ?? desc
+            fragment += "&desc=\(encoded)"
+        }
+        return "https://pay.withzcash.com:65536/payment/v1#\(fragment)"
     }
 
+    /// Relay URL for Public Payment flow
     public static func relayURL(relayId: String) -> String {
         "\(MockData.relayBaseURL)/pay/\(relayId)"
     }
@@ -52,13 +64,14 @@ public enum MockData {
         hex: "f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5"
     )
 
+    /// Mock Bech32-encoded ephemeral spending key (looks realistic)
+    public static let mockEphemeralKey = "zkey1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx"
+
     public static let relayBaseURL = "https://relay.tachyon.network"
     public static let relayId = "pmt_7f3a2b1c"
 
     public static let mockBalance = "12.5"
-    public static let mockFee = "0.0001"
-
-    public static let mockNoteHex = "e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6"
+    public static let mockFee = "0.00001"
 
     public static func mockReceivedPayments(primaryAmount: String = "1.0") -> [MockPayment] {
         [
