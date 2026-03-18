@@ -11,6 +11,7 @@ import UIComponents
 import DeeplinkWarning
 import OSStatusError
 import Voting
+import TachyonDemo
 
 // Path
 import CurrencyConversionSetup
@@ -255,6 +256,17 @@ private extension RootView {
                                     ) {
                                         store.send(.backToHomeFromServerSwitchTapped)
                                     }
+                                }
+                                .transition(.move(edge: .trailing))
+                                .zIndex(1)
+                            } else if path == .tachyonDemo {
+                                NavigationStack {
+                                    TachyonDemoView(
+                                        store:
+                                            store.scope(
+                                                state: \.tachyonDemoState,
+                                                action: \.tachyonDemo)
+                                    )
                                 }
                                 .transition(.move(edge: .trailing))
                                 .zIndex(1)
