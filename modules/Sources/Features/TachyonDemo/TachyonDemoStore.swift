@@ -374,7 +374,12 @@ public struct TachyonDemo {
         // MARK: Flow 2A — Payment Link
 
         case .plSenderEnterAmount:
-            state.qrContent = TachyonURI.encapsulatedPayment(noteHex: MockData.mockNoteHex)
+            let amount = state.amount.isEmpty ? "1.0" : state.amount
+            state.qrContent = TachyonURI.encapsulatedPayment(
+                amount: amount,
+                key: MockData.mockEphemeralKey,
+                desc: "Welcome to Zcash!"
+            )
             state.screenStack.append(.plSenderShare)
             return .none
 
@@ -406,7 +411,11 @@ public struct TachyonDemo {
         // MARK: Flow 2B — Local Cash
 
         case .cashSenderEnterAmount:
-            state.qrContent = TachyonURI.encapsulatedPayment(noteHex: MockData.mockNoteHex)
+            let amount = state.amount.isEmpty ? "1.0" : state.amount
+            state.qrContent = TachyonURI.encapsulatedPayment(
+                amount: amount,
+                key: MockData.mockEphemeralKey
+            )
             state.screenStack.append(.cashSenderShowQR)
             return .none
 
