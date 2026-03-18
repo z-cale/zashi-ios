@@ -153,6 +153,11 @@ public struct TachyonDemo {
         // Amount input
         public var amount: String = ""
 
+        public var isOverBalance: Bool {
+            guard let value = Double(amount) else { return false }
+            return value > 12.5
+        }
+
         // QR
         public var qrCodeImage: CGImage?
         public var qrContent: String = ""

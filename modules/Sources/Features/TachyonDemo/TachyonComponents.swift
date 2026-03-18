@@ -114,13 +114,31 @@ struct TachyonQRCodeView: View {
 // MARK: - Mock Balance
 
 struct MockBalanceView: View {
+    var isOverBalance: Bool = false
+
+    private static let quips = [
+        "Insufficient funds — the one thing we didn't mock",
+        "That amount fails the range proof",
+        "Nice try — the commitment won't bind to that",
+        "Not even a zero-knowledge proof can hide this overdraft",
+    ]
+
     var body: some View {
-        HStack(spacing: 4) {
-            Text("Balance:")
-                .zFont(size: 14, style: Design.Text.tertiary)
-            Text("\(MockData.mockBalance) ZEC")
-                .zFont(.medium, size: 14, style: Design.Text.primary)
+        VStack(spacing: 4) {
+            HStack(spacing: 4) {
+                Text("Balance:")
+                    .zFont(size: 14, style: Design.Text.tertiary)
+                Text("\(MockData.mockBalance) ZEC")
+                    .zFont(.medium, size: 14, style: isOverBalance ? Design.Text.error : Design.Text.primary)
+            }
+
+            if isOverBalance {
+                Text(Self.quips[Int.random(in: 0..<Self.quips.count)])
+                    .zFont(.medium, size: 12, style: Design.Text.error)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
+        .animation(.easeInOut(duration: 0.2), value: isOverBalance)
     }
 }
 
