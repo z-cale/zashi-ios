@@ -418,7 +418,8 @@ public struct TachyonDemo {
             return .none
 
         case .ppRecipientChecking:
-            state.receivedPayments = MockData.mockReceivedPayments()
+            let sentAmount = state.amount.isEmpty ? "1.0" : state.amount
+            state.receivedPayments = MockData.mockReceivedPayments(primaryAmount: sentAmount)
             state.screenStack.append(.ppRecipientPaymentsArrived)
             return .none
 
