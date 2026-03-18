@@ -27,7 +27,7 @@ struct PRRecipientCreateView: View {
                         .padding(16)
                         .background { RoundedRectangle(cornerRadius: Design.Radius._xl).fill().zForegroundColor(Design.Surfaces.bgSecondary) }
 
-                    MockBalanceView()
+                    MockBalanceView(isOverBalance: store.isOverBalance)
                 }
                 .padding(.top, 24)
 
@@ -36,6 +36,7 @@ struct PRRecipientCreateView: View {
                 ZashiButton("Generate Request") {
                     store.send(.proceedTapped)
                 }
+                .disabled(store.isOverBalance)
                 .padding(.bottom, 32)
             }
             .screenHorizontalPadding()

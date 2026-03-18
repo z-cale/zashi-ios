@@ -133,7 +133,7 @@ struct PPSenderEnterAmountView: View {
                         .padding(16)
                         .background { RoundedRectangle(cornerRadius: Design.Radius._xl).fill().zForegroundColor(Design.Surfaces.bgSecondary) }
 
-                    MockBalanceView()
+                    MockBalanceView(isOverBalance: store.isOverBalance)
                 }
                 .padding(.top, 24)
 
@@ -142,6 +142,7 @@ struct PPSenderEnterAmountView: View {
                 ZashiButton("Continue") {
                     store.send(.proceedTapped)
                 }
+                .disabled(store.isOverBalance)
                 .padding(.bottom, 32)
             }
             .screenHorizontalPadding()
