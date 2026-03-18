@@ -214,3 +214,81 @@ struct MockScanView: View {
             }
     }
 }
+
+// MARK: - Role Colors
+
+enum RoleColor {
+    static func color(for role: TachyonDemo.State.Role) -> Color {
+        switch role {
+        case .recipient: return .green
+        case .sender: return .blue
+        }
+    }
+
+    static func tint(for role: TachyonDemo.State.Role) -> Color {
+        color(for: role).opacity(0.04)
+    }
+}
+
+// MARK: - Role Banner
+
+struct RoleBanner: View {
+    let role: TachyonDemo.State.Role
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(RoleColor.color(for: role))
+                .frame(width: 8, height: 8)
+
+            Text(role.label)
+                .zFont(.medium, size: 12, color: RoleColor.color(for: role))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 6)
+        .background(RoleColor.color(for: role).opacity(0.08))
+    }
+}
+
+// MARK: - Role Legend
+
+struct RoleLegend: View {
+    var body: some View {
+        HStack(spacing: 16) {
+            legendItem(role: .recipient)
+            legendItem(role: .sender)
+        }
+    }
+
+    private func legendItem(role: TachyonDemo.State.Role) -> some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(RoleColor.color(for: role))
+                .frame(width: 8, height: 8)
+            Text(role == .recipient ? "Recipient" : "Sender")
+                .zFont(size: 12, style: Design.Text.tertiary)
+        }
+    }
+}
+
+// MARK: - Role-Tinted Screen Background
+
+struct RoleTintModifier: ViewModifier {
+    let role: TachyonDemo.State.Role?
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                if let role {
+                    RoleColor.tint(for: role)
+                        .ignoresSafeArea()
+                }
+            }
+    }
+}
+
+extension View {
+    func roleTint(_ role: TachyonDemo.State.Role?) -> some View {
+        modifier(RoleTintModifier(role: role))
+    }
+}

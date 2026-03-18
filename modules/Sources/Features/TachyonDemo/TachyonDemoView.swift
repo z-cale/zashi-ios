@@ -13,8 +13,17 @@ public struct TachyonDemoView: View {
     public var body: some View {
         WithPerceptionTracking {
             let screen = store.screenStack.last ?? .flowPicker
-            screenView(for: screen)
-                .animation(.easeInOut(duration: 0.25), value: store.screenStack.count)
+            let role = screen.role
+
+            VStack(spacing: 0) {
+                if let role {
+                    RoleBanner(role: role)
+                }
+
+                screenView(for: screen)
+            }
+            .roleTint(role)
+            .animation(.easeInOut(duration: 0.25), value: store.screenStack.count)
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)

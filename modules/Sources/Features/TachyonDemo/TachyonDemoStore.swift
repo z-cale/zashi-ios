@@ -48,6 +48,22 @@ public struct TachyonDemo {
             case ppRecipientCheckRelay
             case ppRecipientChecking
             case ppRecipientPaymentsArrived
+
+            public var role: Role? {
+                switch self {
+                case .flowPicker, .switchTo:
+                    return nil
+                case .prRecipientCreate, .prRecipientShowQR, .prRecipientReceived,
+                     .lcRecipientClaim, .lcRecipientClaiming, .lcRecipientDone,
+                     .ppRecipientRegister, .ppRecipientRegistering, .ppRecipientShowURL,
+                     .ppRecipientCheckRelay, .ppRecipientChecking, .ppRecipientPaymentsArrived:
+                    return .recipient
+                case .prSenderConfirm, .prSenderProcessing,
+                     .lcSenderEnterAmount, .lcSenderShowPayment,
+                     .ppSenderEnterAmount, .ppSenderConfirm, .ppSenderProcessing:
+                    return .sender
+                }
+            }
         }
 
         public enum Perspective: Equatable {
@@ -113,8 +129,26 @@ public struct TachyonDemo {
             }
         }
 
+        // MARK: - Screen Role
+
+        public enum Role: Equatable {
+            case recipient
+            case sender
+
+            public var label: String {
+                switch self {
+                case .recipient: return "Recipient's Device"
+                case .sender: return "Sender's Device"
+                }
+            }
+        }
+
         public var screenStack: [Screen] = [.flowPicker]
         public var selectedFlow: Flow?
+
+        public var activeRole: Role? {
+            screenStack.last?.role
+        }
 
         // Amount input
         public var amount: String = ""

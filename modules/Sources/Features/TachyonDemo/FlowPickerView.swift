@@ -11,6 +11,9 @@ struct FlowPickerView: View {
             VStack(spacing: 0) {
                 DemoBanner()
 
+                RoleLegend()
+                    .padding(.top, 12)
+
                 ScrollView {
                     VStack(spacing: 12) {
                         ForEach(TachyonDemo.State.Flow.allCases, id: \.self) { flow in
