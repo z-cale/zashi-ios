@@ -233,6 +233,23 @@ struct MockScanView: View {
     }
 }
 
+// MARK: - Share Sheet Bridge
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+    let onDismiss: () -> Void
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        controller.completionWithItemsHandler = { _, _, _, _ in
+            onDismiss()
+        }
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
 // MARK: - Role Colors
 
 enum RoleColor {

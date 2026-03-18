@@ -54,24 +54,56 @@ public struct TachyonDemoView: View {
                 subtitle: "\(store.amount.isEmpty ? "1.0" : store.amount) ZEC from anonymous sender"
             )
 
-        // Flow 2: Local Cash
-        case .lcSenderEnterAmount:
-            LCSenderEnterAmountView(store: store)
-        case .lcSenderShowPayment:
-            LCSenderShowPaymentView(store: store)
-        case .lcSenderRevoking:
+        // Flow 2A: Payment Link
+        case .plSenderEnterAmount:
+            PLSenderEnterAmountView(store: store)
+        case .plSenderShare:
+            PLSenderShareView(store: store)
+        case .plSenderRevoking:
             TachyonProcessingView(message: "Revoking payment...")
-        case .lcSenderRevoked:
+        case .plSenderRevoked:
             TachyonSuccessView(
                 store: store,
                 title: "Payment Revoked",
                 subtitle: "Funds swept back to your wallet. The link is now invalid."
             )
-        case .lcRecipientClaim:
-            LCRecipientClaimView(store: store)
-        case .lcRecipientClaiming:
-            TachyonProcessingView(message: "Claiming payment...")
-        case .lcRecipientDone:
+        case .plOutsideMessageReceived:
+            PLOutsideMessageReceivedView(store: store)
+        case .plOutsideInstallApp:
+            PLOutsideInstallAppView(store: store)
+        case .plRecipientClaim:
+            PLRecipientClaimView(store: store)
+        case .plRecipientFinalizing:
+            TachyonProcessingView(message: "Finalizing payment...")
+        case .plRecipientDone:
+            TachyonSuccessView(
+                store: store,
+                title: "Funds Claimed!",
+                subtitle: "\(store.amount.isEmpty ? "1.0" : store.amount) ZEC added to your wallet"
+            )
+
+        // Flow 2B: Local Cash
+        case .cashSenderEnterAmount:
+            CashSenderEnterAmountView(store: store)
+        case .cashSenderShowQR:
+            CashSenderShowQRView(store: store)
+        case .cashSenderRevoking:
+            TachyonProcessingView(message: "Revoking payment...")
+        case .cashSenderRevoked:
+            TachyonSuccessView(
+                store: store,
+                title: "Payment Revoked",
+                subtitle: "Funds swept back to your wallet. The QR is now invalid."
+            )
+        case .cashOutsideCameraScan:
+            CashOutsideCameraScanView(store: store)
+        case .cashOutsideInstallApp:
+            CashOutsideInstallAppView(store: store)
+        case .cashRecipientClaim:
+            CashRecipientClaimView(store: store)
+        case .cashRecipientFinalizing:
+            TachyonProcessingView(message: "Finalizing payment...")
+        case .cashRecipientDone:
             TachyonSuccessView(
                 store: store,
                 title: "Funds Claimed!",

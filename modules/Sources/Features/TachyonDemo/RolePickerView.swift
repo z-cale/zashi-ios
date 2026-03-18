@@ -47,6 +47,7 @@ struct PerspectiveSwitchView: View {
         case .sender: return .blue
         case .recipient: return .green
         case .recipientOffline: return .orange
+        case .outsideApp: return .purple
         }
     }
 }
