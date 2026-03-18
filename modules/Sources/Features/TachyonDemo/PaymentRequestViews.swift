@@ -22,7 +22,7 @@ struct PRRecipientCreateView: View {
                 VStack(spacing: 8) {
                     TextField("Amount (ZEC)", text: $store.amount.sending(\.amountChanged))
                         .keyboardType(.decimalPad)
-                        .zFont(.semiBold, fontFamily: .robotoMono, size: 32, style: Design.Text.primary)
+                        .font(.custom(FontFamily.RobotoMono.semiBold.name, size: 32))
                         .multilineTextAlignment(.center)
                         .padding(16)
                         .background { RoundedRectangle(cornerRadius: Design.Radius._xl).fill().zForegroundColor(Design.Surfaces.bgSecondary) }
@@ -73,34 +73,7 @@ struct PRRecipientShowQRView: View {
 
                 Spacer()
 
-                ZashiButton("Simulate Payment Received", type: .secondary) {
-                    store.send(.simulateReceived)
-                }
-                .padding(.bottom, 32)
-            }
-            .screenHorizontalPadding()
-            .zashiBack { store.send(.goBack) }
-            .screenTitle("Payment Request")
-        }
-        .applyScreenBackground()
-    }
-}
-
-// MARK: - Sender: Scan
-
-struct PRSenderScanView: View {
-    let store: StoreOf<TachyonDemo>
-
-    var body: some View {
-        WithPerceptionTracking {
-            VStack(spacing: 0) {
-                Spacer()
-
-                MockScanView(label: "Scan payment request QR")
-
-                Spacer()
-
-                ZashiButton("Simulate Scan") {
+                ZashiButton("Sender scans this QR") {
                     store.send(.proceedTapped)
                 }
                 .padding(.bottom, 32)

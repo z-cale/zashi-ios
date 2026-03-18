@@ -16,20 +16,21 @@ public struct TachyonDemo {
     @ObservableState
     public struct State: Equatable {
         public enum Screen: Equatable {
-            // Top level
             case flowPicker
-            case rolePicker(Flow)
+
+            // Perspective switch
+            case switchTo(Perspective)
 
             // Flow 1: Payment Request
+            // Recipient creates → shows QR → switch → Sender scans → confirms → sends → switch → Recipient sees received
             case prRecipientCreate
             case prRecipientShowQR
-            case prSenderScan
             case prSenderConfirm
             case prSenderProcessing
-            case prSenderDone
             case prRecipientReceived
 
             // Flow 2: URI-Encapsulated Payment / Local Cash
+            // Sender enters amount → shows QR/share → switch → Recipient claims → done
             case lcSenderEnterAmount
             case lcSenderShowPayment
             case lcRecipientClaim
@@ -37,17 +38,46 @@ public struct TachyonDemo {
             case lcRecipientDone
 
             // Flow 3: Public Payment
+            // Recipient registers → gets URL → goes offline → switch → Sender scans → amount → confirms → sends → switch → Recipient checks relay → payments
             case ppRecipientRegister
             case ppRecipientRegistering
             case ppRecipientShowURL
-            case ppSenderScan
             case ppSenderEnterAmount
             case ppSenderConfirm
             case ppSenderProcessing
-            case ppSenderDone
             case ppRecipientCheckRelay
             case ppRecipientChecking
             case ppRecipientPaymentsArrived
+        }
+
+        public enum Perspective: Equatable {
+            case sender
+            case recipient
+            case recipientOffline
+
+            public var title: String {
+                switch self {
+                case .sender: return "Sender's Device"
+                case .recipient: return "Recipient's Device"
+                case .recipientOffline: return "Recipient Goes Offline"
+                }
+            }
+
+            public var subtitle: String {
+                switch self {
+                case .sender: return "Now viewing the sender's perspective"
+                case .recipient: return "Now viewing the recipient's perspective"
+                case .recipientOffline: return "The recipient puts their phone away. Time passes..."
+                }
+            }
+
+            public var systemImage: String {
+                switch self {
+                case .sender: return "arrow.up.circle.fill"
+                case .recipient: return "arrow.down.circle.fill"
+                case .recipientOffline: return "moon.zzz.fill"
+                }
+            }
         }
 
         public enum Flow: Equatable, CaseIterable {
@@ -83,18 +113,6 @@ public struct TachyonDemo {
             }
         }
 
-        public enum Role: Equatable {
-            case recipient
-            case sender
-
-            public var title: String {
-                switch self {
-                case .recipient: return "I'm the Recipient"
-                case .sender: return "I'm the Sender"
-                }
-            }
-        }
-
         public var screenStack: [Screen] = [.flowPicker]
         public var selectedFlow: Flow?
 
@@ -126,14 +144,12 @@ public struct TachyonDemo {
         case dismissFlow
         case goBack
         case flowSelected(State.Flow)
-        case roleSelected(State.Role)
 
         // Amount
         case amountChanged(String)
 
         // Proceed through screens
         case proceedTapped
-        case simulateReceived
 
         // QR
         case generateQRCode(String)
@@ -179,13 +195,14 @@ public struct TachyonDemo {
 
             case let .flowSelected(flow):
                 state.selectedFlow = flow
-                state.screenStack.append(.rolePicker(flow))
-                return .none
-
-            case let .roleSelected(role):
-                guard let flow = state.selectedFlow else { return .none }
-                let screen = firstScreen(for: flow, role: role)
-                state.screenStack.append(screen)
+                switch flow {
+                case .paymentRequest:
+                    state.screenStack.append(.prRecipientCreate)
+                case .uriEncapsulatedPayment:
+                    state.screenStack.append(.lcSenderEnterAmount)
+                case .publicPayment:
+                    state.screenStack.append(.ppRecipientRegister)
+                }
                 return .none
 
             // MARK: Amount
@@ -198,7 +215,6 @@ public struct TachyonDemo {
 
             case let .generateQRCode(content):
                 state.qrContent = content
-                // QR generation will be wired in views phase
                 return .none
 
             case let .qrCodeGenerated(image):
@@ -219,9 +235,6 @@ public struct TachyonDemo {
 
             case .proceedTapped:
                 return handleProceed(&state)
-
-            case .simulateReceived:
-                return handleSimulateReceived(&state)
 
             case .simulatedDelayCompleted:
                 return handleDelayCompleted(&state)
@@ -247,22 +260,14 @@ public struct TachyonDemo {
 
     // MARK: - Helpers
 
-    private func firstScreen(for flow: State.Flow, role: State.Role) -> State.Screen {
-        switch (flow, role) {
-        case (.paymentRequest, .recipient): return .prRecipientCreate
-        case (.paymentRequest, .sender): return .prSenderScan
-        case (.uriEncapsulatedPayment, .recipient): return .lcRecipientClaim
-        case (.uriEncapsulatedPayment, .sender): return .lcSenderEnterAmount
-        case (.publicPayment, .recipient): return .ppRecipientRegister
-        case (.publicPayment, .sender): return .ppSenderScan
-        }
-    }
-
     private func handleProceed(_ state: inout State) -> Effect<Action> {
         guard let currentScreen = state.screenStack.last else { return .none }
 
         switch currentScreen {
-        // Flow 1: Payment Request
+
+        // MARK: Flow 1 — Payment Request
+        // Recipient creates → QR → [switch to sender] → confirm → processing → [switch to recipient] → received
+
         case .prRecipientCreate:
             let amount = state.amount.isEmpty ? "1.0" : state.amount
             state.qrContent = TachyonURI.paymentRequest(
@@ -272,8 +277,12 @@ public struct TachyonDemo {
             state.screenStack.append(.prRecipientShowQR)
             return .none
 
-        case .prSenderScan:
-            state.amount = "1.0"
+        case .prRecipientShowQR:
+            // Recipient showed QR → switch to sender who "scanned" it
+            state.screenStack.append(.switchTo(.sender))
+            return .none
+
+        case .switchTo(.sender) where state.selectedFlow == .paymentRequest:
             state.screenStack.append(.prSenderConfirm)
             return .none
 
@@ -285,12 +294,24 @@ public struct TachyonDemo {
             }
             .cancellable(id: CancelID.simulatedDelay)
 
-        // Flow 2: Local Cash
+        // MARK: Flow 2 — Local Cash / URI Payment
+        // Sender enters amount → shows QR/share → [switch to recipient] → claim → done
+
         case .lcSenderEnterAmount:
-            let amount = state.amount.isEmpty ? "1.0" : state.amount
             state.qrContent = TachyonURI.encapsulatedPayment(noteHex: MockData.mockNoteHex)
             state.screenStack.append(.lcSenderShowPayment)
-            _ = amount
+            return .none
+
+        case .lcSenderShowPayment:
+            state.screenStack.append(.switchTo(.recipient))
+            return .none
+
+        case .switchTo(.recipient) where state.selectedFlow == .paymentRequest:
+            state.screenStack.append(.prRecipientReceived)
+            return .none
+
+        case .switchTo(.recipient) where state.selectedFlow == .uriEncapsulatedPayment:
+            state.screenStack.append(.lcRecipientClaim)
             return .none
 
         case .lcRecipientClaim:
@@ -301,8 +322,18 @@ public struct TachyonDemo {
             }
             .cancellable(id: CancelID.simulatedDelay)
 
-        // Flow 3: Public Payment
-        case .ppSenderScan:
+        // MARK: Flow 3 — Public Payment
+        // Recipient registers → URL → [goes offline] → [switch to sender] → amount → confirm → processing → [switch to recipient] → check → payments
+
+        case .ppRecipientShowURL:
+            state.screenStack.append(.switchTo(.recipientOffline))
+            return .none
+
+        case .switchTo(.recipientOffline):
+            state.screenStack.append(.switchTo(.sender))
+            return .none
+
+        case .switchTo(.sender) where state.selectedFlow == .publicPayment:
             state.screenStack.append(.ppSenderEnterAmount)
             return .none
 
@@ -318,18 +349,11 @@ public struct TachyonDemo {
             }
             .cancellable(id: CancelID.simulatedDelay)
 
-        default:
+        // switchTo(.recipient) for public payment — after sender done
+        case .switchTo(.recipient) where state.selectedFlow == .publicPayment:
+            state.screenStack.append(.ppRecipientCheckRelay)
             return .none
-        }
-    }
 
-    private func handleSimulateReceived(_ state: inout State) -> Effect<Action> {
-        guard let currentScreen = state.screenStack.last else { return .none }
-
-        switch currentScreen {
-        case .prRecipientShowQR:
-            state.screenStack.append(.prRecipientReceived)
-            return .none
         default:
             return .none
         }
@@ -340,7 +364,8 @@ public struct TachyonDemo {
 
         switch currentScreen {
         case .prSenderProcessing:
-            state.screenStack.append(.prSenderDone)
+            // Sender done → switch back to recipient
+            state.screenStack.append(.switchTo(.recipient))
             return .none
 
         case .lcRecipientClaiming:
@@ -354,7 +379,8 @@ public struct TachyonDemo {
             return .none
 
         case .ppSenderProcessing:
-            state.screenStack.append(.ppSenderDone)
+            // Sender done → switch to recipient coming back online
+            state.screenStack.append(.switchTo(.recipient))
             return .none
 
         case .ppRecipientChecking:

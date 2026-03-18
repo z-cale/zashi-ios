@@ -86,8 +86,8 @@ struct PPRecipientShowURLView: View {
                         store.send(.sharePayment)
                     }
 
-                    ZashiButton("Done", type: .ghost) {
-                        store.send(.backToFlowPicker)
+                    ZashiButton("Recipient goes offline", type: .secondary) {
+                        store.send(.proceedTapped)
                     }
                 }
                 .padding(.bottom, 32)
@@ -98,36 +98,6 @@ struct PPRecipientShowURLView: View {
                     store.send(.shareFinished)
                 }
             }
-            .zashiBack { store.send(.goBack) }
-            .screenTitle("Public Payment")
-        }
-        .applyScreenBackground()
-    }
-}
-
-// MARK: - Sender: Scan
-
-struct PPSenderScanView: View {
-    let store: StoreOf<TachyonDemo>
-
-    var body: some View {
-        WithPerceptionTracking {
-            VStack(spacing: 0) {
-                Spacer()
-
-                MockScanView(label: "Scan public payment QR")
-
-                ViaRelayBadge()
-                    .padding(.top, 16)
-
-                Spacer()
-
-                ZashiButton("Simulate Scan") {
-                    store.send(.proceedTapped)
-                }
-                .padding(.bottom, 32)
-            }
-            .screenHorizontalPadding()
             .zashiBack { store.send(.goBack) }
             .screenTitle("Public Payment")
         }
@@ -158,7 +128,7 @@ struct PPSenderEnterAmountView: View {
                 VStack(spacing: 8) {
                     TextField("Amount (ZEC)", text: $store.amount.sending(\.amountChanged))
                         .keyboardType(.decimalPad)
-                        .zFont(.semiBold, fontFamily: .robotoMono, size: 32, style: Design.Text.primary)
+                        .font(.custom(FontFamily.RobotoMono.semiBold.name, size: 32))
                         .multilineTextAlignment(.center)
                         .padding(16)
                         .background { RoundedRectangle(cornerRadius: Design.Radius._xl).fill().zForegroundColor(Design.Surfaces.bgSecondary) }

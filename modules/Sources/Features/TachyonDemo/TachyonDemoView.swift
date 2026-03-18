@@ -26,26 +26,18 @@ public struct TachyonDemoView: View {
         case .flowPicker:
             FlowPickerView(store: store)
 
-        case let .rolePicker(flow):
-            RolePickerView(store: store, flow: flow)
+        case let .switchTo(perspective):
+            PerspectiveSwitchView(store: store, perspective: perspective)
 
         // Flow 1: Payment Request
         case .prRecipientCreate:
             PRRecipientCreateView(store: store)
         case .prRecipientShowQR:
             PRRecipientShowQRView(store: store)
-        case .prSenderScan:
-            PRSenderScanView(store: store)
         case .prSenderConfirm:
             PRSenderConfirmView(store: store)
         case .prSenderProcessing:
             TachyonProcessingView(message: "Sending payment...")
-        case .prSenderDone:
-            TachyonSuccessView(
-                store: store,
-                title: "Payment Sent!",
-                subtitle: "The recipient will be notified."
-            )
         case .prRecipientReceived:
             TachyonSuccessView(
                 store: store,
@@ -76,20 +68,12 @@ public struct TachyonDemoView: View {
             TachyonProcessingView(message: "Registering with relay...")
         case .ppRecipientShowURL:
             PPRecipientShowURLView(store: store)
-        case .ppSenderScan:
-            PPSenderScanView(store: store)
         case .ppSenderEnterAmount:
             PPSenderEnterAmountView(store: store)
         case .ppSenderConfirm:
             PPSenderConfirmView(store: store)
         case .ppSenderProcessing:
             TachyonProcessingView(message: "Sending via relay...")
-        case .ppSenderDone:
-            TachyonSuccessView(
-                store: store,
-                title: "Payment Stored for Delivery",
-                subtitle: "The relay will forward it when the recipient comes online."
-            )
         case .ppRecipientCheckRelay:
             PPRecipientCheckRelayView(store: store)
         case .ppRecipientChecking:

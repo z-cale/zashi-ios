@@ -23,7 +23,7 @@ struct LCSenderEnterAmountView: View {
                 VStack(spacing: 8) {
                     TextField("Amount (ZEC)", text: $store.amount.sending(\.amountChanged))
                         .keyboardType(.decimalPad)
-                        .zFont(.semiBold, fontFamily: .robotoMono, size: 32, style: Design.Text.primary)
+                        .font(.custom(FontFamily.RobotoMono.semiBold.name, size: 32))
                         .multilineTextAlignment(.center)
                         .padding(16)
                         .background { RoundedRectangle(cornerRadius: Design.Radius._xl).fill().zForegroundColor(Design.Surfaces.bgSecondary) }
@@ -88,8 +88,8 @@ struct LCSenderShowPaymentView: View {
                         store.send(.sharePayment)
                     }
 
-                    ZashiButton("Done", type: .ghost) {
-                        store.send(.backToFlowPicker)
+                    ZashiButton("Recipient claims this", type: .secondary) {
+                        store.send(.proceedTapped)
                     }
                 }
                 .padding(.bottom, 32)
@@ -124,7 +124,7 @@ struct LCRecipientClaimView: View {
                     .zFont(.semiBold, size: 24, style: Design.Text.primary)
                     .padding(.top, 16)
 
-                Text("1.0 ZEC")
+                Text("\(store.amount.isEmpty ? "1.0" : store.amount) ZEC")
                     .zFont(.bold, size: 32, style: Design.Text.primary)
                     .padding(.top, 12)
 
