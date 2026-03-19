@@ -899,6 +899,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                     snapshotBlockhash: session.snapshotBlockhash,
                     proposalsHash: session.proposalsHash,
                     voteEndTime: session.voteEndTime,
+                    ceremonyStart: session.ceremonyStart,
                     eaPK: session.eaPK,
                     vkZkp1: session.vkZkp1,
                     vkZkp2: session.vkZkp2,
@@ -1914,7 +1915,22 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 let chainNodeUrl = state.serviceConfig?.voteServers.first?.url ?? "https://46-101-255-48.sslip.io"
 
                 let bundleCount = state.bundleCount
-                return .run { [backgroundTask, votingAPI, votingCrypto, mnemonic, walletStorage] send in
+                let singleShare = state.activeSession?.isLastMoment ?? false
+
+                // Compute the submit_at sampling window. Each share independently
+                // samples its own submit_at from this range so shares from a single
+                // voter trickle in at different times (privacy between shares).
+                let submitAtDeadline: Double?
+                if singleShare {
+                    submitAtDeadline = nil // immediate (submit_at=0)
+                } else if let session = state.activeSession, let buffer = session.lastMomentBuffer {
+                    let deadline = session.voteEndTime.timeIntervalSince1970 - buffer
+                    submitAtDeadline = deadline
+                } else {
+                    submitAtDeadline = nil
+                }
+
+                return .run { [backgroundTask, votingAPI, votingCrypto, mnemonic, walletStorage, singleShare, submitAtDeadline] send in
                     let bgTaskId = await backgroundTask.beginTask("Vote commitment proof")
                     do {
                         let hotkeyPhrase = try walletStorage.exportVotingHotkey().seedPhrase.value()
@@ -1951,9 +1967,18 @@ public struct Voting { // swiftlint:disable:this type_body_length
                                         // Without shares, the tally cannot decrypt the vote.
                                         if let savedBundle = try? await votingCrypto.getVoteCommitmentBundle(roundId, bundleIndex, proposalId) {
                                             await send(.voteSubmissionStepUpdated(.sendingShares))
-                                            let payloads = try await votingCrypto.buildSharePayloads(
-                                                savedBundle.encShares, savedBundle, choice, numOptions, vcIdx
+                                            var payloads = try await votingCrypto.buildSharePayloads(
+                                                savedBundle.encShares, savedBundle, choice, numOptions, vcIdx, singleShare
                                             )
+                                            // Each share gets its own independently sampled submit_at.
+                                            let now = Date().timeIntervalSince1970
+                                            for i in payloads.indices {
+                                                if let deadline = submitAtDeadline, deadline > now {
+                                                    payloads[i].submitAt = UInt64(now + Double.random(in: 0..<(deadline - now)))
+                                                } else {
+                                                    payloads[i].submitAt = 0
+                                                }
+                                            }
                                             var lastShareError: Error?
                                             for attempt in 1...3 {
                                                 do {
@@ -2005,7 +2030,8 @@ public struct Voting { // swiftlint:disable:this type_body_length
                                 numOptions,
                                 vanWitness.authPath,
                                 vanWitness.position,
-                                vanWitness.anchorHeight
+                                vanWitness.anchorHeight,
+                                singleShare
                             ) {
                                 if case .completed(let bundle) = event {
                                     builtBundle = bundle
@@ -2063,9 +2089,18 @@ public struct Voting { // swiftlint:disable:this type_body_length
                             try await votingCrypto.storeVanPosition(roundId, bundleIndex, newVanPosition)
 
                             await send(.voteSubmissionStepUpdated(.sendingShares))
-                            let payloads = try await votingCrypto.buildSharePayloads(
-                                builtBundle.encShares, builtBundle, choice, numOptions, vcTreePosition
+                            var payloads = try await votingCrypto.buildSharePayloads(
+                                builtBundle.encShares, builtBundle, choice, numOptions, vcTreePosition, singleShare
                             )
+                            // Each share gets its own independently sampled submit_at.
+                            let nowSec = Date().timeIntervalSince1970
+                            for i in payloads.indices {
+                                if let deadline = submitAtDeadline, deadline > nowSec {
+                                    payloads[i].submitAt = UInt64(nowSec + Double.random(in: 0..<(deadline - nowSec)))
+                                } else {
+                                    payloads[i].submitAt = 0
+                                }
+                            }
                             // Update the stored bundle with the actual VC tree position (now known after TX confirm)
                             try await votingCrypto.storeVoteCommitmentBundle(roundId, bundleIndex, proposalId, builtBundle, vcTreePosition)
 

@@ -11,6 +11,16 @@ public func quantizeWeight(_ zatoshi: UInt64) -> UInt64 {
     (zatoshi / ballotDivisor) * ballotDivisor
 }
 
+// MARK: - Last-Moment Buffer Constants
+
+/// Fraction of round duration used as the last-moment buffer (10%).
+/// Must match `computeBuffer` in sdk/internal/helper/store.go.
+private let lastMomentBufferFraction: Double = 0.1
+
+/// Maximum last-moment buffer duration in seconds (1 hour).
+/// Must match `computeBuffer` in sdk/internal/helper/store.go.
+private let lastMomentBufferMaxSeconds: TimeInterval = 3600
+
 // MARK: - Session & Round
 
 /// Full on-chain representation from VoteRound proto (zvote/v1/types.proto).
@@ -22,6 +32,7 @@ public struct VotingSession: Equatable, Sendable {
     public let snapshotBlockhash: Data
     public let proposalsHash: Data
     public let voteEndTime: Date
+    public let ceremonyStart: Date
     public let eaPK: Data
     public let vkZkp1: Data
     public let vkZkp2: Data
@@ -35,12 +46,36 @@ public struct VotingSession: Equatable, Sendable {
     public let createdAtHeight: UInt64
     public let title: String
 
+    /// The last-moment buffer defines a window before vote end during which votes
+    /// are treated as "last-moment" — submitted immediately with `submit_at=0`
+    /// and using single-share mode. Computed as 10% of the total round duration
+    /// (ceremony start → vote end), capped at 1 hour.
+    public var lastMomentBuffer: TimeInterval? {
+        // Total voting window: from when the ceremony started to when voting ends.
+        let duration = voteEndTime.timeIntervalSince(ceremonyStart)
+        guard duration > 0 else {
+            // Invalid round times — cannot compute buffer.
+            assertionFailure("lastMomentBuffer: voteEndTime (\(voteEndTime)) <= ceremonyStart (\(ceremonyStart))")
+            return nil
+        }
+        // 10% of round duration, but never more than 1 hour.
+        return min(duration * lastMomentBufferFraction, lastMomentBufferMaxSeconds)
+    }
+
+    /// Returns `true` when the current time falls within the last-moment buffer before vote end.
+    /// Returns `false` if round times are invalid (buffer cannot be computed).
+    public var isLastMoment: Bool {
+        guard let buffer = lastMomentBuffer else { return false }
+        return Date().timeIntervalSince1970 >= voteEndTime.timeIntervalSince1970 - buffer
+    }
+
     public init(
         voteRoundId: Data,
         snapshotHeight: UInt64,
         snapshotBlockhash: Data,
         proposalsHash: Data,
         voteEndTime: Date,
+        ceremonyStart: Date = Date(timeIntervalSince1970: 0),
         eaPK: Data,
         vkZkp1: Data,
         vkZkp2: Data,
@@ -59,6 +94,7 @@ public struct VotingSession: Equatable, Sendable {
         self.snapshotBlockhash = snapshotBlockhash
         self.proposalsHash = proposalsHash
         self.voteEndTime = voteEndTime
+        self.ceremonyStart = ceremonyStart
         self.eaPK = eaPK
         self.vkZkp1 = vkZkp1
         self.vkZkp2 = vkZkp2
@@ -488,10 +524,13 @@ public struct SharePayload: Equatable, Sendable {
     public let shareComms: [Data]
     /// Blind factor for this specific share (32 bytes).
     public let primaryBlind: Data
+    /// Unix seconds at which the helper should submit the share; 0 = immediate (last-moment).
+    public var submitAt: UInt64
 
     public init(
         sharesHash: Data, proposalId: UInt32, voteDecision: UInt32, encShare: EncryptedShare,
-        treePosition: UInt64, allEncShares: [EncryptedShare] = [], shareComms: [Data] = [], primaryBlind: Data = Data()
+        treePosition: UInt64, allEncShares: [EncryptedShare] = [], shareComms: [Data] = [],
+        primaryBlind: Data = Data(), submitAt: UInt64 = 0
     ) {
         self.sharesHash = sharesHash
         self.proposalId = proposalId
@@ -501,6 +540,7 @@ public struct SharePayload: Equatable, Sendable {
         self.allEncShares = allEncShares
         self.shareComms = shareComms
         self.primaryBlind = primaryBlind
+        self.submitAt = submitAt
     }
 }
 
