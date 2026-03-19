@@ -11,6 +11,16 @@ public func quantizeWeight(_ zatoshi: UInt64) -> UInt64 {
     (zatoshi / ballotDivisor) * ballotDivisor
 }
 
+// MARK: - Last-Moment Buffer Constants
+
+/// Fraction of round duration used as the last-moment buffer (10%).
+/// Must match `computeBuffer` in sdk/internal/helper/store.go.
+private let lastMomentBufferFraction: Double = 0.1
+
+/// Maximum last-moment buffer duration in seconds (1 hour).
+/// Must match `computeBuffer` in sdk/internal/helper/store.go.
+private let lastMomentBufferMaxSeconds: TimeInterval = 3600
+
 // MARK: - Session & Round
 
 /// Full on-chain representation from VoteRound proto (zvote/v1/types.proto).
@@ -22,6 +32,7 @@ public struct VotingSession: Equatable, Sendable {
     public let snapshotBlockhash: Data
     public let proposalsHash: Data
     public let voteEndTime: Date
+    public let voteStartTime: Date
     public let eaPK: Data
     public let vkZkp1: Data
     public let vkZkp2: Data
@@ -35,12 +46,29 @@ public struct VotingSession: Equatable, Sendable {
     public let createdAtHeight: UInt64
     public let title: String
 
+    public var lastMomentBuffer: TimeInterval? {
+        let duration = voteEndTime.timeIntervalSince(voteStartTime)
+        guard duration > 0 else {
+            assertionFailure("lastMomentBuffer: voteEndTime (\(voteEndTime)) <= voteStartTime (\(voteStartTime))")
+            return nil
+        }
+        return min(duration * lastMomentBufferFraction, lastMomentBufferMaxSeconds)
+    }
+
+    /// Returns `true` when the current time falls within the last-moment buffer before vote end.
+    /// Returns `false` if round times are invalid (buffer cannot be computed).
+    public var isLastMoment: Bool {
+        guard let buffer = lastMomentBuffer else { return false }
+        return Date().timeIntervalSince1970 >= voteEndTime.timeIntervalSince1970 - buffer
+    }
+
     public init(
         voteRoundId: Data,
         snapshotHeight: UInt64,
         snapshotBlockhash: Data,
         proposalsHash: Data,
         voteEndTime: Date,
+        voteStartTime: Date = Date(timeIntervalSince1970: 0),
         eaPK: Data,
         vkZkp1: Data,
         vkZkp2: Data,
@@ -59,6 +87,7 @@ public struct VotingSession: Equatable, Sendable {
         self.snapshotBlockhash = snapshotBlockhash
         self.proposalsHash = proposalsHash
         self.voteEndTime = voteEndTime
+        self.voteStartTime = voteStartTime
         self.eaPK = eaPK
         self.vkZkp1 = vkZkp1
         self.vkZkp2 = vkZkp2

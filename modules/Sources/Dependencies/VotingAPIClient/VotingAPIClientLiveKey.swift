@@ -235,6 +235,8 @@ private func dataFromHex(_ hex: String) -> Data {
 private func parseVotingSession(from round: [String: Any]) throws -> VotingSession {
     let voteEndTimeUnix = parseUInt64(round["vote_end_time"])
     let voteEndTime = Date(timeIntervalSince1970: TimeInterval(voteEndTimeUnix))
+    let voteStartTimeUnix = parseUInt64(round["vote_start_time"])
+    let voteStartTime = Date(timeIntervalSince1970: TimeInterval(voteStartTimeUnix))
     let statusRaw = parseUInt32(round["status"])
 
     // Parse proposals array with options
@@ -265,6 +267,7 @@ private func parseVotingSession(from round: [String: Any]) throws -> VotingSessi
         snapshotBlockhash: parseBase64(round["snapshot_blockhash"]),
         proposalsHash: parseBase64(round["proposals_hash"]),
         voteEndTime: voteEndTime,
+        voteStartTime: voteStartTime,
         eaPK: parseBase64(round["ea_pk"]),
         vkZkp1: parseBase64(round["vk_zkp1"]),
         vkZkp2: parseBase64(round["vk_zkp2"]),

@@ -295,7 +295,7 @@ extension VotingCryptoClient: DependencyKey {
                 }
             },
             // swiftlint:disable:next line_length
-            buildVoteCommitment: { roundId, bundleIndex, hotkeySeed, networkId, proposalId, choice, numOptions, vanAuthPath, vanPosition, anchorHeight in
+            buildVoteCommitment: { roundId, bundleIndex, hotkeySeed, networkId, proposalId, choice, numOptions, vanAuthPath, vanPosition, anchorHeight, singleShare in
                 AsyncThrowingStream { continuation in
                     Task.detached {
                         do {
@@ -311,6 +311,7 @@ extension VotingCryptoClient: DependencyKey {
                                 vanAuthPath: vanAuthPath.map { [UInt8]($0) },
                                 vanPosition: vanPosition,
                                 anchorHeight: anchorHeight,
+                                singleShare: singleShare ? 1 : 0,
                                 progress: { progress in
                                     continuation.yield(.progress(progress))
                                 }
@@ -345,7 +346,7 @@ extension VotingCryptoClient: DependencyKey {
                     }
                 }
             },
-            buildSharePayloads: { encShares, commitment, voteDecision, numOptions, vcTreePosition in
+            buildSharePayloads: { encShares, commitment, voteDecision, numOptions, vcTreePosition, singleShare in
                 let backend = try await dbActor.backend()
                 let sdkShares = encShares.map {
                     VotingWireEncryptedShare(
@@ -374,7 +375,8 @@ extension VotingCryptoClient: DependencyKey {
                     commitment: sdkCommitment,
                     voteDecision: voteDecision.ffiValue,
                     numOptions: numOptions,
-                    vcTreePosition: vcTreePosition
+                    vcTreePosition: vcTreePosition,
+                    singleShare: singleShare ? 1 : 0
                 )
                 return payloads.map {
                     SharePayload(
