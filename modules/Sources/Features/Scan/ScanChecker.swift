@@ -21,11 +21,17 @@ public protocol ScanChecker: Equatable {
 
 public struct ZcashAddressScanChecker: ScanChecker, Equatable {
     public let id = 0
-    
+
     public func checkQRCode(_ qrCode: String) -> Scan.Action? {
         @Dependency(\.uriParser) var uriParser
         @Dependency(\.zcashSDKEnvironment) var zcashSDKEnvironment
-        
+
+        // Demo: accept mock address prefixes directly
+        let code = qrCode.replacingOccurrences(of: "zcash:", with: "")
+        if code.hasPrefix("dyn1") || code.hasPrefix("pub1") {
+            return .foundAddress(code.redacted)
+        }
+
         if uriParser.isValidURI(qrCode, zcashSDKEnvironment.network.networkType) {
             return .foundAddress(qrCode.redacted)
         } else {
@@ -36,11 +42,25 @@ public struct ZcashAddressScanChecker: ScanChecker, Equatable {
 
 public struct RequestZecScanChecker: ScanChecker, Equatable {
     public let id = 1
-    
+
     public func checkQRCode(_ qrCode: String) -> Scan.Action? {
         @Dependency(\.uriParser) var uriParser
         @Dependency(\.zcashSDKEnvironment) var zcashSDKEnvironment
-        
+
+        // Demo: parse mock payment requests (zcash:dyn1...?amount=X)
+        let stripped = qrCode.hasPrefix("zcash:") ? String(qrCode.dropFirst(6)) : qrCode
+        if stripped.hasPrefix("dyn1") || stripped.hasPrefix("pub1") {
+            // Extract address and amount from query string
+            let parts = stripped.split(separator: "?", maxSplits: 1)
+            let address = String(parts[0])
+            if parts.count > 1 {
+                // Has query params — treat as payment request, return as address
+                // The send form will be populated with just the address
+                return .foundAddress(address.redacted)
+            }
+            return .foundAddress(address.redacted)
+        }
+
         if let parserResult = uriParser.checkRP(qrCode, zcashSDKEnvironment.network.networkType) {
             return .foundRequestZec(parserResult)
         } else {
