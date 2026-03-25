@@ -230,17 +230,17 @@ extension SendCoordFlow {
             case .path(.element(id: _, action: .directSend(.closeTapped))),
                  .path(.element(id: _, action: .directSend(.backTapped))):
                 state.path.removeAll()
-                return refreshMockBalance(walletAddress: state.sendFormState.selectedWalletAccount?.privateUnifiedAddress)
+                return refreshMockBalance(state: &state)
 
             case .path(.element(id: _, action: .paymentLinkFlow(.closeTapped))),
                  .path(.element(id: _, action: .paymentLinkFlow(.backTapped))):
                 state.path.removeAll()
-                return refreshMockBalance(walletAddress: state.sendFormState.selectedWalletAccount?.privateUnifiedAddress)
+                return refreshMockBalance(state: &state)
 
             case .path(.element(id: _, action: .publicPaymentSender(.closeTapped))),
                  .path(.element(id: _, action: .publicPaymentSender(.backTapped))):
                 state.path.removeAll()
-                return refreshMockBalance(walletAddress: state.sendFormState.selectedWalletAccount?.privateUnifiedAddress)
+                return refreshMockBalance(state: &state)
 
             case .sendForm(.addNewContactTapped(let address)):
                 var addressBookState = AddressBook.State.initial
@@ -390,13 +390,13 @@ extension SendCoordFlow {
         }
     }
 
-    private func refreshMockBalance(walletAddress: String?) -> Effect<SendCoordFlow.Action> {
-        guard let address = walletAddress else { return .none }
-        return .run { _ in
+    private func refreshMockBalance(state: inout SendCoordFlow.State) -> Effect<SendCoordFlow.Action> {
+        let address = state.sendFormState.selectedWalletAccount?.privateUnifiedAddress ?? ""
+        guard !address.isEmpty else { return .none }
+        return .run { [mockBalance = state.$mockBalance] _ in
             @Dependency(\.paymentServiceClient) var paymentServiceClient
             let response = try await paymentServiceClient.getBalance(address)
-            let shared = Shared<String>(.inMemory(.mockBalance))
-            shared.withLock { $0 = response.balance }
+            mockBalance.withLock { $0 = response.balance }
         } catch: { _, _ in }
     }
 }

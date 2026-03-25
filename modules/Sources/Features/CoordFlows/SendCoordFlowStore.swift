@@ -47,6 +47,7 @@ public struct SendCoordFlow {
     public struct State {
         public var path = StackState<Path.State>()
         public var sendFormState = SendForm.State.initial
+        @Shared(.inMemory(.mockBalance)) public var mockBalance: String = "0"
         @Shared(.inMemory(.transactions)) public var transactions: IdentifiedArrayOf<TransactionState> = []
 
         public init() { }
