@@ -24,13 +24,10 @@ extension Root {
                 .backToHomeFromServerSwitchTapped,
                 .sendCoordFlow(.sendForm(.dismissRequired)):
                 state.path = nil
-                return refreshMockBalance(state: &state)
+                return refreshDemoState(state: &state)
 
             case .home(.refreshMockBalance):
-                return .merge(
-                    refreshMockBalance(state: &state),
-                    fetchMockTransactions(state: &state)
-                )
+                return refreshDemoState(state: &state)
                 
                 // MARK: - Accounts
 
@@ -204,6 +201,7 @@ extension Root {
             case let .home(.fundWalletCompleted(balance)):
                 state.$mockBalance.withLock { $0 = balance }
                 state.$toast.withLock { $0 = .top("Funded! Mock balance: \(balance) ZEC") }
+                return fetchMockTransactions(state: &state)
                 return .none
 
             case .home(.resetDemoState):
@@ -237,7 +235,7 @@ extension Root {
 
             case .claimPayment(.closeTapped), .claimPayment(.viewTransactionTapped):
                 state.path = nil
-                return refreshMockBalance(state: &state)
+                return refreshDemoState(state: &state)
 
             case .tachyonDemo(.dismissFlow):
                 state.path = nil
@@ -452,6 +450,13 @@ extension Root {
             default: return .none
             }
         }
+    }
+
+    private func refreshDemoState(state: inout Root.State) -> Effect<Root.Action> {
+        .merge(
+            refreshMockBalance(state: &state),
+            fetchMockTransactions(state: &state)
+        )
     }
 
     private func refreshMockBalance(state: inout Root.State) -> Effect<Root.Action> {
