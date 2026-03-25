@@ -29,6 +29,8 @@ public struct PaymentServiceClient {
     public var registerAlias: @Sendable (_ alias: String, _ owner: String) async throws -> Void
     // Transactions
     public var getTransactions: @Sendable (_ address: String) async throws -> MockTransactionListResponse
+    // SSE events
+    public var subscribeToEvents: @Sendable (_ address: String) -> AsyncStream<Void>
     // Balance
     public var getBalance: @Sendable (_ address: String) async throws -> MockBalanceResponse
 }

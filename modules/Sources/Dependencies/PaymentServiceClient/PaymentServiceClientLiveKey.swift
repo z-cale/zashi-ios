@@ -125,6 +125,28 @@ extension PaymentServiceClient: DependencyKey {
             getTransactions: { address in
                 try await get("/transactions/\(address)")
             },
+            subscribeToEvents: { address in
+                AsyncStream { continuation in
+                    let task = Task {
+                        guard let url = URL(string: "\(await baseURL())/events/\(address)") else {
+                            continuation.finish()
+                            return
+                        }
+                        do {
+                            let (bytes, _) = try await URLSession.shared.bytes(from: url)
+                            for try await line in bytes.lines {
+                                if line.hasPrefix("event: transaction") {
+                                    continuation.yield(())
+                                }
+                            }
+                        } catch {
+                            logger.debug("SSE connection ended: \(error)")
+                        }
+                        continuation.finish()
+                    }
+                    continuation.onTermination = { _ in task.cancel() }
+                }
+            },
             getBalance: { address in
                 try await get("/balance/\(address)")
             }

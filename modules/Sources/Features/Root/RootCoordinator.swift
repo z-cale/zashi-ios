@@ -27,7 +27,12 @@ extension Root {
                 return refreshDemoState(state: &state)
 
             case .home(.refreshMockBalance):
-                return refreshDemoState(state: &state)
+                var effects: [Effect<Root.Action>] = [refreshDemoState(state: &state)]
+                if !state.sseListenerStarted {
+                    state.sseListenerStarted = true
+                    effects.append(.send(.startSSEListener))
+                }
+                return .merge(effects)
                 
                 // MARK: - Accounts
 
@@ -226,6 +231,19 @@ extension Root {
                     }
                     mockBalance.withLock { $0 = "0" }
                 } catch: { _, _ in }
+
+            case .startSSEListener:
+                let address = state.selectedWalletAccount?.unifiedAddress ?? ""
+                guard !address.isEmpty else { return .none }
+                return .run { send in
+                    @Dependency(\.paymentServiceClient) var paymentServiceClient
+                    for await _ in paymentServiceClient.subscribeToEvents(address) {
+                        await send(.sseEventReceived)
+                    }
+                }
+
+            case .sseEventReceived:
+                return refreshDemoState(state: &state)
 
             case .home(.tachyonDemoTapped):
                 state.homeState.moreRequest = false

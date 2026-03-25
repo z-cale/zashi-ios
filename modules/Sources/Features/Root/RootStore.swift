@@ -119,6 +119,7 @@ public struct Root {
         public var supportData: SupportData?
         @Shared(.inMemory(.swapAPIAccess)) var swapAPIAccess: WalletStorage.SwapAPIAccess = .direct
         @Shared(.inMemory(.mockBalance)) public var mockBalance: String = "0"
+        public var sseListenerStarted = false
         @Shared(.inMemory(.publicDonationAddress)) public var publicDonationAddress: String = ""
         @Shared(.inMemory(.publicDonationRelayId)) public var publicDonationRelayId: String = ""
         @Shared(.inMemory(.toast)) public var toast: Toast.Edge? = nil
@@ -229,6 +230,8 @@ public struct Root {
         case walletConfigLoaded(WalletConfig)
         case welcome(Welcome.Action)
         case claimPayment(ClaimPayment.Action)
+        case sseEventReceived
+        case startSSEListener
         case tachyonDemo(TachyonDemo.Action)
         case voting(Voting.Action)
 
