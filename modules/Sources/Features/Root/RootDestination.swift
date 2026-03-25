@@ -97,7 +97,7 @@ extension Root {
 
             case let .destination(.deeplinkClaimPayment(linkId, amount)):
                 var claimState = ClaimPayment.State(linkId: linkId, amount: amount)
-                claimState.recipientAddress = state.selectedWalletAccount?.privateUnifiedAddress ?? "demo-recipient"
+                claimState.recipientAddress = state.selectedWalletAccount?.unifiedAddress ?? "demo-recipient"
                 state.claimPaymentState = claimState
                 state.path = .claimPayment
                 return .none
