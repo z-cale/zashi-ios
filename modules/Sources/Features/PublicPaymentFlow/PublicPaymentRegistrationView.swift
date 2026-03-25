@@ -10,6 +10,7 @@ import UIComponents
 
 public struct PublicPaymentRegistrationView: View {
     @Environment(\.colorScheme) var colorScheme
+    @State private var isSharePresented = false
     let store: StoreOf<PublicPaymentRegistration>
 
     public init(store: StoreOf<PublicPaymentRegistration>) {
@@ -140,29 +141,24 @@ public struct PublicPaymentRegistrationView: View {
 
             Spacer()
 
-            // QR placeholder
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.white)
-                .frame(width: 200, height: 200)
-                .overlay {
-                    VStack(spacing: 4) {
-                        Image(systemName: "qrcode")
-                            .font(.system(size: 48))
-                            .foregroundStyle(Design.Text.tertiary.color(colorScheme))
-                        Text("QR Code")
-                            .zFont(.medium, size: 14, style: Design.Text.tertiary)
-                    }
-                }
+            // QR Code
+            if let qrImage = generateQR(from: store.qrContent, size: 200) {
+                Image(uiImage: qrImage)
+                    .interpolation(.none)
+                    .resizable()
+                    .frame(width: 200, height: 200)
+                    .cornerRadius(12)
+            }
 
             Spacer()
 
             VStack(spacing: 12) {
                 ZashiButton("Share Link") {
-                    store.send(.shareLinkTapped)
+                    isSharePresented = true
                 }
 
                 ZashiButton("Share QR Code", type: .ghost) {
-                    store.send(.shareQRTapped)
+                    isSharePresented = true
                 }
 
                 ZashiButton("Revoke Public Payment Address", type: .destructive1) {
@@ -172,7 +168,36 @@ public struct PublicPaymentRegistrationView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
         }
+        .sheet(isPresented: $isSharePresented) {
+            if !store.qrContent.isEmpty {
+                ShareSheet(activityItems: [store.qrContent])
+            }
+        }
     }
+
+    // MARK: - Helpers
+
+    private func generateQR(from string: String, size: CGFloat) -> UIImage? {
+        guard !string.isEmpty,
+              let data = string.data(using: .ascii),
+              let filter = CIFilter(name: "CIQRCodeGenerator") else { return nil }
+        filter.setValue(data, forKey: "inputMessage")
+        filter.setValue("M", forKey: "inputCorrectionLevel")
+        guard let output = filter.outputImage else { return nil }
+        let scale = size / output.extent.size.width
+        let transformed = output.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        let context = CIContext()
+        guard let cgImage = context.createCGImage(transformed, from: transformed.extent) else { return nil }
+        return UIImage(cgImage: cgImage)
+    }
+}
+
+private struct ShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 // MARK: - Placeholder

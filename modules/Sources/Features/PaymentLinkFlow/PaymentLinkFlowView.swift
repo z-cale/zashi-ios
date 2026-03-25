@@ -101,15 +101,13 @@ public struct PaymentLinkFlowView: View {
                     .zFont(.bold, size: 32, style: Design.Text.primary)
             }
 
-            // QR code placeholder
-            if !store.qrContent.isEmpty {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.white)
+            // QR code
+            if !store.qrContent.isEmpty, let qrImage = generateQR(from: store.qrContent, size: 200) {
+                Image(uiImage: qrImage)
+                    .interpolation(.none)
+                    .resizable()
                     .frame(width: 200, height: 200)
-                    .overlay {
-                        Text("QR")
-                            .zFont(.medium, size: 16, style: Design.Text.tertiary)
-                    }
+                    .cornerRadius(12)
                     .padding(.top, 24)
             }
 
@@ -249,6 +247,24 @@ public struct PaymentLinkFlowView: View {
             current += key
         }
         store.send(.amountChanged(current))
+    }
+}
+
+// MARK: - QR Generator
+
+extension PaymentLinkFlowView {
+    func generateQR(from string: String, size: CGFloat) -> UIImage? {
+        guard !string.isEmpty,
+              let data = string.data(using: .ascii),
+              let filter = CIFilter(name: "CIQRCodeGenerator") else { return nil }
+        filter.setValue(data, forKey: "inputMessage")
+        filter.setValue("M", forKey: "inputCorrectionLevel")
+        guard let output = filter.outputImage else { return nil }
+        let scale = size / output.extent.size.width
+        let transformed = output.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        let context = CIContext()
+        guard let cgImage = context.createCGImage(transformed, from: transformed.extent) else { return nil }
+        return UIImage(cgImage: cgImage)
     }
 }
 
