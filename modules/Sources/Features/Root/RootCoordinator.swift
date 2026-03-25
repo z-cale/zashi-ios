@@ -135,18 +135,11 @@ extension Root {
                 return .none
                 
             case .home(.swapWithNearTapped):
-                state.swapAndPayCoordFlowState = .initial
-                state.swapAndPayCoordFlowState.isSwapExperience = true
-                state.swapAndPayCoordFlowState.swapAndPayState.isSwapExperienceEnabled = true
-                state.path = .swapAndPayCoordFlow
-                // whether to start on SwapToZEC or fromZEC
-                return .send(.swapAndPayCoordFlow(.swapAndPay(.enableSwapToZecExperience)))
+                // Demo: noop
+                return .none
 
             case .home(.payWithNearTapped):
-                state.swapAndPayCoordFlowState = .initial
-                state.swapAndPayCoordFlowState.isSwapExperience = false
-                state.swapAndPayCoordFlowState.swapAndPayState.isSwapExperienceEnabled = false
-                state.path = .swapAndPayCoordFlow
+                // Demo: noop
                 return .none
 
             case .home(.transactionList(.transactionTapped(let txId))):
