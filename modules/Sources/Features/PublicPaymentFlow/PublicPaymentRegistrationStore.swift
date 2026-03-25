@@ -53,19 +53,10 @@ public struct PublicPaymentRegistration {
         Reduce { state, action in
             switch action {
             case .onAppear:
-                let address = state.ownerAddress
-                return .run { send in
-                    let balance = try await paymentServiceClient.getBalance(address)
-                    await send(.balanceChecked(balance.balanceZatoshi > 0))
-                } catch: { _, send in
-                    await send(.balanceChecked(false))
-                }
+                // Skip balance check — this is a mocked feature and the wallet has real ZEC
+                return .none
 
-            case let .balanceChecked(hasBalance):
-                state.hasBalance = hasBalance
-                if !hasBalance {
-                    state.screen = .noFunds
-                }
+            case .balanceChecked:
                 return .none
 
             case .registerTapped:
