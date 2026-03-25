@@ -41,18 +41,14 @@ extension Receive {
                 state.path.append(.publicPaymentRegistration(registrationState))
                 return .none
 
+            case let .path(.element(id: _, action: .publicPaymentRegistration(.registrationCompleted(response)))):
+                // Update receive state immediately when registration succeeds
+                state.publicDonationAddress = response.publicAddress
+                state.publicDonationRelayId = response.relayId
+                state.publicDonationRelayURL = response.relayUrl
+                return .none
+
             case .path(.element(id: _, action: .publicPaymentRegistration(.closeTapped))):
-                // Check if registration was successful and update state
-                for element in state.path {
-                    if case .publicPaymentRegistration(let regState) = element {
-                        if let pubAddr = regState.publicAddress {
-                            state.publicDonationAddress = pubAddr
-                            state.publicDonationRelayId = regState.registrationResult?.relayId
-                            state.publicDonationRelayURL = regState.registrationResult?.relayUrl
-                        }
-                        break
-                    }
-                }
                 state.path.removeAll()
                 return .none
 

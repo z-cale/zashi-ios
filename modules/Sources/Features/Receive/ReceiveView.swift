@@ -194,6 +194,7 @@ public struct ReceiveView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "antenna.radiowaves.left.and.right")
                             .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Design.Text.primary.color(colorScheme))
                         Text("Register a Public Address")
                             .zFont(.semiBold, size: 16, style: Design.Text.primary)
                     }
@@ -201,7 +202,7 @@ public struct ReceiveView: View {
                     .frame(height: 48)
                     .background {
                         RoundedRectangle(cornerRadius: Design.Radius._xl)
-                            .fill(Design.Utility.WarningYellow._100.color(colorScheme))
+                            .fill(Design.Utility.WarningYellow._400.color(colorScheme))
                     }
                 }
                 .padding(.horizontal, 20)
