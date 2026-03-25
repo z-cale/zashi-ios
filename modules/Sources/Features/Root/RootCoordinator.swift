@@ -212,24 +212,12 @@ extension Root {
             case .home(.resetDemoState):
                 state.$publicDonationAddress.withLock { $0 = "" }
                 state.$publicDonationRelayId.withLock { $0 = "" }
-                let walletAddress = state.selectedWalletAccount?.unifiedAddress ?? ""
                 state.$mockBalance.withLock { $0 = "0" }
-                return .run { [mockBalance = state.$mockBalance] _ in
-                    // Drain wallet balance back to faucet on the server
+                state.homeState.mockTransactions = []
+                state.$toast.withLock { $0 = .top("Demo state reset") }
+                return .run { _ in
                     @Dependency(\.paymentServiceClient) var paymentServiceClient
-                    if !walletAddress.isEmpty {
-                        let bal = try await paymentServiceClient.getBalance(walletAddress)
-                        if bal.balanceZatoshi > 0 {
-                            _ = try await paymentServiceClient.transfer(
-                                TransferRequest(
-                                    senderAddress: walletAddress,
-                                    recipientAddress: "faucet",
-                                    amount: bal.balance
-                                )
-                            )
-                        }
-                    }
-                    mockBalance.withLock { $0 = "0" }
+                    try await paymentServiceClient.resetServer()
                 } catch: { _, _ in }
 
             case .startSSEListener:

@@ -147,6 +147,10 @@ extension PaymentServiceClient: DependencyKey {
                     continuation.onTermination = { _ in task.cancel() }
                 }
             },
+            resetServer: {
+                struct Empty: Codable {}
+                let _: Empty? = try? await postNoBody("/reset")
+            },
             getBalance: { address in
                 try await get("/balance/\(address)")
             }
