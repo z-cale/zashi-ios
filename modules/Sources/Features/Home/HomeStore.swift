@@ -370,8 +370,7 @@ public struct Home {
             case .fundWalletTapped:
                 return .none
 
-            case let .fundWalletCompleted(balance):
-                state.$toast.withLock { $0 = .top("Funded! Mock balance: \(balance) ZEC") }
+            case .fundWalletCompleted:
                 return .none
 
             case .walletBalances:

@@ -198,9 +198,13 @@ extension Root {
                     )
                     let updated = try await paymentServiceClient.getBalance(walletAddress)
                     await send(.home(.fundWalletCompleted(updated.balance)))
-                } catch: { _, send in
-                    await send(.home(.fundWalletCompleted("error")))
+                } catch: { error, send in
+                    await send(.home(.fundWalletCompleted("error: \(error.localizedDescription)")))
                 }
+
+            case let .home(.fundWalletCompleted(balance)):
+                state.$toast.withLock { $0 = .top("Funded! Mock balance: \(balance) ZEC") }
+                return .none
 
             case .home(.tachyonDemoTapped):
                 state.homeState.moreRequest = false
