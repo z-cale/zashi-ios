@@ -24,4 +24,6 @@ public extension String {
     static let swapAssets = "sharedStateKey_swapAssets"
     static let swapAPIAccess = "sharedStateKey_swapAPIAccess"
     static let mockBalance = "sharedStateKey_mockBalance"
+    static let publicDonationAddress = "sharedStateKey_publicDonationAddress"
+    static let publicDonationRelayId = "sharedStateKey_publicDonationRelayId"
 }

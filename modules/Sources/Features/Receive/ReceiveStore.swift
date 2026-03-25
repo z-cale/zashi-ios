@@ -56,11 +56,11 @@ public struct Receive {
         // LDA address — rotates on each screen appearance
         public var ldaAddress: String = Self.generateMockLDA()
 
-        // Public donation — nil until registered
-        public var publicDonationAddress: String? = nil
-        public var publicDonationRelayId: String? = nil
+        // Public donation — persists across navigation via @Shared
+        @Shared(.inMemory(.publicDonationAddress)) public var publicDonationAddress: String = ""
+        @Shared(.inMemory(.publicDonationRelayId)) public var publicDonationRelayId: String = ""
         public var publicDonationRelayURL: String? = nil
-        public var isPublicDonationRegistered: Bool { publicDonationAddress != nil }
+        public var isPublicDonationRegistered: Bool { !publicDonationAddress.isEmpty }
 
         public var transparentAddress: String {
             selectedWalletAccount?.transparentAddress ?? L10n.Receive.Error.cantExtractTransparentAddress

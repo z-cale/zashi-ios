@@ -160,8 +160,9 @@ public struct ReceiveView: View {
 
     @ViewBuilder private func publicDonationSection() -> some View {
         VStack(spacing: 12) {
-            if let pubAddr = store.publicDonationAddress {
+            if store.isPublicDonationRegistered {
                 // Registered — show the address card (no Request button for public addresses)
+                let pubAddr = store.publicDonationAddress
                 addressBlock(
                     prefixIcon: Asset.Assets.Brandmarks.brandmarkMax.image,
                     title: "Public Donation Address",

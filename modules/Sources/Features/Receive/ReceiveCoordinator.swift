@@ -42,9 +42,9 @@ extension Receive {
                 return .none
 
             case let .path(.element(id: _, action: .publicPaymentRegistration(.registrationCompleted(relayId, publicAddress, relayUrl)))):
-                // Update receive state
-                state.publicDonationAddress = publicAddress
-                state.publicDonationRelayId = relayId
+                // Persist in shared state so it survives navigation resets
+                state.$publicDonationAddress.withLock { $0 = publicAddress }
+                state.$publicDonationRelayId.withLock { $0 = relayId }
                 state.publicDonationRelayURL = relayUrl
                 // Pop registration and show the address details QR view
                 state.path.removeAll()
