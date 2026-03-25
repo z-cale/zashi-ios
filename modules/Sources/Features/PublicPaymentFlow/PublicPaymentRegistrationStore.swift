@@ -21,7 +21,7 @@ public struct PublicPaymentRegistration {
         public var screen: Screen = .register
         public var ownerAddress: String = ""
         public var hasBalance: Bool = true
-        public var registrationResult: RegisterRelayResponse?
+        public var registrationRelayId: String?
         public var publicAddress: String?
         public var relayURL: String?
         public var qrContent: String = ""
@@ -35,7 +35,7 @@ public struct PublicPaymentRegistration {
         case onAppear
         case balanceChecked(Bool)
         case registerTapped
-        case registrationCompleted(RegisterRelayResponse)
+        case registrationCompleted(String, String, String) // relayId, publicAddress, relayUrl
         case registrationFailed(String)
         case shareLinkTapped
         case shareQRTapped
@@ -67,16 +67,16 @@ public struct PublicPaymentRegistration {
                 )
                 return .run { send in
                     let response = try await paymentServiceClient.registerRelay(request)
-                    await send(.registrationCompleted(response))
+                    await send(.registrationCompleted(response.relayId, response.publicAddress, response.relayUrl))
                 } catch: { error, send in
                     await send(.registrationFailed(error.localizedDescription))
                 }
 
-            case let .registrationCompleted(response):
-                state.registrationResult = response
-                state.publicAddress = response.publicAddress
-                state.relayURL = response.relayUrl
-                state.qrContent = response.relayUrl
+            case let .registrationCompleted(relayId, publicAddress, relayUrl):
+                state.registrationRelayId = relayId
+                state.publicAddress = publicAddress
+                state.relayURL = relayUrl
+                state.qrContent = relayUrl
                 state.screen = .showAddress
                 return .none
 
@@ -90,7 +90,7 @@ public struct PublicPaymentRegistration {
 
             case .revokeTapped:
                 // Revoke the relay registration
-                guard let relayId = state.registrationResult?.relayId else { return .none }
+                guard let relayId = state.registrationRelayId else { return .none }
                 return .run { send in
                     _ = try await paymentServiceClient.getBalance(relayId) // placeholder
                     await send(.revokeCompleted)
@@ -100,7 +100,7 @@ public struct PublicPaymentRegistration {
 
             case .revokeCompleted:
                 state.publicAddress = nil
-                state.registrationResult = nil
+                state.registrationRelayId = nil
                 state.screen = .register
                 return .none
 

@@ -41,15 +41,15 @@ extension Receive {
                 state.path.append(.publicPaymentRegistration(registrationState))
                 return .none
 
-            case let .path(.element(id: _, action: .publicPaymentRegistration(.registrationCompleted(response)))):
+            case let .path(.element(id: _, action: .publicPaymentRegistration(.registrationCompleted(relayId, publicAddress, relayUrl)))):
                 // Update receive state
-                state.publicDonationAddress = response.publicAddress
-                state.publicDonationRelayId = response.relayId
-                state.publicDonationRelayURL = response.relayUrl
+                state.publicDonationAddress = publicAddress
+                state.publicDonationRelayId = relayId
+                state.publicDonationRelayURL = relayUrl
                 // Pop registration and show the address details QR view
                 state.path.removeAll()
                 var addressDetailsState = AddressDetails.State.initial
-                addressDetailsState.address = response.publicAddress.redacted
+                addressDetailsState.address = publicAddress.redacted
                 addressDetailsState.maxPrivacy = false
                 addressDetailsState.addressTitle = "Public Donation Address"
                 state.path.append(.addressDetails(addressDetailsState))

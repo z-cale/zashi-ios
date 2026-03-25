@@ -42,10 +42,10 @@ public struct PublicPaymentSender {
 
     public enum Action: Equatable {
         case confirmTapped
-        case relayResolved(RegisterRelayResponse)
-        case encapsPosted(RelayStatusResponse)
+        case relayResolved(String)           // relay ID
+        case encapsPosted(String)            // encaps ID
         case pollRelayStatus
-        case statusUpdated(RelayStatusResponse)
+        case statusUpdated(Int)              // step number
         case failed(String)
         case closeTapped
         case backTapped
@@ -62,38 +62,33 @@ public struct PublicPaymentSender {
             case .confirmTapped:
                 state.relayStep = .talkingToRelay
                 let address = state.recipientAddress
-                let amount = state.amount
 
-                // Step 1: Resolve the pub1 address to a relay ID
                 return .run { send in
                     let relay = try await paymentServiceClient.resolveRelayByAddress(address)
-                    await send(.relayResolved(relay))
+                    await send(.relayResolved(relay.relayId))
                 } catch: { error, send in
                     await send(.failed(error.localizedDescription))
                 }
 
-            case let .relayResolved(relay):
-                state.relayId = relay.relayId
-                let relayId = relay.relayId
+            case let .relayResolved(relayId):
+                state.relayId = relayId
                 let amount = state.amount
                 let address = state.recipientAddress
 
-                // Step 2: Post ML-KEM ciphertext to the relay
-                return .run { send in
+                return .run { [relayId] send in
                     let request = RelayEncapsRequest(
                         ciphertext: "mock-mlkem-ct-\(UUID().uuidString.prefix(8))",
                         amount: amount,
                         senderAddress: address
                     )
                     let response = try await paymentServiceClient.postRelayEncaps(relayId, request)
-                    await send(.encapsPosted(response))
+                    await send(.encapsPosted(response.encapsId))
                 } catch: { error, send in
                     await send(.failed(error.localizedDescription))
                 }
 
-            case let .encapsPosted(response):
-                state.encapsId = response.encapsId
-                // Step 3: Start polling for relay status progression
+            case let .encapsPosted(encapsId):
+                state.encapsId = encapsId
                 return .run { send in
                     try await clock.sleep(for: .seconds(2))
                     await send(.pollRelayStatus)
@@ -106,29 +101,23 @@ public struct PublicPaymentSender {
 
                 return .run { [relayId, encapsId] send in
                     let response = try await paymentServiceClient.getRelayStatus(relayId, encapsId)
-                    await send(.statusUpdated(response))
+                    await send(.statusUpdated(response.step))
                 } catch: { error, send in
                     await send(.failed(error.localizedDescription))
                 }
 
-            case let .statusUpdated(response):
-                // Map server step numbers to UI steps
-                switch response.step {
-                case 1:
-                    state.relayStep = .talkingToRelay
-                case 2:
-                    state.relayStep = .sawCommunication
-                case 3:
-                    state.relayStep = .relayerFinished
+            case let .statusUpdated(step):
+                switch step {
+                case 1: state.relayStep = .talkingToRelay
+                case 2: state.relayStep = .sawCommunication
+                case 3: state.relayStep = .relayerFinished
                 case 4:
                     state.relayStep = .sent
                     return .cancel(id: CancelID.polling)
-                default:
-                    break
+                default: break
                 }
 
-                // Keep polling if not done
-                if response.step < 4 {
+                if step < 4 {
                     return .run { send in
                         try await clock.sleep(for: .seconds(2))
                         await send(.pollRelayStatus)

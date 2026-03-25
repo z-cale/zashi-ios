@@ -16,8 +16,8 @@ public struct DirectSend {
     public struct State: Equatable {
         public enum Step: Equatable {
             case confirm
-            case resolving   // PIR lookup
-            case sending     // Transfer in progress
+            case resolving
+            case sending
             case sent
             case failed
         }
@@ -43,15 +43,14 @@ public struct DirectSend {
 
     public enum Action: Equatable {
         case sendTapped
-        case pirResolved(PIRResolveResult)
-        case transferCompleted(TransferResponse)
+        case pirResolveCompleted(String) // resolved public key
+        case transferCompleted(String)   // tx ID
         case failed(String)
         case closeTapped
         case backTapped
     }
 
     @Dependency(\.paymentServiceClient) var paymentServiceClient
-    @Dependency(\.continuousClock) var clock
 
     public init() {}
 
@@ -61,25 +60,23 @@ public struct DirectSend {
             case .sendTapped:
                 state.step = .resolving
                 let address = state.recipientAddress
+                let senderAddress = state.senderAddress
+                let amount = state.amount
 
                 // Extract the PIR tag from the dyn1 address (everything after "dyn1")
                 let tag = String(address.dropFirst(4).prefix(30))
 
                 return .run { send in
-                    // Step 1: PIR resolve — privately fetch recipient's PQ public key
-                    let pirResult = try await paymentServiceClient.resolvePIRTag(tag)
-                    await send(.pirResolved(pirResult))
-                } catch: { error, send in
-                    // PIR tag not found — just proceed with direct transfer anyway
-                    // (for demo, the PIR DB won't have every random dyn1 address)
-                    await send(.pirResolved(PIRResolveResult(
-                        unifiedAddress: address,
-                        publicKey: "mock-pq-pubkey-fallback"
-                    )))
+                    // Step 1: PIR resolve
+                    var pubkey = "mock-pq-pubkey-fallback"
+                    if let pirResult = try? await paymentServiceClient.resolvePIRTag(tag) {
+                        pubkey = pirResult.publicKey
+                    }
+                    await send(.pirResolveCompleted(pubkey))
                 }
 
-            case let .pirResolved(pirResult):
-                state.resolvedPubkey = pirResult.publicKey
+            case let .pirResolveCompleted(pubkey):
+                state.resolvedPubkey = pubkey
                 state.step = .sending
 
                 let request = TransferRequest(
@@ -89,18 +86,15 @@ public struct DirectSend {
                 )
 
                 return .run { send in
-                    // Step 2: ML-KEM encapsulate (mocked — in production this would
-                    // create a ciphertext using the PQ public key)
-
-                    // Step 3: Transfer funds via mock service
+                    // Step 2: Transfer funds via mock service
                     let response = try await paymentServiceClient.transfer(request)
-                    await send(.transferCompleted(response))
+                    await send(.transferCompleted(response.txId))
                 } catch: { error, send in
                     await send(.failed(error.localizedDescription))
                 }
 
-            case let .transferCompleted(response):
-                state.txId = response.txId
+            case let .transferCompleted(txId):
+                state.txId = txId
                 state.step = .sent
                 return .none
 
