@@ -37,7 +37,7 @@ extension Receive {
 
             case .registerPublicAddressTapped:
                 var registrationState = PublicPaymentRegistration.State()
-                registrationState.ownerAddress = state.ldaAddress
+                registrationState.ownerAddress = state.selectedWalletAccount?.unifiedAddress ?? state.ldaAddress
                 state.path.append(.publicPaymentRegistration(registrationState))
                 return .none
 
