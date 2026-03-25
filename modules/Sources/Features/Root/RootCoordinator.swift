@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import PaymentServiceClient
 import ZcashLightClientKit
 
 extension Root {
@@ -181,6 +182,25 @@ extension Root {
                 return .none
 
                 // MARK: - Tachyon Demo
+
+            case .home(.fundWalletTapped):
+                let walletAddress = state.selectedWalletAccount?.privateUnifiedAddress ?? "demo-wallet"
+                return .run { send in
+                    @Dependency(\.paymentServiceClient) var paymentServiceClient
+                    let response = try await paymentServiceClient.getBalance(walletAddress)
+                    // Credit 100 ZEC
+                    _ = try await paymentServiceClient.transfer(
+                        TransferRequest(
+                            senderAddress: "faucet",
+                            recipientAddress: walletAddress,
+                            amount: "100.0"
+                        )
+                    )
+                    let updated = try await paymentServiceClient.getBalance(walletAddress)
+                    await send(.home(.fundWalletCompleted(updated.balance)))
+                } catch: { _, send in
+                    await send(.home(.fundWalletCompleted("error")))
+                }
 
             case .home(.tachyonDemoTapped):
                 state.homeState.moreRequest = false

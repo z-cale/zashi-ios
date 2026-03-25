@@ -78,6 +78,25 @@ public struct HomeView: View {
                 .padding(.top, 24)
                 .screenHorizontalPadding()
 
+                // Demo: fund wallet via mock service
+                Button {
+                    store.send(.fundWalletTapped)
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 14))
+                        Text("Fund Demo Wallet (+100 ZEC)")
+                            .zFont(.medium, size: 13, style: Design.Text.tertiary)
+                    }
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 16)
+                    .background {
+                        Capsule()
+                            .fill(Design.Surfaces.bgTertiary.color(colorScheme))
+                    }
+                }
+                .padding(.top, 8)
+
                 SmartBannerView(
                     store: store.scope(
                         state: \.smartBannerState,

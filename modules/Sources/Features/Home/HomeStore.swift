@@ -119,6 +119,8 @@ public struct Home {
         
         // more actions
         case flexaTapped
+        case fundWalletTapped
+        case fundWalletCompleted(String)
         case tachyonDemoTapped
     }
     
@@ -363,6 +365,13 @@ public struct Home {
                 // More actions
 
             case .flexaTapped:
+                return .none
+
+            case .fundWalletTapped:
+                return .none
+
+            case let .fundWalletCompleted(balance):
+                state.$toast.withLock { $0 = .top("Funded! Mock balance: \(balance) ZEC") }
                 return .none
 
             case .walletBalances:
