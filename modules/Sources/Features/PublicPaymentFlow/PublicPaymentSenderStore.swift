@@ -24,6 +24,7 @@ public struct PublicPaymentSender {
         }
 
         public var recipientAddress: String = ""
+        public var senderAddress: String = ""
         public var amount: String = ""
         public var relayStep: RelayStep = .confirm
         public var relayId: String?
@@ -73,13 +74,13 @@ public struct PublicPaymentSender {
             case let .relayResolved(relayId):
                 state.relayId = relayId
                 let amount = state.amount
-                let address = state.recipientAddress
+                let sender = state.senderAddress
 
                 return .run { [relayId] send in
                     let request = RelayEncapsRequest(
                         ciphertext: "mock-mlkem-ct-\(UUID().uuidString.prefix(8))",
                         amount: amount,
-                        senderAddress: address
+                        senderAddress: sender
                     )
                     let response = try await paymentServiceClient.postRelayEncaps(relayId, request)
                     await send(.encapsPosted(response.encapsId))

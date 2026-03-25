@@ -274,6 +274,7 @@ extension SendCoordFlow {
                 if confirmationType == .send && addr.hasPrefix("pub1") {
                     var senderState = PublicPaymentSender.State()
                     senderState.recipientAddress = addr
+                    senderState.senderAddress = state.sendFormState.selectedWalletAccount?.unifiedAddress ?? "demo-sender"
                     senderState.amount = state.sendFormState.amount.decimalString()
                     state.path.append(.publicPaymentSender(senderState))
                     return .none
