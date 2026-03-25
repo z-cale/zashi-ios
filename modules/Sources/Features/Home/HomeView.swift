@@ -178,6 +178,7 @@ public struct HomeView: View {
             .applyScreenBackground()
             .onAppear {
                 store.send(.onAppear)
+                store.send(.refreshMockBalance)
             }
             .onChange(of: store.canRequestReview) { canRequestReview in
                 if canRequestReview {

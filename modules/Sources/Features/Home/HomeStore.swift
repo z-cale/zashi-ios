@@ -122,6 +122,7 @@ public struct Home {
         case flexaTapped
         case fundWalletTapped
         case fundWalletCompleted(String)
+        case refreshMockBalance
         case tachyonDemoTapped
     }
     
@@ -372,6 +373,9 @@ public struct Home {
                 return .none
 
             case .fundWalletCompleted:
+                return .none
+
+            case .refreshMockBalance:
                 return .none
 
             case .walletBalances:

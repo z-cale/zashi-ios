@@ -24,7 +24,10 @@ extension Root {
                 .backToHomeFromServerSwitchTapped,
                 .sendCoordFlow(.sendForm(.dismissRequired)):
                 state.path = nil
-                return .none
+                return refreshMockBalance(state: &state)
+
+            case .home(.refreshMockBalance):
+                return refreshMockBalance(state: &state)
                 
                 // MARK: - Accounts
 
@@ -215,7 +218,7 @@ extension Root {
 
             case .claimPayment(.closeTapped), .claimPayment(.viewTransactionTapped):
                 state.path = nil
-                return .none
+                return refreshMockBalance(state: &state)
 
             case .tachyonDemo(.dismissFlow):
                 state.path = nil
@@ -430,5 +433,15 @@ extension Root {
             default: return .none
             }
         }
+    }
+
+    private func refreshMockBalance(state: inout Root.State) -> Effect<Root.Action> {
+        let address = state.selectedWalletAccount?.privateUnifiedAddress ?? ""
+        guard !address.isEmpty else { return .none }
+        return .run { [mockBalance = state.$mockBalance] _ in
+            @Dependency(\.paymentServiceClient) var paymentServiceClient
+            let response = try await paymentServiceClient.getBalance(address)
+            mockBalance.withLock { $0 = response.balance }
+        } catch: { _, _ in }
     }
 }
