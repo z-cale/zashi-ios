@@ -30,7 +30,7 @@ public struct PaymentServiceClient {
     // Transactions
     public var getTransactions: @Sendable (_ address: String) async throws -> MockTransactionListResponse
     // SSE events
-    public var subscribeToEvents: @Sendable (_ address: String) -> AsyncStream<Void>
+    public var subscribeToEvents: @Sendable (_ address: String) -> AsyncStream<Void> = { _ in AsyncStream { $0.finish() } }
     // Balance
     public var getBalance: @Sendable (_ address: String) async throws -> MockBalanceResponse
 }
