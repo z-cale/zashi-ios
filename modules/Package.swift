@@ -99,7 +99,8 @@ let package = Package(
         .library(name: "VotingCryptoClient", targets: ["VotingCryptoClient"]),
         .library(name: "VotingModels", targets: ["VotingModels"]),
         .library(name: "TachyonDemo", targets: ["TachyonDemo"]),
-        .library(name: "PaymentServiceClient", targets: ["PaymentServiceClient"])
+        .library(name: "PaymentServiceClient", targets: ["PaymentServiceClient"]),
+        .library(name: "PaymentLinkFlow", targets: ["PaymentLinkFlow"])
     ],
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-composable-architecture", from: "1.23.1"),
@@ -262,6 +263,7 @@ let package = Package(
                 "Models",
                 "NumberFormatter",
                 "Pasteboard",
+                "PaymentLinkFlow",
                 "RecoveryPhraseDisplay",
                 "RequestZec",
                 "RestoreInfo",
@@ -1274,6 +1276,18 @@ let package = Package(
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
             ],
             path: "Sources/Dependencies/PaymentServiceClient"
+        ),
+        .target(
+            name: "PaymentLinkFlow",
+            dependencies: [
+                "Generated",
+                "Models",
+                "PaymentServiceClient",
+                "UIComponents",
+                "Utils",
+                .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+            ],
+            path: "Sources/Features/PaymentLinkFlow"
         )
     ]
 )

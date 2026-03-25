@@ -208,6 +208,7 @@ public struct SendForm {
         case balancesBindingUpdated(Bool)
         case binding(BindingAction<SendForm.State>)
         case confirmationRequired(Confirmation)
+        case createPaymentLinkTapped
         case dismissRequired
         case getProposal(Confirmation)
         case gotTexSupportTapped
@@ -359,6 +360,9 @@ public struct SendForm {
                 return .none
 
             case .confirmationRequired:
+                return .none
+
+            case .createPaymentLinkTapped:
                 return .none
 
             case .resetForm:

@@ -175,6 +175,11 @@ public struct SendFormView: View {
                                         }
                                         .disabled(!store.isValidForm)
                                         .padding(.top, 40)
+
+                                        ZashiButton("Create Payment Link", type: .ghost) {
+                                            store.send(.createPaymentLinkTapped)
+                                        }
+                                        .padding(.top, 8)
                                     }
                                 }
                                 .screenHorizontalPadding()

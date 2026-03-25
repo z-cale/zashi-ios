@@ -12,6 +12,7 @@ import Generated
 import AudioServices
 
 import AddressBook
+import PaymentLinkFlow
 import Scan
 import SendConfirmation
 import SendForm
@@ -218,6 +219,15 @@ extension SendCoordFlow {
                 state.path.append(.addressBook(addressBookState))
                 return .none
                 
+            case .sendForm(.createPaymentLinkTapped):
+                state.path.append(.paymentLinkFlow(PaymentLinkFlow.State()))
+                return .none
+
+            case .path(.element(id: _, action: .paymentLinkFlow(.closeTapped))),
+                 .path(.element(id: _, action: .paymentLinkFlow(.backTapped))):
+                state.path.removeAll()
+                return .none
+
             case .sendForm(.addNewContactTapped(let address)):
                 var addressBookState = AddressBook.State.initial
                 addressBookState.isNameFocused = true

@@ -13,6 +13,7 @@ import Generated
 
 // Path
 import AddressBook
+import PaymentLinkFlow
 import Scan
 import SendConfirmation
 import SendForm
@@ -57,6 +58,8 @@ public struct SendCoordFlowView: View {
                     AddressBookContactView(store: store)
                 case let .confirmWithKeystone(store):
                     SignWithKeystoneView(store: store, tokenName: tokenName)
+                case let .paymentLinkFlow(store):
+                    PaymentLinkFlowView(store: store)
                 case let .preSendingFailure(store):
                     PreSendingFailureView(store: store, tokenName: tokenName)
                 case let .scan(store):
