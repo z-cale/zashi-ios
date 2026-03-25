@@ -11,6 +11,7 @@ import ZcashLightClientKit
 import Deeplink
 import DerivationTool
 import Generated
+import PaymentLinkFlow
 
 import SwiftUI
 
@@ -45,6 +46,7 @@ extension Root {
         case deeplink(URL)
         case deeplinkHome
         case deeplinkSend(Zatoshi, String, String)
+        case deeplinkClaimPayment(String, String)
         case deeplinkFailed(URL, ZcashError)
         case updateDestination(Root.DestinationState.Destination)
         case serverSwitch
@@ -63,6 +65,16 @@ extension Root {
                 return .none
 
             case .destination(.deeplink(let url)):
+                // Check for payment link (ZIP-324) URLs
+                if let fragment = url.fragment,
+                   url.host == "pay.withzcash.com" || url.absoluteString.contains("pay.withzcash.com") {
+                    let params = Self.parseFragment(fragment)
+                    if let linkId = params["id"] {
+                        let amount = params["amount"] ?? ""
+                        return .send(.destination(.deeplinkClaimPayment(linkId, amount)))
+                    }
+                }
+
                 if let _ = uriParser.checkRP(url.absoluteString, zcashSDKEnvironment.network.networkType) {
                     // The deeplink is some zip321, we ignore it and let users know in a warning screen
                     return .send(.destination(.updateDestination(.deeplinkWarning)))
@@ -70,6 +82,13 @@ extension Root {
                 return .none
 
             case .destination(.deeplinkHome):
+                return .none
+
+            case let .destination(.deeplinkClaimPayment(linkId, amount)):
+                var claimState = ClaimPayment.State(linkId: linkId, amount: amount)
+                claimState.recipientAddress = state.selectedWalletAccount?.privateUnifiedAddress ?? "demo-recipient"
+                state.claimPaymentState = claimState
+                state.path = .claimPayment
                 return .none
 
             case .destination(.deeplinkSend):
@@ -159,6 +178,23 @@ private extension Root {
         case let .send(amount, address, memo):
             return .destination(.deeplinkSend(Zatoshi(Int64(amount)), address, memo))
         }
+    }
+}
+
+// MARK: - URL Fragment Parser
+
+extension Root {
+    static func parseFragment(_ fragment: String) -> [String: String] {
+        var params: [String: String] = [:]
+        for component in fragment.split(separator: "&") {
+            let pair = component.split(separator: "=", maxSplits: 1)
+            if pair.count == 2 {
+                let key = String(pair[0])
+                let value = String(pair[1]).removingPercentEncoding ?? String(pair[1])
+                params[key] = value
+            }
+        }
+        return params
     }
 }
 

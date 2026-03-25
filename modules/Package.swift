@@ -677,6 +677,7 @@ let package = Package(
                 "NumberFormatter",
                 "OSStatusError",
                 "Pasteboard",
+                "PaymentLinkFlow",
                 "PrivateDataConsent",
                 "ReadTransactionsStorage",
                 "Receive",

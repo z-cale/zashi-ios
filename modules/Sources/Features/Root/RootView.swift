@@ -11,6 +11,7 @@ import UIComponents
 import DeeplinkWarning
 import OSStatusError
 import Voting
+import PaymentLinkFlow
 import TachyonDemo
 
 // Path
@@ -256,6 +257,17 @@ private extension RootView {
                                     ) {
                                         store.send(.backToHomeFromServerSwitchTapped)
                                     }
+                                }
+                                .transition(.move(edge: .trailing))
+                                .zIndex(1)
+                            } else if path == .claimPayment {
+                                NavigationStack {
+                                    ClaimPaymentView(
+                                        store:
+                                            store.scope(
+                                                state: \.claimPaymentState,
+                                                action: \.claimPayment)
+                                    )
                                 }
                                 .transition(.move(edge: .trailing))
                                 .zIndex(1)

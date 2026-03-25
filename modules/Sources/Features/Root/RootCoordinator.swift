@@ -188,6 +188,10 @@ extension Root {
                 state.path = .tachyonDemo
                 return .none
 
+            case .claimPayment(.closeTapped), .claimPayment(.viewTransactionTapped):
+                state.path = nil
+                return .none
+
             case .tachyonDemo(.dismissFlow):
                 state.path = nil
                 return .none

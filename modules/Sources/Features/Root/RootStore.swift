@@ -34,6 +34,7 @@ import SupportDataGenerator
 import SwapAndPay
 import Voting
 import TachyonDemo
+import PaymentLinkFlow
 
 // Path
 import CurrencyConversionSetup
@@ -74,6 +75,7 @@ public struct Root {
             case swapAndPayCoordFlow
             case torSetup
             case transactionsCoordFlow
+            case claimPayment
             case tachyonDemo
             case voting
             case walletBackup
@@ -125,6 +127,7 @@ public struct Root {
         public var wasRestoringWhenDisconnected = false
         public var welcomeState: Welcome.State
         @Shared(.inMemory(.zashiWalletAccount)) public var zashiWalletAccount: WalletAccount? = nil
+        public var claimPaymentState = ClaimPayment.State.initial
         public var tachyonDemoState = TachyonDemo.State.initial
         public var votingState = Voting.State.initial
 
@@ -222,6 +225,7 @@ public struct Root {
         case updateStateAfterConfigUpdate(WalletConfig)
         case walletConfigLoaded(WalletConfig)
         case welcome(Welcome.Action)
+        case claimPayment(ClaimPayment.Action)
         case tachyonDemo(TachyonDemo.Action)
         case voting(Voting.Action)
 
@@ -400,6 +404,10 @@ public struct Root {
 
         Scope(state: \.swapAndPayCoordFlowState, action: \.swapAndPayCoordFlow) {
             SwapAndPayCoordFlow()
+        }
+
+        Scope(state: \.claimPaymentState, action: \.claimPayment) {
+            ClaimPayment()
         }
 
         Scope(state: \.tachyonDemoState, action: \.tachyonDemo) {

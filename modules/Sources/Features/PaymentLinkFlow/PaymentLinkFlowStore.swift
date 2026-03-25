@@ -87,8 +87,8 @@ public struct PaymentLinkFlow {
 
             case let .linkCreated(response):
                 state.paymentLink = response
-                // Build ZIP-324 URI
-                var fragment = "amount=\(response.amount)&key=\(response.ephemeralKey)"
+                // Build ZIP-324 URI with link ID for claim resolution
+                var fragment = "id=\(response.id)&amount=\(response.amount)&key=\(response.ephemeralKey)"
                 if let desc = response.description, !desc.isEmpty {
                     let encoded = desc.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed) ?? desc
                     fragment += "&desc=\(encoded)"
