@@ -53,7 +53,13 @@ public struct SendFormView: View {
                                             tokenName: tokenName,
                                             couldBeHidden: true
                                         )
-                                        
+
+                                        if store.isMockAddress {
+                                            Text("Demo balance: \(store.mockBalance) ZEC")
+                                                .zFont(.semiBold, size: 14, style: Design.Text.support)
+                                                .padding(.bottom, 4)
+                                        }
+
                                         VStack(alignment: .leading) {
                                             ZashiTextField(
                                                 addressFont: true,

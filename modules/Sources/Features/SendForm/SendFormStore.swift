@@ -147,8 +147,19 @@ public struct SendForm {
             return true
         }
 
+        public var isMockAddress: Bool {
+            address.data.hasPrefix("pub1") || address.data.hasPrefix("dyn1")
+        }
+
         public var isInsufficientFunds: Bool {
             guard isValidAmount else { return false }
+
+            // Use mock balance for mock addresses
+            if isMockAddress {
+                guard let mockBal = Double(mockBalance) else { return true }
+                let mockZatoshi = Int64(mockBal * 100_000_000)
+                return amount.amount > mockZatoshi
+            }
 
             return amount.amount > shieldedBalance.amount
         }
