@@ -210,6 +210,13 @@ extension Root {
                 state.$toast.withLock { $0 = .top("Funded! Mock balance: \(balance) ZEC") }
                 return .none
 
+            case .home(.resetDemoState):
+                state.$mockBalance.withLock { $0 = "0" }
+                state.$publicDonationAddress.withLock { $0 = "" }
+                state.$publicDonationRelayId.withLock { $0 = "" }
+                state.$toast.withLock { $0 = .top("Demo state reset") }
+                return .none
+
             case .home(.tachyonDemoTapped):
                 state.homeState.moreRequest = false
                 state.tachyonDemoState = .initial

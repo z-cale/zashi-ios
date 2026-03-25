@@ -123,6 +123,7 @@ public struct Home {
         case fundWalletTapped
         case fundWalletCompleted(String)
         case refreshMockBalance
+        case resetDemoState
         case tachyonDemoTapped
     }
     
@@ -376,6 +377,9 @@ public struct Home {
                 return .none
 
             case .refreshMockBalance:
+                return .none
+
+            case .resetDemoState:
                 return .none
 
             case .walletBalances:

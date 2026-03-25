@@ -78,8 +78,8 @@ public struct HomeView: View {
                 .padding(.top, 24)
                 .screenHorizontalPadding()
 
-                // Demo: mock balance + fund button
-                HStack(spacing: 12) {
+                // Demo: mock balance + fund/reset buttons
+                HStack(spacing: 8) {
                     Text("Demo: \(store.mockBalance) ZEC")
                         .zFont(.semiBold, size: 14, style: Design.Text.tertiary)
 
@@ -98,6 +98,20 @@ public struct HomeView: View {
                             Capsule()
                                 .fill(Design.Surfaces.bgTertiary.color(colorScheme))
                         }
+                    }
+
+                    Button {
+                        store.send(.resetDemoState)
+                    } label: {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Design.Text.tertiary.color(colorScheme))
+                            .padding(.vertical, 6)
+                            .padding(.horizontal, 8)
+                            .background {
+                                Capsule()
+                                    .fill(Design.Surfaces.bgTertiary.color(colorScheme))
+                            }
                     }
                 }
                 .padding(.top, 8)

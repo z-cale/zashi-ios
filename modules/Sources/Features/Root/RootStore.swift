@@ -119,6 +119,8 @@ public struct Root {
         public var supportData: SupportData?
         @Shared(.inMemory(.swapAPIAccess)) var swapAPIAccess: WalletStorage.SwapAPIAccess = .direct
         @Shared(.inMemory(.mockBalance)) public var mockBalance: String = "0"
+        @Shared(.inMemory(.publicDonationAddress)) public var publicDonationAddress: String = ""
+        @Shared(.inMemory(.publicDonationRelayId)) public var publicDonationRelayId: String = ""
         @Shared(.inMemory(.toast)) public var toast: Toast.Edge? = nil
         @Shared(.inMemory(.transactions)) public var transactions: IdentifiedArrayOf<TransactionState> = []
         @Shared(.inMemory(.transactionMemos)) public var transactionMemos: [String: [String]] = [:]
