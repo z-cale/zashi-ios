@@ -31,6 +31,14 @@ extension Root {
                 if !state.sseListenerStarted {
                     state.sseListenerStarted = true
                     effects.append(.send(.startSSEListener))
+                    // Register t1 address alias on startup so sends to t1 credit the right account
+                    if let tAddr = state.selectedWalletAccount?.transparentAddress,
+                       let owner = state.selectedWalletAccount?.unifiedAddress {
+                        effects.append(.run { _ in
+                            @Dependency(\.paymentServiceClient) var paymentServiceClient
+                            try? await paymentServiceClient.registerAlias(tAddr, owner)
+                        })
+                    }
                 }
                 return .merge(effects)
                 

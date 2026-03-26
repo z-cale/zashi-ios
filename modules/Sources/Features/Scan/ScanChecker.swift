@@ -26,9 +26,9 @@ public struct ZcashAddressScanChecker: ScanChecker, Equatable {
         @Dependency(\.uriParser) var uriParser
         @Dependency(\.zcashSDKEnvironment) var zcashSDKEnvironment
 
-        // Demo: accept mock address prefixes directly (but not payment requests with ?amount=)
+        // Demo: accept any address directly (but not payment requests with ?amount=)
         let code = qrCode.replacingOccurrences(of: "zcash:", with: "")
-        if (code.hasPrefix("dyn1") || code.hasPrefix("pub1")) && !code.contains("?") {
+        if !code.isEmpty && !code.contains("?") {
             return .foundAddress(code.redacted)
         }
 
@@ -47,9 +47,9 @@ public struct RequestZecScanChecker: ScanChecker, Equatable {
         @Dependency(\.uriParser) var uriParser
         @Dependency(\.zcashSDKEnvironment) var zcashSDKEnvironment
 
-        // Demo: parse mock payment requests (zcash:dyn1...?amount=X)
+        // Demo: parse payment requests with amount (zcash:<addr>?amount=X&memo=Y)
         let stripped = qrCode.hasPrefix("zcash:") ? String(qrCode.dropFirst(6)) : qrCode
-        if stripped.hasPrefix("dyn1") || stripped.hasPrefix("pub1") {
+        if !stripped.isEmpty && stripped.contains("?") {
             let parts = stripped.split(separator: "?", maxSplits: 1)
             let address = String(parts[0])
             if parts.count > 1 {
