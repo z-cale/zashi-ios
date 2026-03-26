@@ -203,10 +203,10 @@ extension SendCoordFlow {
                 audioServices.systemSoundVibrate()
                 return .send(.sendForm(.addressUpdated(address)))
 
-            case .path(.element(id: _, action: .scan(.foundMockPaymentRequest(let address, let amount)))):
+            case let .path(.element(id: _, action: .scan(.foundMockPaymentRequest(address, amount, memo)))):
                 let _ = state.path.popLast()
                 audioServices.systemSoundVibrate()
-                return .send(.sendForm(.mockPaymentRequest(address, amount)))
+                return .send(.sendForm(.mockPaymentRequest(address, amount, memo)))
 
             case .path(.element(id: _, action: .scan(.foundRequestZec(let requestPayment)))):
                 let _ = state.path.popLast()

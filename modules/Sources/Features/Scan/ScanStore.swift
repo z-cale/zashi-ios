@@ -82,7 +82,7 @@ public struct Scan {
         case onAppear
         case onDisappear
         case foundAddress(RedactableString)
-        case foundMockPaymentRequest(String, String) // address, amount
+        case foundMockPaymentRequest(String, String, String) // address, amount, memo
         case foundString(String)
         case foundRequestZec(ParserResult)
         case foundAccounts(ZcashAccounts)

@@ -53,17 +53,20 @@ public struct RequestZecScanChecker: ScanChecker, Equatable {
             let parts = stripped.split(separator: "?", maxSplits: 1)
             let address = String(parts[0])
             if parts.count > 1 {
-                // Parse amount from query params
+                // Parse amount and memo from query params
                 let query = String(parts[1])
                 var amount = ""
+                var memo = ""
                 for param in query.split(separator: "&") {
                     let kv = param.split(separator: "=", maxSplits: 1)
                     if kv.count == 2 && kv[0] == "amount" {
                         amount = String(kv[1])
+                    } else if kv.count == 2 && kv[0] == "memo" {
+                        memo = String(kv[1]).removingPercentEncoding ?? String(kv[1])
                     }
                 }
                 if !amount.isEmpty {
-                    return .foundMockPaymentRequest(address, amount)
+                    return .foundMockPaymentRequest(address, amount, memo)
                 }
             }
             return .foundAddress(address.redacted)

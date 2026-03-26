@@ -229,7 +229,7 @@ public struct SendForm {
         case proposal(Proposal)
         case requestsAddressFocusResolved
         case requestZec(ParserResult)
-        case mockPaymentRequest(String, String) // address, amount
+        case mockPaymentRequest(String, String, String) // address, amount, memo
         case resetForm
         case reviewTapped
         case scanTapped
@@ -412,8 +412,11 @@ public struct SendForm {
             case .memo:
                 return .none
                 
-            case let .mockPaymentRequest(address, amount):
+            case let .mockPaymentRequest(address, amount, memo):
                 audioServices.systemSoundVibrate()
+                if !memo.isEmpty {
+                    state.memoState.text = memo
+                }
                 return .concatenate(
                     .send(.addressUpdated(address.redacted)),
                     .send(.zecAmountUpdated(amount.redacted))

@@ -108,7 +108,12 @@ public struct RequestZec {
                 // Fallback for mock addresses (dyn1, pub1) that aren't recognized by ZIP-321 parser
                 if state.address.data.hasPrefix("dyn1") || state.address.data.hasPrefix("pub1") {
                     let amount = state.requestedZec.decimalString()
-                    let encryptedOutput = "zcash:\(state.address.data)?amount=\(amount)"
+                    var uri = "zcash:\(state.address.data)?amount=\(amount)"
+                    if !state.memoState.text.isEmpty,
+                       let encoded = state.memoState.text.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
+                        uri += "&memo=\(encoded)"
+                    }
+                    let encryptedOutput = uri
                     state.encryptedOutput = encryptedOutput
                     return .publisher {
                         QRCodeGenerator.generate(
@@ -155,7 +160,12 @@ public struct RequestZec {
                 // Fallback for mock addresses (dyn1, pub1)
                 if state.address.data.hasPrefix("dyn1") || state.address.data.hasPrefix("pub1") {
                     let amount = state.requestedZec.decimalString()
-                    let encryptedOutput = "zcash:\(state.address.data)?amount=\(amount)"
+                    var uri = "zcash:\(state.address.data)?amount=\(amount)"
+                    if !state.memoState.text.isEmpty,
+                       let encoded = state.memoState.text.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
+                        uri += "&memo=\(encoded)"
+                    }
+                    let encryptedOutput = uri
                     state.encryptedOutput = encryptedOutput
                     return .publisher {
                         QRCodeGenerator.generate(
