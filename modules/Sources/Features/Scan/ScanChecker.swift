@@ -26,9 +26,9 @@ public struct ZcashAddressScanChecker: ScanChecker, Equatable {
         @Dependency(\.uriParser) var uriParser
         @Dependency(\.zcashSDKEnvironment) var zcashSDKEnvironment
 
-        // Demo: accept mock address prefixes directly
+        // Demo: accept mock address prefixes directly (but not payment requests with ?amount=)
         let code = qrCode.replacingOccurrences(of: "zcash:", with: "")
-        if code.hasPrefix("dyn1") || code.hasPrefix("pub1") {
+        if (code.hasPrefix("dyn1") || code.hasPrefix("pub1")) && !code.contains("?") {
             return .foundAddress(code.redacted)
         }
 
