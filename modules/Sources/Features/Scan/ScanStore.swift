@@ -137,6 +137,10 @@ public struct Scan {
                 state.isAnythingFound = true
                 return .none
 
+            case .foundMockPaymentRequest:
+                state.isAnythingFound = true
+                return .none
+
             case .foundRequestZec:
                 state.isAnythingFound = true
                 return .none
