@@ -71,9 +71,15 @@ extension Root {
                 }
                 state.appStartState = .willEnterForeground
                 if state.isLockedInKeychainUnavailableState || !sdkSynchronizer.latestState().syncStatus.isPrepared {
-                    return .send(.initialization(.initialSetups))
+                    return .merge(
+                        .send(.initialization(.initialSetups)),
+                        .send(.voting(.checkPendingShareReveals))
+                    )
                 } else {
-                    return .send(.initialization(.retryStart))
+                    return .merge(
+                        .send(.initialization(.retryStart)),
+                        .send(.voting(.checkPendingShareReveals))
+                    )
                 }
                 
             case .initialization(.appDelegate(.didEnterBackground)):

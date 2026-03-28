@@ -82,11 +82,11 @@ Confirmation does not block the vote submission UX. The user can vote on other p
 │  (user continues voting on other proposals)                  │
 │                                                              │
 │  checkPendingShareReveals (lightweight scanner):             │
+│    ├─ triggered: app foreground / governance open / post-vote│
 │    ├─ listPendingShareReveals from DB                        │
 │    ├─ per group within 5-min window:                         │
 │    │      dispatch .confirmShareRevealsForGroup (per-group)  │
-│    ├─ per group beyond window: track nearest wake-up         │
-│    └─ if skipped groups: sleep → re-dispatch self            │
+│    └─ per group beyond window: log and defer to next trigger │
 │                                                              │
 │  confirmShareRevealsForGroup (per-group, independent):       │
 │    ├─ sleep until max(submit_at) for this group              │
@@ -207,8 +207,8 @@ The polling system uses a **scanner + per-group effect** architecture for resili
 A lightweight TCA effect (`.cancellable(cancelInFlight: true)`) that reads the DB and dispatches per-group effects. Triggered:
 - After share delegation completes (`.sharesAwaitingRevealRecorded`).
 - On every governance page open / app restart (`.allRoundsLoaded`).
+- On every app foreground (`willEnterForeground` in `RootInitialization` sends `.voting(.checkPendingShareReveals)`).
 - After the delegation proof finishes (`.delegationProofCompleted` / `.delegationProofFailed`) — ensures groups that were blocked by `isDelegationProofInFlight` are picked up promptly.
-- By itself, after sleeping until the nearest skipped group enters the 5-minute window (self-rescheduling).
 
 The scanner calls `listPendingShareReveals()` and dispatches per-group effects for **all rounds** with pending groups. UI progress updates (pending-proposal set, progress bars) are scoped to the currently-viewed round for display purposes, but confirmation effects run for every round.
 
@@ -216,7 +216,7 @@ For each group:
 - If `max(submit_at)` is within 5 minutes → dispatch `.confirmShareRevealsForGroup(group)`.
 - If beyond 5 minutes → skip and track as deferred.
 
-After dispatching eligible groups, if any were deferred, the scanner computes the earliest time a skipped group enters the window, sleeps, and re-dispatches itself. This ensures groups are confirmed as soon as possible without requiring the user to re-open governance.
+Groups beyond the 5-minute window are deferred. They will be picked up on the next scanner run, which happens on every app foreground or governance screen open. This avoids long-lived `Task.sleep` calls that would not survive iOS app suspension.
 
 ### Per-group effect: `confirmShareRevealsForGroup`
 
@@ -271,11 +271,11 @@ private let shareRevealNearThresholdSeconds: TimeInterval = 300
 
 When the scanner runs:
 - Groups whose `max(submit_at)` is within 5 minutes: dispatched as per-group effects immediately.
-- Groups whose `max(submit_at)` is farther out: skipped. The scanner sleeps until the nearest skipped group enters the window, then re-dispatches itself (self-rescheduling loop).
+- Groups whose `max(submit_at)` is farther out: skipped and logged. They will be picked up on the next scanner run (triggered by app foreground or governance open).
 
 **App-restart path:**
 
-`.allRoundsLoaded` (fires on governance screen appear) always dispatches `.checkPendingShareReveals`. This calls `listPendingShareReveals()` which queries all `share_delegations` rows with `reveal_confirmed = 0` joined against `votes.submitted = 0`. Any groups within the 5-minute window are dispatched as per-group effects. Groups farther out trigger the self-rescheduling sleep.
+The scanner is triggered on every app foreground (`willEnterForeground` → `.voting(.checkPendingShareReveals)`) and every governance screen appear (`.allRoundsLoaded`). It calls `listPendingShareReveals()` which queries all `share_delegations` rows with `reveal_confirmed = 0` joined against `votes.submitted = 0`. Any groups within the 5-minute window are dispatched as per-group effects. Groups farther out are deferred until the next trigger.
 
 **Concurrent voting:**
 
@@ -323,7 +323,7 @@ The scanner + per-group architecture provides four resilience guarantees:
 
 **No cross-proposal cancellation.** Each group effect has a unique `ShareRevealGroupCancelID` keyed on `(roundId, bundleIndex, proposalId)`. When the user votes on a new proposal, the scanner re-dispatches but existing group effects are not cancelled. A duplicate dispatch for an already-running group is suppressed by the `activeShareRevealGroupIDs` state guard.
 
-**Self-rescheduling for deferred groups.** After dispatching eligible groups, the scanner computes the earliest time a skipped group (beyond 5-minute window) will enter the window, sleeps until then, and re-dispatches itself. Groups are confirmed as soon as possible without requiring the user to manually re-open governance.
+**App-foreground sweep for deferred groups.** The scanner runs on every `willEnterForeground` (not just governance screen open), so deferred groups are picked up as soon as the user returns to the app for any reason. This avoids long-lived `Task.sleep` calls that would not survive iOS app suspension.
 
 **Active effect cleanup.** On `.dismissFlow`, all tracked per-group effect IDs are cancelled alongside the scanner, preventing orphaned background work. The `activeShareRevealGroupIDs` set is cleared.
 
@@ -350,7 +350,7 @@ delegatePersistAndConfirmShares                             │  for next propos
      │                                                      │
      ├── within 5 min → dispatch per-group effect ─────┐    │
      │                                                  │    │
-     ├── beyond 5 min → sleep until window, re-scan     │    │
+     ├── beyond 5 min → defer to next app foreground     │    │
      │                                                  │    │
      │   .confirmShareRevealsForGroup (concurrent)      │    │
      │    ├── confirmAllSharesForVote (all 16 parallel) │    │

@@ -25,7 +25,7 @@ private let logger = Logger(subsystem: "co.zodl.voting", category: "VotingStore"
 
 /// Exponential backoff between share-status polls: 20s, 40s, … (~10.3 min for 5 attempts).
 private let sharePollBackoffBaseSeconds: TimeInterval = 20
-/// If `submit_at` is farther out than this, defer confirmation until a later governance open.
+/// If `submit_at` is farther out than this, defer confirmation until the next app foreground or governance open.
 private let shareRevealNearThresholdSeconds: TimeInterval = 300
 
 private enum VotingFlowError: LocalizedError {
@@ -1301,9 +1301,9 @@ public struct Voting { // swiftlint:disable:this type_body_length
                             await send(.confirmShareRevealsForGroup(group))
                         }
                         if let wake = nearestSkippedWake {
-                            let delay = max(wake.timeIntervalSinceNow, 10)
-                            try await Task.sleep(for: .seconds(delay))
-                            await send(.checkPendingShareReveals)
+                            logger.info(
+                                "checkPendingShareReveals: deferred groups exist, earliest eligible at \(wake.timeIntervalSince1970) — will re-check on next app foreground or governance open"
+                            )
                         }
                     } catch {
                         logger.error("checkPendingShareReveals scan failed: \(error.localizedDescription)")
