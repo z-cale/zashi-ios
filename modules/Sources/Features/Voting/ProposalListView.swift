@@ -58,6 +58,26 @@ struct ProposalListView: View {
                 }
             }
             .onReceive(timer) { self.now = $0 }
+            .onAppear { store.send(.governanceTabAppeared) }
+            .onDisappear { store.send(.governanceTabDisappeared) }
+            .sheet(isPresented: Binding(
+                get: { store.showShareInfoSheet },
+                set: { newValue in
+                    if !newValue { store.send(.hideShareInfo) }
+                }
+            )) {
+                ShareInfoSheet(
+                    allConfirmed: {
+                        guard let pid = store.shareInfoProposalId,
+                              let p = store.shareDelegationProgressByProposal[pid] else { return store.allSharesConfirmed }
+                        return p.confirmed >= p.total && p.total > 0
+                    }(),
+                    estimatedCompletion: store.shareInfoEstimatedCompletion,
+                    roundDuration: store.activeSession.map {
+                        $0.voteEndTime.timeIntervalSince($0.ceremonyStart)
+                    } ?? 7200
+                )
+            }
         }
     }
 
@@ -274,6 +294,21 @@ extension ProposalListView {
             Text(proposal.description)
                 .zFont(.regular, size: 13, style: Design.Text.secondary)
                 .lineLimit(2)
+
+            // Share submission tracking (DB-backed)
+            if vote != nil {
+                if store.shareTrackingStatus == .loading {
+                    ShareSubmissionStatus(
+                        confirmed: 0, total: 1,
+                        onInfoTapped: { store.send(.showShareInfo(proposal.id)) }
+                    )
+                } else if let progress = store.shareDelegationProgressByProposal[proposal.id], progress.total > 0 {
+                    ShareSubmissionStatus(
+                        confirmed: progress.confirmed, total: progress.total,
+                        onInfoTapped: { store.send(.showShareInfo(proposal.id)) }
+                    )
+                }
+            }
         }
         .padding(16)
         .background(Design.Surfaces.bgPrimary.color(colorScheme))
