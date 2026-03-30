@@ -8,7 +8,7 @@
 public struct FeatureFlags: Equatable {
     public let addUAtoMemo: Bool
     public let appLaunchBiometric: Bool
-    public let batchVoting: Bool
+    public var batchVoting: Bool
     public let flexa: Bool
     public let selectText: Bool
 

@@ -92,6 +92,7 @@ struct ProposalListView: View {
                         noActiveRoundCard()
                     } else {
                         roundInfoCard()
+                        batchModeToggle()
                         zkpBanner()
                         progressHeader()
 
@@ -225,6 +226,26 @@ struct ProposalListView: View {
                 isPreparingWitnesses: store.witnessStatus == .inProgress
             )
         }
+    }
+
+    @ViewBuilder
+    private func batchModeToggle() -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "tray.and.arrow.up")
+                .font(.system(size: 13))
+                .foregroundStyle(Design.Text.tertiary.color(colorScheme))
+            Text("Batch voting")
+                .zFont(.medium, size: 13, style: Design.Text.secondary)
+            Spacer()
+            Toggle("", isOn: Binding(
+                get: { store.isBatchMode },
+                set: { _ in store.send(.toggleBatchMode) }
+            ))
+            .labelsHidden()
+            .tint(.green)
+        }
+        .padding(.horizontal, 4)
+        .disabled(store.isSubmittingVote || store.isBatchSubmitting)
     }
 
     @ViewBuilder
