@@ -2606,6 +2606,10 @@ public struct Voting { // swiftlint:disable:this type_body_length
             case let .setDraftVote(proposalId, choice):
                 guard state.votes[proposalId] == nil else { return .none }
                 state.draftVotes[proposalId] = choice
+                // Pop back to the list so the user can continue drafting other proposals
+                if case .proposalDetail = state.currentScreen {
+                    state.screenStack.removeLast()
+                }
                 return .none
 
             case let .clearDraftVote(proposalId):
