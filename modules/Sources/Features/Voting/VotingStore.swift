@@ -2798,6 +2798,9 @@ public struct Voting { // swiftlint:disable:this type_body_length
                     }
 
                     await send(.batchSubmissionCompleted(successCount: successCount, failCount: failCount))
+                } catch: { error, send in
+                    logger.error("Batch submission failed at top level: \(error)")
+                    await send(.batchSubmissionCompleted(successCount: 0, failCount: 0))
                 }
 
             case let .batchSubmissionProgress(currentIndex, totalCount, proposalId):
