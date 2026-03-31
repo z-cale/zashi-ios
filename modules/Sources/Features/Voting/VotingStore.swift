@@ -2663,7 +2663,17 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
                 return .run { [backgroundTask, votingAPI, votingCrypto, mnemonic, walletStorage] send in
                     let bgTaskId = await backgroundTask.beginTask("Batch vote submission")
-                    defer { Task { await backgroundTask.endTask(bgTaskId) } }
+                    let _ = await backgroundTask.beginContinuedProcessing(
+                        "co.zodl.voting.*",
+                        "Submitting votes",
+                        "Sending \(totalCount) vote\(totalCount == 1 ? "" : "s") to the network"
+                    )
+                    defer {
+                        Task {
+                            await backgroundTask.endContinuedProcessing()
+                            await backgroundTask.endTask(bgTaskId)
+                        }
+                    }
 
                     let hotkeyPhrase = try walletStorage.exportVotingHotkey().seedPhrase.value()
                     let hotkeySeed = try mnemonic.toSeed(hotkeyPhrase)
