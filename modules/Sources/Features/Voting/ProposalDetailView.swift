@@ -224,6 +224,25 @@ struct ProposalDetailView: View {
                         store.send(.castVote(proposalId: proposal.id, choice: choice))
                     }
                 }
+
+                // Skip button — go back without drafting
+                if !buttonsDisabled {
+                    Button {
+                        if draftChoice != nil {
+                            store.send(.clearDraftVote(proposalId: proposal.id))
+                        }
+                        store.send(.backToList)
+                    } label: {
+                        HStack {
+                            Image(systemName: "forward.fill")
+                            Text("Skip")
+                                .fontWeight(.medium)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .foregroundStyle(.secondary)
+                    }
+                }
             }
         }
     }
