@@ -934,6 +934,16 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 // delegation signing screen to avoid a brief flash of the proposal list.
                 // Don't set delegationProofStatus here — verifyWitnesses will set it
                 // only for fresh rounds, avoiding a brief flash for cached rounds.
+                // Restore persisted draft votes (survives app termination)
+                if state.isBatchMode {
+                    let restored = Self.loadDrafts(roundId: state.roundId)
+                    // Only keep drafts for proposals that haven't been submitted yet
+                    state.draftVotes = restored.filter { state.votes[$0.key] == nil }
+                    if !state.draftVotes.isEmpty {
+                        logger.info("Restored \(state.draftVotes.count) persisted draft votes")
+                    }
+                }
+
                 if state.isKeystoneUser {
                     state.screenStack = [.delegationSigning]
                 } else {
@@ -2555,6 +2565,12 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 if case .proposalDetail = state.currentScreen {
                     state.screenStack.removeLast()
                 }
+                // Auto-resume batch: if there are remaining persisted drafts after
+                // a crash-recovered single vote, continue submitting the batch.
+                if state.isBatchMode && state.canSubmitBatch {
+                    logger.info("Auto-resuming batch submission with \(state.draftVotes.count) remaining drafts")
+                    return .send(.submitAllDrafts)
+                }
                 // Vote finished — start share tracking now that delegation rows are written.
                 if !state.votes.isEmpty && state.shareTrackingStatus == .idle {
                     state.shareTrackingStatus = .loading
@@ -2600,12 +2616,14 @@ public struct Voting { // swiftlint:disable:this type_body_length
                     state.draftVotes = [:]
                     state.batchSubmissionStatus = .idle
                     state.batchVoteErrors = [:]
+                    Self.clearPersistedDrafts(roundId: state.roundId)
                 }
                 return .none
 
             case let .setDraftVote(proposalId, choice):
                 guard state.votes[proposalId] == nil else { return .none }
                 state.draftVotes[proposalId] = choice
+                Self.persistDrafts(state.draftVotes, roundId: state.roundId)
                 // Pop back to the list so the user can continue drafting other proposals
                 if case .proposalDetail = state.currentScreen {
                     state.screenStack.removeLast()
@@ -2614,6 +2632,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
             case let .clearDraftVote(proposalId):
                 state.draftVotes.removeValue(forKey: proposalId)
+                Self.persistDrafts(state.draftVotes, roundId: state.roundId)
                 return .none
 
             case .submitAllDrafts:
@@ -2802,6 +2821,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
             case let .batchVoteSubmitted(proposalId, choice):
                 state.votes[proposalId] = choice
                 state.draftVotes.removeValue(forKey: proposalId)
+                Self.persistDrafts(state.draftVotes, roundId: state.roundId)
                 return .none
 
             case let .batchVoteFailed(proposalId, error):
@@ -2892,6 +2912,41 @@ public struct Voting { // swiftlint:disable:this type_body_length
             }
         }
         throw lastShareError!
+    }
+
+    // MARK: - Draft Persistence
+
+    private static let draftPrefix = "voting.draftVotes."
+
+    /// Persist draft votes to UserDefaults so they survive app termination.
+    static func persistDrafts(_ drafts: [UInt32: VoteChoice], roundId: String) {
+        let key = "\(draftPrefix)\(roundId)"
+        if drafts.isEmpty {
+            UserDefaults.standard.removeObject(forKey: key)
+        } else {
+            let encoded = drafts.reduce(into: [String: UInt32]()) { dict, entry in
+                dict[String(entry.key)] = entry.value.index
+            }
+            UserDefaults.standard.set(encoded, forKey: key)
+        }
+    }
+
+    /// Load persisted draft votes for a round.
+    static func loadDrafts(roundId: String) -> [UInt32: VoteChoice] {
+        let key = "\(draftPrefix)\(roundId)"
+        guard let raw = UserDefaults.standard.dictionary(forKey: key) as? [String: UInt32] else {
+            return [:]
+        }
+        return raw.reduce(into: [UInt32: VoteChoice]()) { dict, entry in
+            if let proposalId = UInt32(entry.key) {
+                dict[proposalId] = .option(entry.value)
+            }
+        }
+    }
+
+    /// Remove all persisted drafts for a round.
+    static func clearPersistedDrafts(roundId: String) {
+        UserDefaults.standard.removeObject(forKey: "\(draftPrefix)\(roundId)")
     }
 }
 
