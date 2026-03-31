@@ -3075,18 +3075,171 @@
       }
     },
     "homeScreen.moreDotted" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "More..."
+        "extractionState" : "manual",
+        "localizations" : {
+            "en" : {
+                "stringUnit" : {
+                    "state" : "translated",
+                    "value" : "More..."
+                }
+            },
+            "es" : {
+                "stringUnit" : {
+                    "state" : "translated",
+                    "value" : "Más..."
+                }
+            }
+        }
+    },
+    "keystone.addHWWallet.close": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Más..."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrar"
+          }
+        }
+      }
+    },
+    "keystone.addHWWallet.connectActive": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connect active device"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conectar dispositivo activo"
+          }
+        }
+      }
+    },
+    "keystone.addHWWallet.connectNew": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connect new device"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conectar nuevo dispositivo"
+          }
+        }
+      }
+    },
+    "keystone.addHWWallet.connected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keystone Connected"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keystone Conectado"
+          }
+        }
+      }
+    },
+    "keystone.addHWWallet.connectedDesc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your Keystone hardware wallet has been successfully connected. You can now sign transactions wirelessly."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu billetera de hardware Keystone se ha conectado correctamente. Ahora puedes firmar transacciones de forma inalámbrica."
+          }
+        }
+      }
+    },
+    "keystone.addHWWallet.deviceDesc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connecting to a hardware wallet that was previously connected to Zashi will require synchronization to discover your transaction history. We'll guide you through it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conectarse a una billetera de hardware que ya estaba conectada a Zashi requerirá sincronización para descubrir tu historial de transacciones. Te guiaremos en el proceso."
+          }
+        }
+      }
+    },
+    "keystone.addHWWallet.deviceQuestion": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New or Active Device?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Dispositivo nuevo o activo?"
+          }
+        }
+      }
+    },
+    "keystone.addHWWallet.enterManually": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter block height manually"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ingresar altura de bloque manualmente"
+          }
+        }
+      }
+    },
+    "keystone.birthday.estimateDate.info": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entering the block height at which your wallet was created ensures that correct number of blocks will be scanned. If you're not sure, choose an earlier date."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ingresar la altura del bloque en que se creó tu billetera garantiza que se escanee el número correcto de bloques. Si no estás seguro, elige una fecha anterior."
           }
         }
       }
