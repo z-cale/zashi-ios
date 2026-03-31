@@ -1,0 +1,61 @@
+//
+//  KeystoneDeviceReadyView.swift
+//  Zodl
+//
+//  Created by Lukáš Korba on 2025-03-27.
+//
+
+import SwiftUI
+import ComposableArchitecture
+import Generated
+import UIComponents
+
+public struct KeystoneDeviceReadyView: View {
+    @Perception.Bindable var store: StoreOf<AddKeystoneHWWallet>
+
+    public init(store: StoreOf<AddKeystoneHWWallet>) {
+        self.store = store
+    }
+
+    public var body: some View {
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 0) {
+                Asset.Assets.Partners.keystoneTitleLogo.image
+                    .resizable()
+                    .frame(width: 193, height: 32)
+                    .padding(.top, 16)
+
+                Text(L10n.Keystone.AddHWWallet.deviceQuestion)
+                    .zFont(.semiBold, size: 24, style: Design.Text.primary)
+                    .padding(.top, 24)
+
+                Text(L10n.Keystone.AddHWWallet.deviceDesc)
+                    .zFont(size: 14, style: Design.Text.tertiary)
+                    .lineSpacing(1.5)
+                    .padding(.top, 8)
+
+                Spacer()
+
+                ZashiButton(
+                    L10n.Keystone.AddHWWallet.connectActive,
+                    type: .ghost
+                ) {
+                    store.send(.setBirthdayTapped)
+                }
+                .padding(.bottom, 12)
+
+                ZashiButton(
+                    L10n.Keystone.AddHWWallet.connectNew
+                ) {
+                    store.send(.unlockTapped)
+                }
+                .padding(.bottom, 24)
+            }
+            .screenHorizontalPadding()
+            .zashiBackV2(background: false) {
+                store.send(.forgetThisDeviceTapped)
+            }
+        }
+        .applyScreenBackground()
+    }
+}

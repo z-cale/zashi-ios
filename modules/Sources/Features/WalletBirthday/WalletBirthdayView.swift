@@ -47,16 +47,20 @@ public struct WalletBirthdayView: View {
                     .zFont(size: 12, style: Design.Text.tertiary)
 
                 Spacer()
-                
-                ZashiButton(
-                    String(localizable: .restoreWalletBirthdayEstimate),
-                    type: .ghost
-                ) {
-                    store.send(.estimateHeightTapped)
-                }
-                .padding(.bottom, 12)
 
-                ZashiButton(String(localizable: .importWalletButtonRestoreWallet)) {
+                if !store.isKeystoneFlow {
+                    ZashiButton(
+                        String(localizable: .restoreWalletBirthdayEstimate),
+                        type: .ghost
+                    ) {
+                        store.send(.estimateHeightTapped)
+                    }
+                    .padding(.bottom, 12)
+                }
+
+                    // TODO: Loc
+//                    ZashiButton(String(localizable: .importWalletButtonRestoreWallet)) {
+                ZashiButton(store.isKeystoneFlow ? "L10n.Keystone.AddHWWallet.connect" : "L10n.ImportWallet.Button.restoreWallet") {
                     store.send(.restoreTapped)
                 }
                 .disabled(!store.isValidBirthday)
@@ -78,7 +82,9 @@ public struct WalletBirthdayView: View {
         )
         .screenHorizontalPadding()
         .applyScreenBackground()
-        .screenTitle(String(localizable: .importWalletButtonRestoreWallet))
+        // TODO: Loc
+//        .screenTitle(String(localizable: .importWalletButtonRestoreWallet))
+        .screenTitle(store.isKeystoneFlow ? "L10n.Keystone.connect" : "L10n.ImportWallet.Button.restoreWallet")
         .overlay {
             if keyboardVisible {
                 VStack(spacing: 0) {

@@ -48,8 +48,21 @@ public struct WalletBirthdayEstimatedHeightView: View {
                 .frame(maxWidth: .infinity)
 
                 Spacer()
-                
-                ZashiButton(String(localizable: .importWalletButtonRestoreWallet)) {
+
+                if store.isKeystoneFlow {
+                    // TODO: Loc
+                    ZashiButton(
+                        "L10n.Keystone.AddHWWallet.enterManually",
+                        type: .ghost
+                    ) {
+                        store.send(.enterManuallyTapped)
+                    }
+                    .padding(.bottom, 12)
+                }
+
+                    // TODO: Loc
+//                ZashiButton(String(localizable: .importWalletButtonRestoreWallet))
+                ZashiButton(store.isKeystoneFlow ? "L10n.Keystone.AddHWWallet.connect" : "L10n.ImportWallet.Button.restoreWallet") {
                     store.send(.restoreTapped)
                 }
                 .padding(.bottom, 24)
@@ -69,7 +82,9 @@ public struct WalletBirthdayEstimatedHeightView: View {
         )
         .screenHorizontalPadding()
         .applyScreenBackground()
-        .screenTitle(String(localizable: .importWalletButtonRestoreWallet))
+        // TODO: Loc
+//        .screenTitle(String(localizable: .importWalletButtonRestoreWallet))
+        .screenTitle(store.isKeystoneFlow ? "L10n.Keystone.connect" : "L10n.ImportWallet.Button.restoreWallet")
     }
 }
 

@@ -47,11 +47,24 @@ extension Root {
 
                 // MARK: - Add Keystone HW Wallet Coord Flow
 
-            case .addKeystoneHWWalletCoordFlow(.path(.element(id: _, action: .accountHWWalletSelection(.forgetThisDeviceTapped)))):
+            case .addKeystoneHWWalletCoordFlow(.path(.element(id: _, action: .accountHWWalletSelection(.forgetThisDeviceTapped)))),
+                .addKeystoneHWWalletCoordFlow(.path(.element(id: _, action: .keystoneDeviceReady(.forgetThisDeviceTapped)))):
                 state.path = nil
                 return .none
 
             case .addKeystoneHWWalletCoordFlow(.path(.element(id: _, action: .accountHWWalletSelection(.accountImportSucceeded)))):
+                state.path = nil
+                state.autoUpdateSwapCandidates.removeAll()
+                return .merge(
+                    .send(.loadContacts),
+                    .concatenate(
+                        .send(.resolveMetadataEncryptionKeys),
+                        .send(.loadUserMetadata)
+                    ),
+                    .send(.fetchTransactionsForTheSelectedAccount)
+                )
+
+            case .addKeystoneHWWalletCoordFlow(.path(.element(id: _, action: .keystoneConnected(.closeTapped)))):
                 state.path = nil
                 state.autoUpdateSwapCandidates.removeAll()
                 return .merge(

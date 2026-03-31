@@ -27,6 +27,7 @@ public struct WalletBirthday {
     public struct State: Equatable {
         public var birthday = ""
         public var estimatedHeight = BlockHeight(0)
+        public var isKeystoneFlow = false
         public var isValidBirthday = false
         public var months: [String] = []
         public var selectedMonth = ""
@@ -44,6 +45,7 @@ public struct WalletBirthday {
     public enum Action: BindableAction, Equatable {
         case binding(BindingAction<WalletBirthday.State>)
         case copyBirthdayTapped
+        case enterManuallyTapped
         case estimateHeightReady
         case estimateHeightRequested
         case estimateHeightTapped
@@ -141,6 +143,9 @@ public struct WalletBirthday {
             case .estimateHeightReady:
                 return .none
                 
+            case .enterManuallyTapped:
+                return .none
+
             case .estimateHeightTapped:
                 return .none
             }
