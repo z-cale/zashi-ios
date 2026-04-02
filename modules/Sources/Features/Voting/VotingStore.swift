@@ -2728,7 +2728,28 @@ public struct Voting { // swiftlint:disable:this type_body_length
                                                         payloads[i].submitAt = 0
                                                     }
                                                 }
-                                                try await Self.delegateSharesWithRetry(payloads, roundId: roundId, votingAPI: votingAPI)
+                                                let recoveryInfos = try await Self.delegateSharesWithRetry(payloads, roundId: roundId, votingAPI: votingAPI)
+                                                for info in recoveryInfos {
+                                                    guard let payload = payloads.first(where: {
+                                                        $0.encShare.shareIndex == info.shareIndex && $0.proposalId == info.proposalId
+                                                    }) else { continue }
+                                                    let blindIdx = Int(info.shareIndex)
+                                                    guard blindIdx < savedBundle.shareBlindFactors.count else { continue }
+                                                    do {
+                                                        let nfHex = try votingCrypto.computeShareNullifier(
+                                                            [UInt8](savedBundle.voteCommitment),
+                                                            info.shareIndex,
+                                                            [UInt8](savedBundle.shareBlindFactors[blindIdx])
+                                                        )
+                                                        try await votingCrypto.recordShareDelegation(
+                                                            roundId, bundleIndex, info.proposalId,
+                                                            info.shareIndex, info.acceptedByServers,
+                                                            [UInt8](dataFromHex(nfHex)), payload.submitAt
+                                                        )
+                                                    } catch {
+                                                        logger.warning("Batch recovery: failed to record share delegation for share \(info.shareIndex): \(error)")
+                                                    }
+                                                }
                                             }
                                             try await votingCrypto.markVoteSubmitted(roundId, bundleIndex, proposalId)
                                             continue
@@ -2796,7 +2817,28 @@ public struct Voting { // swiftlint:disable:this type_body_length
                                     }
                                 }
                                 try await votingCrypto.storeVoteCommitmentBundle(roundId, bundleIndex, proposalId, builtBundle, vcIdx)
-                                try await Self.delegateSharesWithRetry(payloads, roundId: roundId, votingAPI: votingAPI)
+                                let batchDelegatedInfos = try await Self.delegateSharesWithRetry(payloads, roundId: roundId, votingAPI: votingAPI)
+                                for info in batchDelegatedInfos {
+                                    guard let payload = payloads.first(where: {
+                                        $0.encShare.shareIndex == info.shareIndex && $0.proposalId == info.proposalId
+                                    }) else { continue }
+                                    let blindIndex = Int(info.shareIndex)
+                                    guard blindIndex < builtBundle.shareBlindFactors.count else { continue }
+                                    do {
+                                        let nullifierHex = try votingCrypto.computeShareNullifier(
+                                            [UInt8](builtBundle.voteCommitment),
+                                            info.shareIndex,
+                                            [UInt8](builtBundle.shareBlindFactors[blindIndex])
+                                        )
+                                        try await votingCrypto.recordShareDelegation(
+                                            roundId, bundleIndex, info.proposalId,
+                                            info.shareIndex, info.acceptedByServers,
+                                            [UInt8](dataFromHex(nullifierHex)), payload.submitAt
+                                        )
+                                    } catch {
+                                        logger.warning("Batch: failed to record share delegation for share \(info.shareIndex): \(error)")
+                                    }
+                                }
                                 try await votingCrypto.markVoteSubmitted(roundId, bundleIndex, proposalId)
                             }
 
