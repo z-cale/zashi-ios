@@ -374,6 +374,30 @@ extension ProposalListView {
                 .padding(.top, 8)
             }
 
+        case .authorizing:
+            VStack(spacing: 10) {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Authorizing vote...")
+                            .zFont(.semiBold, size: 15, style: Design.Text.primary)
+                        if case .generating(let progress) = store.delegationProofStatus {
+                            Text("\(Int(progress * 100))%")
+                                .zFont(.regular, size: 12, style: Design.Text.tertiary)
+                        }
+                    }
+                    Spacer()
+                }
+            }
+            .padding(16)
+            .background(Design.Surfaces.bgPrimary.color(colorScheme))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color.green.opacity(0.2), lineWidth: 1)
+            )
+            .padding(.top, 8)
+
         case let .submitting(currentIndex, totalCount, _):
             VStack(spacing: 10) {
                 HStack(spacing: 10) {
