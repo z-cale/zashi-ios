@@ -184,12 +184,14 @@ public struct Voting { // swiftlint:disable:this type_body_length
         }
 
         public enum VoteSubmissionStep: Equatable {
+            case authorizingVote    // delegation proof (ZKP #1)
             case preparingProof     // syncVoteTree + generateVanWitness + buildVoteCommitment + signCastVote + submitVoteCommitment
             case confirming         // fetchTxConfirmation poll
             case sendingShares      // buildSharePayloads + delegateShares
 
             public var label: String {
                 switch self {
+                case .authorizingVote: return "Authorizing vote..."
                 case .preparingProof: return "Building vote proof..."
                 case .confirming: return "Waiting for confirmation..."
                 case .sendingShares: return "Sending to vote servers..."
@@ -198,13 +200,14 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
             public var stepNumber: Int {
                 switch self {
-                case .preparingProof: return 1
-                case .confirming: return 2
-                case .sendingShares: return 3
+                case .authorizingVote: return 1
+                case .preparingProof: return 2
+                case .confirming: return 3
+                case .sendingShares: return 4
                 }
             }
 
-            public static let totalSteps = 3
+            public static let totalSteps = 4
         }
 
         public var screenStack: [Screen] = [.loading]
@@ -295,6 +298,9 @@ public struct Voting { // swiftlint:disable:this type_body_length
         /// Per-proposal error messages from the last batch submission run.
         public var batchVoteErrors: [UInt32: String] = [:]
 
+        /// Signals that batch submission should resume after delegation completes (Keystone path).
+        public var pendingBatchSubmission: Bool = false
+
         // Witness verification results
         public var noteWitnessResults: [NoteWitnessResult] = []
         public var witnessStatus: WitnessStatus = .notStarted
@@ -353,6 +359,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
             if bundleCount > 1, let idx = currentVoteBundleIndex {
                 let bundleLabel = "(\(idx + 1)/\(bundleCount))"
                 switch step {
+                case .authorizingVote: return step.label
                 case .preparingProof: return "Building vote proof \(bundleLabel)..."
                 case .confirming: return "Waiting for confirmation \(bundleLabel)..."
                 case .sendingShares: return "Sending to vote servers \(bundleLabel)..."
@@ -424,10 +431,11 @@ public struct Voting { // swiftlint:disable:this type_body_length
             return false
         }
 
-        /// Whether the user can start a batch submission: delegation ready, bundles
-        /// resolved, no other submission in-flight, and at least one draft exists.
+        /// Whether the user can start a batch submission: bundles resolved,
+        /// no other submission in-flight, and at least one draft exists.
+        /// Delegation (ZKP #1) runs at submission time, not upfront.
         public var canSubmitBatch: Bool {
-            isBatchMode && isDelegationReady && bundleCount > 0
+            isBatchMode && bundleCount > 0
                 && !isSubmittingVote && !isBatchSubmitting && !draftVotes.isEmpty
         }
 
@@ -447,13 +455,14 @@ public struct Voting { // swiftlint:disable:this type_body_length
             delegationProofStatus == .complete
         }
 
-        /// Whether the user can confirm a vote: delegation proof must be complete,
-        /// bundle count must be known (restored from DB on resume), and no other
-        /// vote can be in-flight (each vote needs the previous VAN committed).
+        /// Whether the user can confirm a vote: bundle count must be known
+        /// (restored from DB on resume) and no other vote can be in-flight
+        /// (each vote needs the previous VAN committed).
+        /// Delegation (ZKP #1) runs at submission time, not upfront.
         /// Always false in batch mode — confirmation is deferred to submitAllDrafts.
         public var canConfirmVote: Bool {
             guard !isBatchMode else { return false }
-            return isDelegationReady && bundleCount > 0 && !isSubmittingVote
+            return bundleCount > 0 && !isSubmittingVote
         }
 
         /// Whether all share delegations have been confirmed on-chain.
@@ -940,15 +949,12 @@ public struct Voting { // swiftlint:disable:this type_body_length
                     // Only keep drafts for proposals that haven't been submitted yet
                     state.draftVotes = restored.filter { state.votes[$0.key] == nil }
                     if !state.draftVotes.isEmpty {
-                        logger.info("Restored \(state.draftVotes.count) persisted draft votes")
+                        let draftCount = state.draftVotes.count
+                        logger.info("Restored \(draftCount) persisted draft votes")
                     }
                 }
 
-                if state.isKeystoneUser {
-                    state.screenStack = [.delegationSigning]
-                } else {
-                    state.screenStack = [.proposalList]
-                }
+                state.screenStack = [.proposalList]
                 return .merge(
                     .publisher {
                         votingCrypto.stateStream()
@@ -1488,22 +1494,9 @@ public struct Voting { // swiftlint:disable:this type_body_length
                         return total + quantizeWeight(raw)
                     }
                 }
-                // Non-Keystone users skip the delegation signing screen entirely.
-                // Screen is already on .proposalList (set early in .votingWeightLoaded).
-                if !state.isKeystoneUser {
-                    return .send(.startDelegationProof)
-                }
-                // Keystone: check for persisted signatures from a previous session
-                let roundId = state.roundId
-                return .run { [votingCrypto] send in
-                    let savedSigs = (try? await votingCrypto.loadKeystoneBundleSignatures(roundId)) ?? []
-                    if !savedSigs.isEmpty {
-                        logger.info("Keystone recovery: found \(savedSigs.count) persisted signatures, resuming batch prove")
-                        await send(.keystoneSignaturesRestored(savedSigs))
-                    } else {
-                        await send(.keystoneShowSigningScreen)
-                    }
-                }
+                // Delegation (ZKP #1) is deferred until the user submits their vote.
+                // Witnesses are ready; delegation will use them at submission time.
+                return .none
 
             case .witnessVerificationFailed(let error):
                 let message = VotingErrorMapper.userFriendlyMessage(from: error)
@@ -2340,6 +2333,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                                                 } catch {
                                                     logger.warning("Vote recovery: failed to record share delegation for share \(info.shareIndex): \(error)")
                                                 }
+                                            }
                                             logger.info("Vote recovery: shares sent for bundle \(bundleIndex)")
                                         } else {
                                             logger.error("Vote recovery: no persisted bundle for share delegation — vote will not count in tally")
@@ -2568,7 +2562,8 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 // Auto-resume batch: if there are remaining persisted drafts after
                 // a crash-recovered single vote, continue submitting the batch.
                 if state.isBatchMode && state.canSubmitBatch {
-                    logger.info("Auto-resuming batch submission with \(state.draftVotes.count) remaining drafts")
+                    let remainingCount = state.draftVotes.count
+                    logger.info("Auto-resuming batch submission with \(remainingCount) remaining drafts")
                     return .send(.submitAllDrafts)
                 }
                 // Vote finished — start share tracking now that delegation rows are written.
