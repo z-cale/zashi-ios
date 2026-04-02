@@ -598,6 +598,7 @@ let package = Package(
         .target(
             name: "RequestZec",
             dependencies: [
+                "URIParser",
                 "Generated",
                 "Models",
                 "Pasteboard",
