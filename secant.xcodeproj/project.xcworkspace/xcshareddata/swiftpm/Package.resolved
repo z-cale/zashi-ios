@@ -483,7 +483,7 @@
       "location" : "https://github.com/valargroup/zcash-swift-wallet-sdk.git",
       "state" : {
         "branch" : "shielded-vote",
-        "revision" : "a058e91d1895d663bdd20cbbce942304a707bd48"
+        "revision" : "ead02fd32b44b570ba12e54c5023d624eb8348dc"
       }
     }
   ],
