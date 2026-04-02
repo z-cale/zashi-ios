@@ -577,6 +577,7 @@ let package = Package(
         .target(
             name: "Receive",
             dependencies: [
+                "URIParser",
                 "AddressDetails",
                 "Generated",
                 "Models",
