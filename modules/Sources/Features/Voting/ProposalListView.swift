@@ -93,7 +93,6 @@ struct ProposalListView: View {
                     } else {
                         roundInfoCard()
                         batchModeToggle()
-                        zkpBanner()
                         progressHeader()
 
                         ForEach(store.votingRound.proposals) { proposal in
@@ -219,16 +218,6 @@ struct ProposalListView: View {
     // MARK: - Status
 
     @ViewBuilder
-    private func zkpBanner() -> some View {
-        if store.delegationProofStatus != .notStarted && store.delegationProofStatus != .complete {
-            ZKPStatusBanner(
-                proofStatus: store.delegationProofStatus,
-                isPreparingWitnesses: store.witnessStatus == .inProgress
-            )
-        }
-    }
-
-    @ViewBuilder
     private func batchModeToggle() -> some View {
         HStack(spacing: 8) {
             Image(systemName: "tray.and.arrow.up")
@@ -270,17 +259,6 @@ struct ProposalListView: View {
                 }
 
                 Spacer()
-
-                if store.isDelegationReady {
-                    HStack(spacing: 4) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                            .font(.system(size: 12))
-                        Text("Ready to vote")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.green)
-                    }
-                }
             }
         }
     }

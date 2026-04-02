@@ -143,22 +143,7 @@ struct ProposalDetailView: View {
             } else if let error = store.voteSubmissionError {
                 voteErrorBanner(error: error, proposalId: proposal.id)
             } else {
-                if !store.isDelegationReady {
-                    HStack(spacing: 8) {
-                        ProgressView()
-                        if store.witnessStatus == .inProgress {
-                            Text("Preparing note witnesses...")
-                                .zFont(.regular, size: 13, style: Design.Text.secondary)
-                        } else if case .generating(let progress) = store.delegationProofStatus {
-                            Text("Preparing voting authorization... \(Int(progress * 100))%")
-                                .zFont(.regular, size: 13, style: Design.Text.secondary)
-                        } else {
-                            Text("Preparing voting credentials...")
-                                .zFont(.regular, size: 13, style: Design.Text.secondary)
-                        }
-                    }
-                    .padding(.bottom, 4)
-                } else if store.isSubmittingVote {
+                if store.isSubmittingVote {
                     HStack(spacing: 8) {
                         ProgressView()
                         Text("Submitting vote on another proposal...")
@@ -444,7 +429,7 @@ extension ProposalDetailView {
                             ProgressView()
                             Text(store.isSubmittingVote
                                 ? "Submitting previous vote..."
-                                : "Preparing voting credentials...")
+                                : "Preparing note witnesses...")
                                 .zFont(.regular, size: 13, style: Design.Text.secondary)
                         }
                         .padding(.bottom, 16)
