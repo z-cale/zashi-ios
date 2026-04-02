@@ -263,8 +263,6 @@ public struct Voting { // swiftlint:disable:this type_body_length
         /// Hotkey address derived from keychain mnemonic, shown on delegation signing screen.
         public var hotkeyAddress: String?
 
-        @Shared(.inMemory(.featureFlags))
-        public var featureFlags: FeatureFlags = .initial
         @Shared(.inMemory(.selectedWalletAccount))
         public var selectedWalletAccount: WalletAccount?
         @Shared(.inMemory(.toast))
@@ -274,9 +272,9 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
         // MARK: - Batch voting
 
-        /// Draft votes (batch mode): proposal ID → chosen option. Only in-memory;
-        /// lost on app termination. Drafts are not submitted until the user
-        /// explicitly triggers batch submission.
+        /// Draft votes (batch mode): proposal ID → chosen option. Persisted to
+        /// UserDefaults to survive app termination. Drafts are not submitted
+        /// until the user explicitly triggers batch submission.
         public var draftVotes: [UInt32: VoteChoice] = [:]
 
         public enum BatchSubmissionStatus: Equatable {
@@ -644,6 +642,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
         case batchVoteSubmitted(proposalId: UInt32, choice: VoteChoice)
         case batchVoteFailed(proposalId: UInt32, error: String)
         case batchSubmissionCompleted(successCount: Int, failCount: Int)
+        case batchSubmissionFailed(error: String, submittedCount: Int, totalCount: Int)
         case dismissBatchResults
 
         // Complete
@@ -676,6 +675,8 @@ public struct Voting { // swiftlint:disable:this type_body_length
             case .backToRoundsList:
                 // Cancel per-round effects and re-fetch rounds (auto-navigates via allRoundsLoaded)
                 state.screenStack = [.loading]
+                // Clean up persisted drafts for the current round
+                Self.clearPersistedDrafts(roundId: state.roundId)
                 // Reset per-round state
                 state.activeSession = nil
                 state.votes = [:]
@@ -2458,7 +2459,11 @@ public struct Voting { // swiftlint:disable:this type_body_length
                     await send(.batchSubmissionCompleted(successCount: successCount, failCount: failCount))
                 } catch: { error, send in
                     logger.error("Batch submission failed at top level: \(error)")
-                    await send(.batchSubmissionCompleted(successCount: 0, failCount: 0))
+                    await send(.batchSubmissionFailed(
+                        error: VotingErrorMapper.userFriendlyMessage(from: error.localizedDescription),
+                        submittedCount: 0,
+                        totalCount: totalCount
+                    ))
                 }
 
             case let .batchSubmissionProgress(currentIndex, totalCount, proposalId):
@@ -2487,6 +2492,22 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 state.voteSubmissionStep = nil
                 state.currentVoteBundleIndex = nil
                 state.batchSubmissionStatus = .completed(successCount: successCount, failCount: failCount)
+                // Clean up persisted drafts when all votes succeeded
+                if failCount == 0 {
+                    Self.clearPersistedDrafts(roundId: state.roundId)
+                }
+                return .none
+
+            case let .batchSubmissionFailed(error, submittedCount, totalCount):
+                state.isSubmittingVote = false
+                state.submittingProposalId = nil
+                state.voteSubmissionStep = nil
+                state.currentVoteBundleIndex = nil
+                state.batchSubmissionStatus = .failed(
+                    lastError: error,
+                    submittedCount: submittedCount,
+                    totalCount: totalCount
+                )
                 return .none
 
             case .dismissBatchResults:
