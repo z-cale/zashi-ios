@@ -289,6 +289,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
         public enum BatchSubmissionStatus: Equatable {
             case idle
+            case authorizing
             case submitting(currentIndex: Int, totalCount: Int, currentProposalId: UInt32)
             case completed(successCount: Int, failCount: Int)
             case failed(lastError: String, submittedCount: Int, totalCount: Int)
@@ -431,8 +432,10 @@ public struct Voting { // swiftlint:disable:this type_body_length
         }
 
         public var isBatchSubmitting: Bool {
-            if case .submitting = batchSubmissionStatus { return true }
-            return false
+            switch batchSubmissionStatus {
+            case .authorizing, .submitting: return true
+            default: return false
+            }
         }
 
         /// Whether the user can start a batch submission: bundles resolved,
@@ -2614,7 +2617,10 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
                 let drafts = state.draftVotes.sorted { $0.key < $1.key }
                 let totalCount = drafts.count
-                state.batchSubmissionStatus = .submitting(currentIndex: 0, totalCount: totalCount, currentProposalId: drafts[0].key)
+                let delegationDone = state.isDelegationReady
+                state.batchSubmissionStatus = delegationDone
+                    ? .submitting(currentIndex: 0, totalCount: totalCount, currentProposalId: drafts[0].key)
+                    : .authorizing
                 state.batchVoteErrors = [:]
 
                 let roundId = state.roundId
@@ -2624,7 +2630,6 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 let bundleCount = state.bundleCount
                 let singleShare = state.activeSession?.isLastMoment ?? false
                 let proposals = state.votingRound.proposals
-                let delegationDone = state.isDelegationReady
                 let cachedNotes = state.walletNotes
                 let roundName = state.votingRound.title
                 let pirServerUrl = state.serviceConfig?.pirServers.first?.url ?? "https://46-101-255-48.sslip.io/nullifier"
@@ -2657,7 +2662,6 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
                     // --- Delegation (ZKP #1) — run inline if not already done ---
                     if !delegationDone {
-                        await send(.voteSubmissionStepUpdated(.authorizingVote))
                         let senderPhrase = try walletStorage.exportWallet().seedPhrase.value()
                         let senderSeed = try mnemonic.toSeed(senderPhrase)
                         try await Self.runDelegationPipeline(
@@ -2674,6 +2678,11 @@ public struct Voting { // swiftlint:disable:this type_body_length
                             send: send
                         )
                     }
+
+                    // Transition from .authorizing to .submitting now that delegation is done.
+                    await send(.batchSubmissionProgress(
+                        currentIndex: 0, totalCount: totalCount, proposalId: drafts[0].key
+                    ))
 
                     var successCount = 0
                     var failCount = 0
