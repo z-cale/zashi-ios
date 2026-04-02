@@ -76,8 +76,6 @@ struct ProposalDetailView: View {
                     .padding(.top, 16)
                 }
 
-                // Confirmation overlay
-                confirmationOverlay()
             }
             .navigationTitle(positionLabel)
             .navigationBarTitleDisplayMode(.inline)
@@ -117,61 +115,95 @@ struct ProposalDetailView: View {
     @ViewBuilder
     private func voteSection() -> some View {
         let confirmedVote = store.votes[proposal.id]
-        let pendingChoice: VoteChoice? = {
-            guard let pending = store.pendingVote,
-                pending.proposalId == proposal.id else { return nil }
-            return pending.choice
-        }()
-        let votingEnabled = store.canConfirmVote
+        let draftChoice = store.draftVotes[proposal.id]
+        let isSubmittingThis = store.isBatchSubmitting && store.submittingProposalId == proposal.id
 
         VStack(spacing: 12) {
             if let confirmed = confirmedVote {
-                if store.isSubmittingVote {
+                // Already submitted (from this or a previous batch)
+                if isSubmittingThis {
                     submittingBanner(choice: confirmed)
                 } else {
                     confirmedBanner(choice: confirmed)
                 }
-            } else if let error = store.voteSubmissionError {
-                voteErrorBanner(error: error, proposalId: proposal.id)
+            } else if isSubmittingThis, let draft = draftChoice {
+                submittingBanner(choice: draft)
             } else {
-                if !store.isDelegationReady {
-                    HStack(spacing: 8) {
-                        ProgressView()
-                        if store.witnessStatus == .inProgress {
-                            Text("Preparing note witnesses...")
-                                .zFont(.regular, size: 13, style: Design.Text.secondary)
-                        } else if case .generating(let progress) = store.delegationProofStatus {
-                            Text("Preparing voting authorization... \(Int(progress * 100))%")
-                                .zFont(.regular, size: 13, style: Design.Text.secondary)
-                        } else {
-                            Text("Preparing voting credentials...")
-                                .zFont(.regular, size: 13, style: Design.Text.secondary)
-                        }
-                    }
-                    .padding(.bottom, 4)
-                } else if store.isSubmittingVote {
-                    HStack(spacing: 8) {
-                        ProgressView()
-                        Text("Submitting vote on another proposal...")
-                            .zFont(.regular, size: 13, style: Design.Text.secondary)
-                    }
-                    .padding(.bottom, 4)
+                // Show draft banner if a draft exists
+                if let draft = draftChoice {
+                    draftBanner(choice: draft)
                 }
 
+                // Show batch error for this proposal if any
+                if let error = store.batchVoteErrors[proposal.id] {
+                    voteErrorBanner(error: error, proposalId: proposal.id)
+                }
+
+                // Always show vote buttons so the user can pick or change
+                let buttonsDisabled = store.isBatchSubmitting
                 ForEach(proposal.options, id: \.index) { option in
                     let choice = VoteChoice.option(option.index)
                     voteButton(
                         title: option.label,
                         icon: voteOptionIcon(for: option.index, total: proposal.options.count),
                         color: voteOptionColor(for: option.index, total: proposal.options.count),
-                        isSelected: pendingChoice == choice,
-                        enabled: votingEnabled
+                        isSelected: draftChoice == choice,
+                        enabled: !buttonsDisabled
                     ) {
                         store.send(.castVote(proposalId: proposal.id, choice: choice))
                     }
                 }
+
+                // Skip button — go back without drafting
+                if !buttonsDisabled {
+                    Button {
+                        if draftChoice != nil {
+                            store.send(.clearDraftVote(proposalId: proposal.id))
+                        }
+                        store.send(.backToList)
+                    } label: {
+                        HStack {
+                            Image(systemName: "forward.fill")
+                            Text("Skip")
+                                .fontWeight(.medium)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .foregroundStyle(.secondary)
+                    }
+                }
             }
         }
+    }
+
+    @ViewBuilder
+    private func draftBanner(choice: VoteChoice) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "pencil.circle.fill")
+                .font(.system(size: 20))
+                .foregroundStyle(voteColor(choice))
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Draft vote")
+                    .zFont(.semiBold, size: 15, style: Design.Text.primary)
+                Text(optionLabel(for: choice))
+                    .zFont(.medium, size: 14, style: Design.Text.secondary)
+            }
+            Spacer()
+            Button {
+                store.send(.clearDraftVote(proposalId: proposal.id))
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(16)
+        .background(voteColor(choice).opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(voteColor(choice).opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [6, 3]))
+        )
     }
 
     @ViewBuilder
@@ -266,7 +298,7 @@ struct ProposalDetailView: View {
             }
 
             Button {
-                store.send(.dismissVoteError)
+                store.send(.dismissBatchResults)
             } label: {
                 Text("Dismiss")
                     .zFont(.medium, size: 13, style: Design.Text.primary)
@@ -282,109 +314,9 @@ struct ProposalDetailView: View {
     }
 }
 
-// MARK: - Confirmation Overlay & Components
+// MARK: - Components
 
 extension ProposalDetailView {
-    @ViewBuilder
-    func confirmationOverlay() -> some View {
-        let pendingChoice: VoteChoice? = {
-            guard let pending = store.pendingVote,
-                pending.proposalId == proposal.id else { return nil }
-            return pending.choice
-        }()
-
-        if let choice = pendingChoice {
-            let canConfirm = store.canConfirmVote
-
-            ZStack {
-                // Dimmed background — tap to dismiss
-                Color.black.opacity(0.5)
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        store.send(.cancelPendingVote)
-                    }
-
-                // Overlay card
-                VStack(spacing: 0) {
-                    // Icon
-                    ZStack {
-                        Circle()
-                            .fill(voteColor(choice).opacity(0.12))
-                            .frame(width: 64, height: 64)
-                        Image(systemName: voteOptionIcon(for: choice.index, total: proposal.options.count))
-                            .font(.system(size: 28))
-                            .foregroundStyle(voteColor(choice))
-                    }
-                    .padding(.top, 28)
-                    .padding(.bottom, 16)
-
-                    // Title
-                    Text("Confirm your vote")
-                        .zFont(.semiBold, size: 20, style: Design.Text.primary)
-                        .padding(.bottom, 6)
-
-                    // Choice
-                    Text(optionLabel(for: choice))
-                        .zFont(.semiBold, size: 16, style: Design.Text.primary)
-                        .foregroundStyle(voteColor(choice))
-                        .padding(.bottom, 12)
-
-                    // Warning
-                    Text("This is final. Your vote will be\npublished and cannot be changed.")
-                        .zFont(.medium, size: 14, style: Design.Text.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.bottom, 24)
-
-                    // Processing state
-                    if !canConfirm {
-                        HStack(spacing: 8) {
-                            ProgressView()
-                            Text(store.isSubmittingVote
-                                ? "Submitting previous vote..."
-                                : "Preparing voting credentials...")
-                                .zFont(.regular, size: 13, style: Design.Text.secondary)
-                        }
-                        .padding(.bottom, 16)
-                    }
-
-                    // Buttons
-                    VStack(spacing: 10) {
-                        Button {
-                            impactFeedback.impactOccurred()
-                            store.send(.confirmVote)
-                        } label: {
-                            Text("Confirm \(optionLabel(for: choice))")
-                                .fontWeight(.semibold)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .foregroundStyle(.white)
-                                .background(canConfirm ? voteColor(choice) : voteColor(choice).opacity(0.4))
-                                .clipShape(RoundedRectangle(cornerRadius: 14))
-                        }
-                        .disabled(!canConfirm)
-
-                        Button {
-                            store.send(.cancelPendingVote)
-                        } label: {
-                            Text("Go Back")
-                                .zFont(.medium, size: 15, style: Design.Text.primary)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                        }
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 24)
-                }
-                .background(Design.Surfaces.bgPrimary.color(colorScheme))
-                .clipShape(RoundedRectangle(cornerRadius: 24))
-                .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 8)
-                .padding(.horizontal, 32)
-            }
-            .transition(.opacity)
-            .animation(.easeInOut(duration: 0.2), value: store.pendingVote)
-        }
-    }
-
     @ViewBuilder
     func voteButton(
         title: String,

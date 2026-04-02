@@ -92,13 +92,14 @@ struct ProposalListView: View {
                         noActiveRoundCard()
                     } else {
                         roundInfoCard()
-                        zkpBanner()
                         progressHeader()
 
                         ForEach(store.votingRound.proposals) { proposal in
                             proposalCard(proposal)
                                 .id(proposal.id)
                         }
+
+                        batchFooter()
                     }
                 }
                 .padding(.horizontal, 24)
@@ -214,34 +215,22 @@ struct ProposalListView: View {
     // MARK: - Status
 
     @ViewBuilder
-    private func zkpBanner() -> some View {
-        if store.delegationProofStatus != .notStarted && store.delegationProofStatus != .complete {
-            ZKPStatusBanner(
-                proofStatus: store.delegationProofStatus,
-                isPreparingWitnesses: store.witnessStatus == .inProgress
-            )
-        }
-    }
-
-    @ViewBuilder
     private func progressHeader() -> some View {
         if store.activeSession != nil {
             HStack {
-                Text("\(store.votedCount) of \(store.totalProposals) voted")
-                    .zFont(.medium, size: 14, style: Design.Text.secondary)
+                let draftCount = store.draftVotes.count
+                if store.votedCount > 0 && draftCount > 0 {
+                    Text("\(store.votedCount) submitted, \(draftCount) drafted")
+                        .zFont(.medium, size: 14, style: Design.Text.secondary)
+                } else if draftCount > 0 {
+                    Text("\(draftCount) of \(store.totalProposals) drafted")
+                        .zFont(.medium, size: 14, style: Design.Text.secondary)
+                } else {
+                    Text("\(store.votedCount) of \(store.totalProposals) voted")
+                        .zFont(.medium, size: 14, style: Design.Text.secondary)
+                }
 
                 Spacer()
-
-                if store.isDelegationReady {
-                    HStack(spacing: 4) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                            .font(.system(size: 12))
-                        Text("Ready to vote")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.green)
-                    }
-                }
             }
         }
     }
@@ -253,6 +242,8 @@ extension ProposalListView {
     @ViewBuilder
     func proposalCard(_ proposal: Proposal) -> some View {
         let vote = store.votes[proposal.id]
+        let draft = store.draftVotes[proposal.id]
+        let displayChoice = vote ?? draft
 
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top) {
@@ -266,22 +257,40 @@ extension ProposalListView {
 
                 Spacer(minLength: 8)
 
-                if vote != nil {
+                if displayChoice != nil {
                     if store.submittingProposalId == proposal.id {
                         HStack(spacing: 4) {
                             ProgressView()
                                 .scaleEffect(0.7)
                             VoteChip(
-                                choice: vote,
-                                label: vote.flatMap { voteChoice in proposal.options.first { $0.index == voteChoice.index }?.label },
-                                color: vote.map { voteOptionColor(for: $0.index, total: proposal.options.count) }
+                                choice: displayChoice,
+                                label: displayChoice.flatMap { c in proposal.options.first { $0.index == c.index }?.label },
+                                color: displayChoice.map { voteOptionColor(for: $0.index, total: proposal.options.count) }
                             )
                         }
-                    } else {
+                    } else if vote != nil {
                         VoteChip(
-                            choice: vote,
-                            label: vote.flatMap { voteChoice in proposal.options.first { $0.index == voteChoice.index }?.label },
-                            color: vote.map { voteOptionColor(for: $0.index, total: proposal.options.count) }
+                            choice: displayChoice,
+                            label: displayChoice.flatMap { c in proposal.options.first { $0.index == c.index }?.label },
+                            color: displayChoice.map { voteOptionColor(for: $0.index, total: proposal.options.count) }
+                        )
+                    } else {
+                        // Draft chip — dashed outline style
+                        HStack(spacing: 4) {
+                            Image(systemName: "pencil")
+                                .font(.system(size: 9, weight: .semibold))
+                            Text(displayChoice.flatMap { c in proposal.options.first { $0.index == c.index }?.label } ?? "Draft")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .foregroundStyle(displayChoice.map { voteOptionColor(for: $0.index, total: proposal.options.count) } ?? .secondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .overlay(
+                            Capsule()
+                                .stroke(
+                                    displayChoice.map { voteOptionColor(for: $0.index, total: proposal.options.count) }?.opacity(0.5) ?? .secondary,
+                                    style: StrokeStyle(lineWidth: 1, dash: [4, 2])
+                                )
                         )
                     }
                 }
@@ -316,8 +325,8 @@ extension ProposalListView {
         .overlay(
             RoundedRectangle(cornerRadius: 16)
                 .stroke(
-                    vote != nil
-                        ? voteColor(vote, proposal: proposal).opacity(0.3)
+                    displayChoice != nil
+                        ? voteColor(displayChoice, proposal: proposal).opacity(vote != nil ? 0.3 : 0.15)
                         : Design.Surfaces.strokeSecondary.color(colorScheme),
                     lineWidth: 1
                 )
@@ -326,6 +335,168 @@ extension ProposalListView {
         .contentShape(Rectangle())
         .onTapGesture {
             store.send(.proposalTapped(proposal.id))
+        }
+    }
+}
+
+// MARK: - Batch Footer
+
+extension ProposalListView {
+    @ViewBuilder
+    func batchFooter() -> some View {
+        let status = store.batchSubmissionStatus
+
+        switch status {
+        case .idle:
+            if store.canSubmitBatch {
+                let draftCount = store.draftVotes.count
+                Button {
+                    store.send(.submitAllDrafts)
+                } label: {
+                    HStack {
+                        Image(systemName: "paperplane.fill")
+                        Text("Submit \(draftCount) Vote\(draftCount == 1 ? "" : "s")")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .foregroundStyle(.white)
+                    .background(.green)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                }
+                .padding(.top, 8)
+            }
+
+        case .authorizing:
+            VStack(spacing: 10) {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Authorizing vote...")
+                            .zFont(.semiBold, size: 15, style: Design.Text.primary)
+                        if case .generating(let progress) = store.delegationProofStatus {
+                            Text("\(Int(progress * 100))%")
+                                .zFont(.regular, size: 12, style: Design.Text.tertiary)
+                        }
+                    }
+                    Spacer()
+                }
+            }
+            .padding(16)
+            .background(Design.Surfaces.bgPrimary.color(colorScheme))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color.green.opacity(0.2), lineWidth: 1)
+            )
+            .padding(.top, 8)
+
+        case let .submitting(currentIndex, totalCount, _):
+            VStack(spacing: 10) {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Submitting vote \(currentIndex + 1) of \(totalCount)...")
+                            .zFont(.semiBold, size: 15, style: Design.Text.primary)
+                        if let stepLabel = store.voteSubmissionStepLabel {
+                            Text(stepLabel)
+                                .zFont(.regular, size: 12, style: Design.Text.tertiary)
+                        }
+                    }
+                    Spacer()
+                }
+
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.green.opacity(0.15))
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.green)
+                            .frame(width: geo.size.width * Double(currentIndex + 1) / Double(totalCount))
+                            .animation(.easeInOut(duration: 0.3), value: currentIndex)
+                    }
+                }
+                .frame(height: 3)
+            }
+            .padding(16)
+            .background(Design.Surfaces.bgPrimary.color(colorScheme))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color.green.opacity(0.2), lineWidth: 1)
+            )
+            .padding(.top, 8)
+
+        case let .completed(successCount, failCount):
+            VStack(spacing: 12) {
+                HStack(spacing: 10) {
+                    Image(systemName: failCount == 0 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                        .font(.system(size: 20))
+                        .foregroundStyle(failCount == 0 ? .green : .orange)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(failCount == 0 ? "All votes submitted" : "Batch complete with errors")
+                            .zFont(.semiBold, size: 15, style: Design.Text.primary)
+                        Text("\(successCount) succeeded\(failCount > 0 ? ", \(failCount) failed" : "")")
+                            .zFont(.regular, size: 13, style: Design.Text.secondary)
+                    }
+                    Spacer()
+                }
+
+                Button {
+                    store.send(.dismissBatchResults)
+                } label: {
+                    Text("Done")
+                        .zFont(.medium, size: 14, style: Design.Text.primary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Design.Surfaces.bgPrimary.color(colorScheme))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Design.Surfaces.strokeSecondary.color(colorScheme), lineWidth: 1)
+                        )
+                }
+            }
+            .padding(16)
+            .background((failCount == 0 ? Color.green : Color.orange).opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke((failCount == 0 ? Color.green : Color.orange).opacity(0.2), lineWidth: 1)
+            )
+            .padding(.top, 8)
+
+        case let .failed(lastError, submittedCount, totalCount):
+            VStack(spacing: 12) {
+                HStack(spacing: 10) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundStyle(.red)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Batch submission failed")
+                            .zFont(.semiBold, size: 15, style: Design.Text.primary)
+                        Text("\(submittedCount) of \(totalCount) submitted. \(lastError)")
+                            .zFont(.regular, size: 13, style: Design.Text.secondary)
+                            .lineLimit(3)
+                    }
+                    Spacer()
+                }
+
+                Button {
+                    store.send(.dismissBatchResults)
+                } label: {
+                    Text("Dismiss")
+                        .zFont(.medium, size: 13, style: Design.Text.primary)
+                }
+            }
+            .padding(16)
+            .background(Color.red.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color.red.opacity(0.2), lineWidth: 1)
+            )
+            .padding(.top, 8)
         }
     }
 }
