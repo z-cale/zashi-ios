@@ -2,6 +2,7 @@ import Combine
 import ComposableArchitecture
 import Foundation
 import VotingModels
+import ZcashLightClientKit
 
 extension DependencyValues {
     public var votingCrypto: VotingCryptoClient {
@@ -207,8 +208,29 @@ public struct VotingCryptoClient {
         _ bundleIndex: UInt32,
         _ proposalId: UInt32
     ) async throws -> VoteCommitmentBundle?
+    /// Load a persisted vote commitment bundle with its VC tree position (needed for share resubmission).
+    public var getVoteCommitmentBundleWithPosition: @Sendable (
+        _ roundId: String,
+        _ bundleIndex: UInt32,
+        _ proposalId: UInt32
+    ) async throws -> (bundle: VoteCommitmentBundle, vcTreePosition: UInt64)?
     /// Clear recovery state for a round (keystone sigs, TX hashes).
     public var clearRecoveryState: @Sendable (
         _ roundId: String
     ) async throws -> Void
+
+    // --- Share delegation tracking ---
+
+    /// Compute the nullifier for a vote share (pure function, no DB needed).
+    public var computeShareNullifier: @Sendable (_ voteCommitment: [UInt8], _ shareIndex: UInt32, _ primaryBlind: [UInt8]) throws -> String
+    /// Record a share delegation after sending to helper servers.
+    public var recordShareDelegation: @Sendable (_ roundId: String, _ bundleIndex: UInt32, _ proposalId: UInt32, _ shareIndex: UInt32, _ sentToURLs: [String], _ nullifier: [UInt8], _ submitAt: UInt64) async throws -> Void
+    /// Get all share delegations for a round.
+    public var getShareDelegations: @Sendable (_ roundId: String) async throws -> [VotingShareDelegation]
+    /// Get unconfirmed share delegations for a round.
+    public var getUnconfirmedDelegations: @Sendable (_ roundId: String) async throws -> [VotingShareDelegation]
+    /// Mark a share delegation as confirmed on-chain.
+    public var markShareConfirmed: @Sendable (_ roundId: String, _ bundleIndex: UInt32, _ proposalId: UInt32, _ shareIndex: UInt32) async throws -> Void
+    /// Append new server URLs to a share delegation's sent_to_urls.
+    public var addSentServers: @Sendable (_ roundId: String, _ bundleIndex: UInt32, _ proposalId: UInt32, _ shareIndex: UInt32, _ newURLs: [String]) async throws -> Void
 }

@@ -268,7 +268,10 @@ extension VotingCryptoClient: DependencyKey {
                                     continuation.yield(.progress(progress))
                                 }
                             )
-                            publishState(backend: backend, roundId: roundId)
+                            // Don't call publishState here — the Rust FFI may still hold
+                            // a brief RefCell borrow on the DB connection, and publishState
+                            // borrows it again. Let the store call refreshState after
+                            // receiving .completed to avoid the concurrent borrow panic.
                             continuation.yield(.completed(Data(result.proof)))
                             continuation.finish()
                         } catch {
@@ -531,9 +534,61 @@ extension VotingCryptoClient: DependencyKey {
                 guard let result = try backend.getCommitmentBundle(roundId: roundId, bundleIndex: bundleIndex, proposalId: proposalId) else { return nil }
                 return try JSONDecoder().decode(VoteCommitmentBundle.self, from: Data(result.json.utf8))
             },
+            getVoteCommitmentBundleWithPosition: { roundId, bundleIndex, proposalId in
+                let backend = try await dbActor.backend()
+                guard let result = try backend.getCommitmentBundle(roundId: roundId, bundleIndex: bundleIndex, proposalId: proposalId) else { return nil }
+                let bundle = try JSONDecoder().decode(VoteCommitmentBundle.self, from: Data(result.json.utf8))
+                return (bundle: bundle, vcTreePosition: result.vcTreePosition)
+            },
             clearRecoveryState: { roundId in
                 let backend = try await dbActor.backend()
                 try backend.clearRecoveryState(roundId: roundId)
+            },
+            computeShareNullifier: { voteCommitment, shareIndex, primaryBlind in
+                try VotingRustBackend.computeShareNullifier(
+                    voteCommitment: voteCommitment,
+                    shareIndex: shareIndex,
+                    primaryBlind: primaryBlind
+                )
+            },
+            recordShareDelegation: { roundId, bundleIndex, proposalId, shareIndex, sentToURLs, nullifier, submitAt in
+                let backend = try await dbActor.backend()
+                try backend.recordShareDelegation(
+                    roundId: roundId,
+                    bundleIndex: bundleIndex,
+                    proposalId: proposalId,
+                    shareIndex: shareIndex,
+                    sentToURLs: sentToURLs,
+                    nullifier: nullifier,
+                    submitAt: submitAt
+                )
+            },
+            getShareDelegations: { roundId in
+                let backend = try await dbActor.backend()
+                return try backend.getShareDelegations(roundId: roundId)
+            },
+            getUnconfirmedDelegations: { roundId in
+                let backend = try await dbActor.backend()
+                return try backend.getUnconfirmedDelegations(roundId: roundId)
+            },
+            markShareConfirmed: { roundId, bundleIndex, proposalId, shareIndex in
+                let backend = try await dbActor.backend()
+                try backend.markShareConfirmed(
+                    roundId: roundId,
+                    bundleIndex: bundleIndex,
+                    proposalId: proposalId,
+                    shareIndex: shareIndex
+                )
+            },
+            addSentServers: { roundId, bundleIndex, proposalId, shareIndex, newURLs in
+                let backend = try await dbActor.backend()
+                try backend.addSentServers(
+                    roundId: roundId,
+                    bundleIndex: bundleIndex,
+                    proposalId: proposalId,
+                    shareIndex: shareIndex,
+                    newURLs: newURLs
+                )
             }
         )
     }

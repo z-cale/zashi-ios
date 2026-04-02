@@ -170,6 +170,178 @@ struct VoteCommitmentStubCard: View {
     }
 }
 
+// MARK: - Share Submission Status
+
+struct ShareSubmissionStatus: View {
+    let confirmed: Int
+    let total: Int
+    let onInfoTapped: () -> Void
+
+    private var isComplete: Bool {
+        confirmed >= total && total > 0
+    }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            if isComplete {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                    .font(.caption)
+                Text("Vote confirmed")
+                    .font(.caption)
+                    .foregroundStyle(.green)
+            } else {
+                Image(systemName: "clock.arrow.circlepath")
+                    .foregroundStyle(.orange)
+                    .font(.caption)
+                Text("Submitting vote")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button(action: onInfoTapped) {
+                Image(systemName: "info.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+}
+
+// MARK: - Share Info Sheet
+
+struct ShareInfoSheet: View {
+    let allConfirmed: Bool
+    let estimatedCompletion: Date?
+    /// Duration of the voting round in seconds (used to decide time rounding).
+    let roundDuration: TimeInterval
+    @Environment(\.dismiss) var dismiss
+    @Environment(\.colorScheme) var colorScheme
+
+    /// Format the estimated completion date. If the round is longer than 1 hour,
+    /// round the time up to the nearest 10 minutes.
+    private var formattedCompletion: String? {
+        guard let date = estimatedCompletion, date > Date() else { return nil }
+        let displayDate: Date
+        if roundDuration > 3600 {
+            // Round up to nearest 10 minutes
+            let cal = Calendar.current
+            let components = cal.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+            let minute = components.minute ?? 0
+            let roundedMinute = ((minute + 9) / 10) * 10
+            if roundedMinute >= 60 {
+                // Rolled over to next hour
+                var adjusted = components
+                adjusted.minute = 0
+                if let base = cal.date(from: adjusted) {
+                    displayDate = cal.date(byAdding: .hour, value: 1, to: base) ?? date
+                } else {
+                    displayDate = date
+                }
+            } else {
+                var adjusted = components
+                adjusted.minute = roundedMinute
+                displayDate = cal.date(from: adjusted) ?? date
+            }
+        } else {
+            displayDate = date
+        }
+        let formatter = DateFormatter()
+        formatter.doesRelativeDateFormatting = true
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: displayDate)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Drag indicator
+            Capsule()
+                .fill(Color.secondary.opacity(0.4))
+                .frame(width: 36, height: 5)
+                .padding(.top, 8)
+                .padding(.bottom, 20)
+
+            // Status icon
+            ZStack {
+                Circle()
+                    .fill(allConfirmed ? Color.green.opacity(0.12) : Color.orange.opacity(0.12))
+                    .frame(width: 56, height: 56)
+                Image(systemName: allConfirmed ? "checkmark.shield.fill" : "lock.shield")
+                    .font(.system(size: 24))
+                    .foregroundStyle(allConfirmed ? .green : .orange)
+            }
+            .padding(.bottom, 16)
+
+            // Title
+            Text(allConfirmed ? "Vote Confirmed" : "Submitting Vote")
+                .font(.title3)
+                .fontWeight(.semibold)
+                .padding(.bottom, 4)
+
+            // Subtitle
+            Text(allConfirmed
+                 ? "All shares have been confirmed on-chain."
+                 : "Your vote is being submitted in multiple shares to protect your privacy.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+                .padding(.bottom, 20)
+
+            // Estimated completion
+            if !allConfirmed {
+                if let formatted = formattedCompletion {
+                    HStack(spacing: 6) {
+                        Image(systemName: "clock")
+                            .font(.subheadline)
+                            .foregroundStyle(.orange)
+                        Text("Expected by \(formatted)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.bottom, 20)
+                } else if estimatedCompletion != nil {
+                    HStack(spacing: 6) {
+                        Image(systemName: "clock")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Text("Finishing up…")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.bottom, 20)
+                }
+            }
+
+            // Explanation card
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "eye.slash")
+                    .font(.subheadline)
+                    .foregroundStyle(.orange)
+                    .padding(.top, 2)
+
+                Text("Each share is sent at different times across various servers throughout the vote period to further protect your privacy. Each value is encrypted, and only the total amount across all voters will be revealed at the end of the vote period.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.03))
+            )
+            .padding(.horizontal, 24)
+
+            Spacer()
+        }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.hidden)
+    }
+}
+
 private extension Data {
     var shortHex: String {
         let hex = map { String(format: "%02x", $0) }.joined()

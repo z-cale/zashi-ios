@@ -2,6 +2,27 @@ import ComposableArchitecture
 import Foundation
 import VotingModels
 
+// MARK: - Share Status Types
+
+/// Result of polling a helper server for share confirmation status.
+public enum ShareConfirmationResult: Equatable, Sendable {
+    case pending
+    case confirmed
+}
+
+/// Info about which servers accepted a delegated share.
+public struct DelegatedShareInfo: Equatable, Sendable {
+    public let shareIndex: UInt32
+    public let proposalId: UInt32
+    public let acceptedByServers: [String]
+
+    public init(shareIndex: UInt32, proposalId: UInt32, acceptedByServers: [String]) {
+        self.shareIndex = shareIndex
+        self.proposalId = proposalId
+        self.acceptedByServers = acceptedByServers
+    }
+}
+
 extension DependencyValues {
     public var votingAPI: VotingAPIClient {
         get { self[VotingAPIClient.self] }
@@ -27,7 +48,13 @@ public struct VotingAPIClient {
     public var submitDelegation: @Sendable (_ registration: DelegationRegistration) async throws -> TxResult
     public var submitVoteCommitment: @Sendable (_ bundle: VoteCommitmentBundle, _ signature: CastVoteSignature) async throws -> TxResult
     /// Distribute shares across available vote servers. Config must be set via `configureURLs` first.
-    public var delegateShares: @Sendable (_ payloads: [SharePayload], _ roundIdHex: String) async throws -> Void
+    /// Returns info about which servers accepted each share.
+    public var delegateShares: @Sendable (_ payloads: [SharePayload], _ roundIdHex: String) async throws -> [DelegatedShareInfo]
+    /// Poll a helper server for the confirmation status of a share identified by its nullifier.
+    public var fetchShareStatus: @Sendable (_ helperBaseURL: String, _ roundIdHex: String, _ nullifierHex: String) async throws -> ShareConfirmationResult
+    /// Resubmit a single share to healthy servers, excluding the given URLs.
+    /// Returns the list of server URLs that accepted the share (empty if all failed).
+    public var resubmitShare: @Sendable (_ payload: SharePayload, _ roundIdHex: String, _ excludeURLs: [String]) async throws -> [String]
     public var fetchProposalTally: @Sendable (_ roundId: Data, _ proposalId: UInt32) async throws -> TallyResult
     /// Query the Cosmos SDK TX endpoint for a confirmed transaction and its ABCI events.
     /// Returns nil if the TX is not yet in a block (404 or network error).
