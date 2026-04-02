@@ -1763,102 +1763,20 @@ public struct Voting { // swiftlint:disable:this type_body_length
                                 return
                             }
 
-                            // Non-Keystone path: iterate bundles, build PCZT + prove delegation for each.
-                            // buildGovernancePczt stores delegation data (alpha, padded note secrets,
-                            // ZIP-244 sighash) in the DB, then buildAndProveDelegation uses it for
-                            // the ZKP with deterministic randomness (ZCA-74 fix).
-                            // Bundles with stored TX hashes from a previous run are recovered
-                            // via the reconciliation in verifyWitnesses; any remaining bundles
-                            // are processed here starting from the first incomplete one.
-                            let noteChunks = cachedNotes.smartBundles().bundles
-                            let bundleCount = UInt32(noteChunks.count)
-                            var completedBundles = Set<UInt32>()
-                            for idx: UInt32 in 0..<bundleCount {
-                                if let _ = try? await votingCrypto.getDelegationTxHash(roundId, idx) {
-                                    completedBundles.insert(idx)
-                                }
-                            }
-
-                            for bundleIndex: UInt32 in 0..<bundleCount {
-                                if completedBundles.contains(bundleIndex) {
-                                    logger.debug("Delegation bundle \(bundleIndex + 1)/\(bundleCount) already submitted, skipping")
-                                    let overallProgress = Double(bundleIndex + 1) / Double(bundleCount)
-                                    await send(.delegationProofProgress(overallProgress))
-                                    continue
-                                }
-                                let bundleNotes = noteChunks[Int(bundleIndex)]
-                                logger.info("Delegation bundle \(bundleIndex + 1)/\(bundleCount) (\(bundleNotes.count) notes)")
-
-                                // Build governance PCZT — stores delegation data + ZIP-244 sighash
-                                // in the DB. Same path as Keystone, but no FVK override needed
-                                // since the app holds the spending key.
-                                _ = try await votingCrypto.buildGovernancePczt(
-                                    roundId,
-                                    bundleIndex,
-                                    bundleNotes,
-                                    senderSeed,
-                                    hotkeySeed,
-                                    networkId,
-                                    accountIndex,
-                                    roundName,
-                                    nil, // no orchardFvkOverride
-                                    nil // no keystoneSeedFingerprint
-                                )
-
-                                for try await event in votingCrypto.buildAndProveDelegation(
-                                    roundId,
-                                    bundleIndex,
-                                    bundleNotes,
-                                    senderSeed,
-                                    hotkeySeed,
-                                    networkId,
-                                    accountIndex,
-                                    pirServerUrl
-                                ) {
-                                    switch event {
-                                    case .progress(let progress):
-                                        let overallProgress = (Double(bundleIndex) + progress) / Double(bundleCount)
-                                        logger.debug("ZKP #1 bundle \(bundleIndex) progress: \(Int(progress * 100))%")
-                                        await send(.delegationProofProgress(overallProgress))
-                                    case .completed(let proof):
-                                        logger.info("ZKP #1 bundle \(bundleIndex) COMPLETE — proof size: \(proof.count) bytes")
-                                    }
-                                }
-
-                                // Submit delegation TX for this bundle
-                                let registration = try await votingCrypto.getDelegationSubmission(
-                                    roundId, bundleIndex, senderSeed, networkId, accountIndex
-                                )
-                                let delegTxResult = try await votingAPI.submitDelegation(registration)
-                                logger.info("Delegation TX \(bundleIndex) submitted: \(delegTxResult.txHash)")
-
-                                // Persist TX hash immediately so we can recover if the app
-                                // crashes before storeVanPosition completes.
-                                try await votingCrypto.storeDelegationTxHash(roundId, bundleIndex, delegTxResult.txHash)
-
-                                // Poll until the TX lands, then extract the VAN leaf index
-                                // from the delegate_vote event rather than inferring from tree growth.
-                                let delegDeadline = Date().addingTimeInterval(90)
-                                var delegConfirmation: TxConfirmation?
-                                repeat {
-                                    delegConfirmation = try? await votingAPI.fetchTxConfirmation(delegTxResult.txHash)
-                                    if delegConfirmation != nil { break }
-                                    try await Task.sleep(for: .seconds(2))
-                                } while Date() < delegDeadline
-
-                                guard let delegConfirmation, delegConfirmation.code == 0,
-                                      let leafValue = delegConfirmation.event(ofType: "delegate_vote")?.attribute(forKey: "leaf_index"),
-                                      let vanPosition = UInt32(leafValue)
-                                else {
-                                    throw VotingFlowError.delegationTxFailed(
-                                        code: delegConfirmation?.code ?? 0
-                                    )
-                                }
-                                try await votingCrypto.storeVanPosition(roundId, bundleIndex, vanPosition)
-                                logger.debug("VAN position stored for bundle \(bundleIndex): \(vanPosition)")
-                            }
-
-                            await send(.delegationProofCompleted)
+                            // Non-Keystone path: delegate using shared pipeline helper.
+                            try await Self.runDelegationPipeline(
+                                roundId: roundId,
+                                cachedNotes: cachedNotes,
+                                senderSeed: senderSeed,
+                                hotkeySeed: hotkeySeed,
+                                networkId: networkId,
+                                accountIndex: accountIndex,
+                                roundName: roundName,
+                                pirServerUrl: pirServerUrl,
+                                votingCrypto: votingCrypto,
+                                votingAPI: votingAPI,
+                                send: send
+                            )
                         } catch {
                             await backgroundTask.endTask(bgTaskId)
                             throw error
@@ -2246,6 +2164,10 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
                 let bundleCount = state.bundleCount
                 let singleShare = state.activeSession?.isLastMoment ?? false
+                let delegationDone = state.isDelegationReady
+                let cachedNotes = state.walletNotes
+                let roundName = state.votingRound.title
+                let pirServerUrl = state.serviceConfig?.pirServers.first?.url ?? "https://46-101-255-48.sslip.io/nullifier"
 
                 // Compute the submit_at sampling window. Each share independently
                 // samples its own submit_at from this range so shares from a single
@@ -2266,6 +2188,27 @@ public struct Voting { // swiftlint:disable:this type_body_length
                         let hotkeyPhrase = try walletStorage.exportVotingHotkey().seedPhrase.value()
                         let hotkeySeed = try mnemonic.toSeed(hotkeyPhrase)
 
+                        // --- Delegation (ZKP #1) — run inline if not already done ---
+                        if !delegationDone {
+                            await send(.voteSubmissionStepUpdated(.authorizingVote))
+                            let senderPhrase = try walletStorage.exportWallet().seedPhrase.value()
+                            let senderSeed = try mnemonic.toSeed(senderPhrase)
+                            try await Self.runDelegationPipeline(
+                                roundId: roundId,
+                                cachedNotes: cachedNotes,
+                                senderSeed: senderSeed,
+                                hotkeySeed: hotkeySeed,
+                                networkId: networkId,
+                                accountIndex: 0,
+                                roundName: roundName,
+                                pirServerUrl: pirServerUrl,
+                                votingCrypto: votingCrypto,
+                                votingAPI: votingAPI,
+                                send: send
+                            )
+                        }
+
+                        // --- Vote (ZKP #2) ---
                         // Iterate bundles: each bundle has its own VAN and casts its own vote.
                         // Skip already-submitted bundles (enables retry after partial failure).
                         let existingVotes = try await votingCrypto.getVotes(roundId)
@@ -2646,6 +2589,10 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 let bundleCount = state.bundleCount
                 let singleShare = state.activeSession?.isLastMoment ?? false
                 let proposals = state.votingRound.proposals
+                let delegationDone = state.isDelegationReady
+                let cachedNotes = state.walletNotes
+                let roundName = state.votingRound.title
+                let pirServerUrl = state.serviceConfig?.pirServers.first?.url ?? "https://46-101-255-48.sslip.io/nullifier"
 
                 let submitAtDeadline: Double?
                 if singleShare {
@@ -2672,6 +2619,26 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
                     let hotkeyPhrase = try walletStorage.exportVotingHotkey().seedPhrase.value()
                     let hotkeySeed = try mnemonic.toSeed(hotkeyPhrase)
+
+                    // --- Delegation (ZKP #1) — run inline if not already done ---
+                    if !delegationDone {
+                        await send(.voteSubmissionStepUpdated(.authorizingVote))
+                        let senderPhrase = try walletStorage.exportWallet().seedPhrase.value()
+                        let senderSeed = try mnemonic.toSeed(senderPhrase)
+                        try await Self.runDelegationPipeline(
+                            roundId: roundId,
+                            cachedNotes: cachedNotes,
+                            senderSeed: senderSeed,
+                            hotkeySeed: hotkeySeed,
+                            networkId: networkId,
+                            accountIndex: 0,
+                            roundName: roundName,
+                            pirServerUrl: pirServerUrl,
+                            votingCrypto: votingCrypto,
+                            votingAPI: votingAPI,
+                            send: send
+                        )
+                    }
 
                     var successCount = 0
                     var failCount = 0
@@ -2937,6 +2904,89 @@ public struct Voting { // swiftlint:disable:this type_body_length
             }
             state.screenStack.append(.proposalList)
         }
+    }
+
+    /// Run the non-Keystone delegation pipeline (ZKP #1) for all bundles.
+    /// Called inline from confirmVote/submitAllDrafts before the vote pipeline.
+    private static func runDelegationPipeline(
+        roundId: String,
+        cachedNotes: [NoteInfo],
+        senderSeed: [UInt8],
+        hotkeySeed: [UInt8],
+        networkId: UInt32,
+        accountIndex: UInt32,
+        roundName: String,
+        pirServerUrl: String,
+        votingCrypto: VotingCryptoClient,
+        votingAPI: VotingAPIClient,
+        send: Send<Action>
+    ) async throws {
+        let noteChunks = cachedNotes.smartBundles().bundles
+        let bundleCount = UInt32(noteChunks.count)
+        var completedBundles = Set<UInt32>()
+        for idx: UInt32 in 0..<bundleCount {
+            if let _ = try? await votingCrypto.getDelegationTxHash(roundId, idx) {
+                completedBundles.insert(idx)
+            }
+        }
+
+        for bundleIndex: UInt32 in 0..<bundleCount {
+            if completedBundles.contains(bundleIndex) {
+                logger.debug("Delegation bundle \(bundleIndex + 1)/\(bundleCount) already submitted, skipping")
+                continue
+            }
+            let bundleNotes = noteChunks[Int(bundleIndex)]
+            logger.info("Delegation bundle \(bundleIndex + 1)/\(bundleCount) (\(bundleNotes.count) notes)")
+
+            _ = try await votingCrypto.buildGovernancePczt(
+                roundId, bundleIndex, bundleNotes,
+                senderSeed, hotkeySeed, networkId, accountIndex, roundName,
+                nil, nil
+            )
+
+            for try await event in votingCrypto.buildAndProveDelegation(
+                roundId, bundleIndex, bundleNotes,
+                senderSeed, hotkeySeed, networkId, accountIndex, pirServerUrl
+            ) {
+                switch event {
+                case .progress(let progress):
+                    let overallProgress = (Double(bundleIndex) + progress) / Double(bundleCount)
+                    logger.debug("ZKP #1 bundle \(bundleIndex) progress: \(Int(progress * 100))%")
+                    await send(.delegationProofProgress(overallProgress))
+                case .completed(let proof):
+                    logger.info("ZKP #1 bundle \(bundleIndex) COMPLETE — proof size: \(proof.count) bytes")
+                }
+            }
+
+            let registration = try await votingCrypto.getDelegationSubmission(
+                roundId, bundleIndex, senderSeed, networkId, accountIndex
+            )
+            let delegTxResult = try await votingAPI.submitDelegation(registration)
+            logger.info("Delegation TX \(bundleIndex) submitted: \(delegTxResult.txHash)")
+
+            try await votingCrypto.storeDelegationTxHash(roundId, bundleIndex, delegTxResult.txHash)
+
+            let delegDeadline = Date().addingTimeInterval(90)
+            var delegConfirmation: TxConfirmation?
+            repeat {
+                delegConfirmation = try? await votingAPI.fetchTxConfirmation(delegTxResult.txHash)
+                if delegConfirmation != nil { break }
+                try await Task.sleep(for: .seconds(2))
+            } while Date() < delegDeadline
+
+            guard let delegConfirmation, delegConfirmation.code == 0,
+                  let leafValue = delegConfirmation.event(ofType: "delegate_vote")?.attribute(forKey: "leaf_index"),
+                  let vanPosition = UInt32(leafValue)
+            else {
+                throw VotingFlowError.delegationTxFailed(
+                    code: delegConfirmation?.code ?? 0
+                )
+            }
+            try await votingCrypto.storeVanPosition(roundId, bundleIndex, vanPosition)
+            logger.debug("VAN position stored for bundle \(bundleIndex): \(vanPosition)")
+        }
+
+        await send(.delegationProofCompleted)
     }
 
     /// Retry share delegation up to 3 times with 2-second backoff.
