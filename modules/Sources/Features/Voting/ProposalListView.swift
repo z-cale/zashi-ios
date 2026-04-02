@@ -99,9 +99,7 @@ struct ProposalListView: View {
                                 .id(proposal.id)
                         }
 
-                        if store.isBatchMode {
-                            batchFooter()
-                        }
+                        batchFooter()
                     }
                 }
                 .padding(.horizontal, 24)
@@ -220,18 +218,13 @@ struct ProposalListView: View {
     private func progressHeader() -> some View {
         if store.activeSession != nil {
             HStack {
-                if store.isBatchMode {
-                    let draftCount = store.draftVotes.count
-                    if store.votedCount > 0 && draftCount > 0 {
-                        Text("\(store.votedCount) submitted, \(draftCount) drafted")
-                            .zFont(.medium, size: 14, style: Design.Text.secondary)
-                    } else if draftCount > 0 {
-                        Text("\(draftCount) of \(store.totalProposals) drafted")
-                            .zFont(.medium, size: 14, style: Design.Text.secondary)
-                    } else {
-                        Text("\(store.votedCount) of \(store.totalProposals) voted")
-                            .zFont(.medium, size: 14, style: Design.Text.secondary)
-                    }
+                let draftCount = store.draftVotes.count
+                if store.votedCount > 0 && draftCount > 0 {
+                    Text("\(store.votedCount) submitted, \(draftCount) drafted")
+                        .zFont(.medium, size: 14, style: Design.Text.secondary)
+                } else if draftCount > 0 {
+                    Text("\(draftCount) of \(store.totalProposals) drafted")
+                        .zFont(.medium, size: 14, style: Design.Text.secondary)
                 } else {
                     Text("\(store.votedCount) of \(store.totalProposals) voted")
                         .zFont(.medium, size: 14, style: Design.Text.secondary)
@@ -249,7 +242,7 @@ extension ProposalListView {
     @ViewBuilder
     func proposalCard(_ proposal: Proposal) -> some View {
         let vote = store.votes[proposal.id]
-        let draft = store.isBatchMode ? store.draftVotes[proposal.id] : nil
+        let draft = store.draftVotes[proposal.id]
         let displayChoice = vote ?? draft
 
         VStack(alignment: .leading, spacing: 10) {
