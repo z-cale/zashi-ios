@@ -69,11 +69,8 @@ extension BackgroundTaskClient: DependencyKey {
                 request.strategy = .queue
 
                 do {
-                    try BGTaskScheduler.shared.submit(request)
-                    logger.info("Continued processing task submitted: \(identifier)")
-
-                    // The task is delivered via the handler registered for this identifier.
-                    // Register a one-shot handler to capture the task object.
+                    // Register handler BEFORE submitting the request to avoid a race
+                    // where the system delivers the task before the handler is set.
                     BGTaskScheduler.shared.register(
                         forTaskWithIdentifier: identifier,
                         using: .main
@@ -82,6 +79,9 @@ extension BackgroundTaskClient: DependencyKey {
                             state.set(cpTask)
                         }
                     }
+
+                    try BGTaskScheduler.shared.submit(request)
+                    logger.info("Continued processing task submitted: \(identifier)")
                     return true
                 } catch {
                     logger.warning("Continued processing submission failed: \(error)")

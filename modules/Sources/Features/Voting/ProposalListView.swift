@@ -412,7 +412,7 @@ extension ProposalListView {
                             .fill(Color.green.opacity(0.15))
                         RoundedRectangle(cornerRadius: 2)
                             .fill(Color.green)
-                            .frame(width: geo.size.width * Double(currentIndex) / Double(totalCount))
+                            .frame(width: geo.size.width * Double(currentIndex + 1) / Double(totalCount))
                             .animation(.easeInOut(duration: 0.3), value: currentIndex)
                     }
                 }
