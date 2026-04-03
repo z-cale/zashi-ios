@@ -36,6 +36,7 @@ public struct VotingView: View {
         case .noRounds: return "noRounds"
         case .roundsList: return "roundsList"  // Dead — kept for exhaustive switch
         case .delegationSigning: return "delegationSigning"
+        case .voteConfirmation: return "voteConfirmation"
         case .proposalList: return "proposalList"
         case .proposalDetail(let id): return "detail-\(id)"
         case .complete: return "complete"
@@ -60,6 +61,8 @@ public struct VotingView: View {
             NoRoundsView(store: store)  // Dead — kept for exhaustive switch
         case .delegationSigning:
             DelegationSigningView(store: store)
+        case .voteConfirmation:
+            VoteConfirmationView(store: store)
         case .proposalList:
             ProposalListView(store: store)
         case .proposalDetail:

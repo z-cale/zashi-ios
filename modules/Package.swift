@@ -1221,6 +1221,7 @@ let package = Package(
                 "DatabaseFiles",
                 "Generated",
                 "KeystoneHandler",
+                "LocalAuthenticationHandler",
                 "MnemonicClient",
                 "Models",
                 "Pasteboard",

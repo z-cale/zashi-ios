@@ -5,6 +5,7 @@ import ComposableArchitecture
 import DatabaseFiles
 import Generated
 import KeystoneHandler
+import LocalAuthenticationHandler
 import MnemonicClient
 import Models
 import Pasteboard
@@ -102,6 +103,8 @@ public struct Voting { // swiftlint:disable:this type_body_length
     var backgroundTask
     @Dependency(\.databaseFiles)
     var databaseFiles
+    @Dependency(\.localAuthentication)
+    var localAuthentication
     @Dependency(\.keystoneHandler)
     var keystoneHandler
     @Dependency(\.mnemonic)
@@ -125,6 +128,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
             case noRounds
             case roundsList
             case delegationSigning
+            case voteConfirmation
             case proposalList
             case proposalDetail(id: UInt32)
             case complete
@@ -637,6 +641,9 @@ public struct Voting { // swiftlint:disable:this type_body_length
         // Batch voting
         case setDraftVote(proposalId: UInt32, choice: VoteChoice)
         case clearDraftVote(proposalId: UInt32)
+        case reviewVoteSubmission
+        case confirmVoteSubmission
+        case voteSubmissionAuthFailed
         case submitAllDrafts
         case batchSubmissionProgress(currentIndex: Int, totalCount: Int, proposalId: UInt32)
         case batchVoteSubmitted(proposalId: UInt32, choice: VoteChoice)
@@ -2199,9 +2206,37 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 Self.persistDrafts(state.draftVotes, roundId: state.roundId)
                 return .none
 
+            case .reviewVoteSubmission:
+                guard state.canSubmitBatch else { return .none }
+                state.screenStack.append(.voteConfirmation)
+                return .none
+
+            case .confirmVoteSubmission:
+                if state.isKeystoneUser {
+                    // Keystone authentication happens via hardware wallet
+                    // during delegation signing — skip biometric.
+                    return .send(.submitAllDrafts)
+                }
+                return .run { [localAuthentication] send in
+                    guard await localAuthentication.authenticate() else {
+                        await send(.voteSubmissionAuthFailed)
+                        return
+                    }
+                    await send(.submitAllDrafts)
+                }
+
+            case .voteSubmissionAuthFailed:
+                return .none
+
             case .submitAllDrafts:
                 guard state.canSubmitBatch else { return .none }
                 guard state.activeSession != nil else { return .none }
+
+                // Pop confirmation screen before starting submission so
+                // progress shows on the proposal list.
+                if state.screenStack.last == .voteConfirmation {
+                    state.screenStack.removeLast()
+                }
 
                 // Keystone: delegation requires QR signing UI, so route through
                 // the delegation signing screen before batch submission.

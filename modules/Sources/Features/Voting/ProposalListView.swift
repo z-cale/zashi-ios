@@ -351,7 +351,7 @@ extension ProposalListView {
             if store.canSubmitBatch {
                 let draftCount = store.draftVotes.count
                 Button {
-                    store.send(.submitAllDrafts)
+                    store.send(.reviewVoteSubmission)
                 } label: {
                     HStack {
                         Image(systemName: "paperplane.fill")
