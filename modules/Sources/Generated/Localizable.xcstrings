@@ -12591,6 +12591,40 @@
           }
         }
       }
+    },
+    "transaction.pirDetected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spend detected"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gasto detectado"
+          }
+        }
+      }
+    },
+    "transaction.pirDetectedSubtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Syncing for details…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sincronizando detalles…"
+          }
+        }
+      }
     }
   },
   "version": "1.1"

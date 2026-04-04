@@ -76,6 +76,7 @@ public struct Root {
         public var DidFinishLaunchingId = UUID()
         public var CancelFlexaId = UUID()
         public var shieldingProcessorCancelId = UUID()
+        public var PIRCheckCancelId = UUID()
 
         @Shared(.inMemory(.addressBookContacts)) public var addressBookContacts: AddressBookContacts = .empty
         @Presents public var alert: AlertState<Action>?
@@ -116,6 +117,7 @@ public struct Root {
         @Shared(.inMemory(.walletAccounts)) public var walletAccounts: [WalletAccount] = []
         public var walletConfig: WalletConfig
         @Shared(.inMemory(.walletStatus)) public var walletStatus: WalletStatus = .none
+        @Shared(.inMemory(.pirSpendabilityResult)) public var pirSpendabilityResult: SpendabilityResult? = nil
         public var wasRestoringWhenDisconnected = false
         public var welcomeState: Welcome.State
         @Shared(.inMemory(.zashiWalletAccount)) public var zashiWalletAccount: WalletAccount? = nil
@@ -236,8 +238,9 @@ public struct Root {
         case foundTransactions([ZcashTransaction.Overview])
         case minedTransaction(ZcashTransaction.Overview)
         case fetchTransactionsForTheSelectedAccount
-        case fetchedTransactions(IdentifiedArrayOf<TransactionState>)
+        case fetchedTransactions(IdentifiedArrayOf<TransactionState>, PIRPendingSpends?)
         case noChangeInTransactions
+        case syncReachedUpToDate
         
         // Address Book
         case loadContacts
