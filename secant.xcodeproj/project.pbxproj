@@ -32,6 +32,7 @@
 		9E34519D29C8484D00177D16 /* HomeFeatureFlagTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 341B30BA29B78D1000697081 /* HomeFeatureFlagTests.swift */; };
 		9E34519E29C849B400177D16 /* WalletConfigProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34F039B229ABCE8500CF0053 /* WalletConfigProviderTests.swift */; };
 		9E34519F29C849D300177D16 /* ImportWalletTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E391123283E4CAC0073DD9A /* ImportWalletTests.swift */; };
+		C847492D3A53CE435F3FDA11 /* AddKeystoneHWWalletTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F401AF195D85F482AA43CA1 /* AddKeystoneHWWalletTests.swift */; };
 		9E3451A029C84A2D00177D16 /* MultiLineTextFieldTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E6713F02897F81B00A6796F /* MultiLineTextFieldTests.swift */; };
 		9E3451A629C84B6600177D16 /* RootTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EAFEB812805793200199FC9 /* RootTests.swift */; };
 		9E3451A729C84E9900177D16 /* AppInitializationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E391131284644580073DD9A /* AppInitializationTests.swift */; };
@@ -189,6 +190,7 @@
 		9E207C382966EF87003E2C9B /* ReceiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiveTests.swift; sourceTree = "<group>"; };
 		9E2706662AFF99F5000DA6EC /* TransactionReadUnreadM.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = TransactionReadUnreadM.xcdatamodel; sourceTree = "<group>"; };
 		9E2F1C8B280ED6A7004E65FE /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		8F401AF195D85F482AA43CA1 /* AddKeystoneHWWalletTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddKeystoneHWWalletTests.swift; sourceTree = "<group>"; };
 		9E391123283E4CAC0073DD9A /* ImportWalletTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportWalletTests.swift; sourceTree = "<group>"; };
 		9E39112D283F91600073DD9A /* ZatoshiTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZatoshiTests.swift; sourceTree = "<group>"; };
 		9E391131284644580073DD9A /* AppInitializationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppInitializationTests.swift; sourceTree = "<group>"; };
@@ -382,6 +384,7 @@
 				9E207C372966EF6E003E2C9B /* ReceiveTests */,
 				0DFE93DD272C6D4B000FCCA5 /* BackupFlowTests */,
 				9E94C61E28AA7DD5008256E9 /* BalanceBreakdownTests */,
+				8729C4D6B05B6B2BC85C3CD1 /* AddKeystoneHWWalletTests */,
 				9EAB4674285B5C68002904A0 /* DeeplinkTests */,
 				9E3911372848AD3A0073DD9A /* HomeTests */,
 				9E391122283E4C970073DD9A /* ImportWalletTests */,
@@ -500,6 +503,14 @@
 				9E89DF752CD2B2E8002E5317 /* Localizable.strings */,
 			);
 			name = "Recovered References";
+			sourceTree = "<group>";
+		};
+		8729C4D6B05B6B2BC85C3CD1 /* AddKeystoneHWWalletTests */ = {
+			isa = PBXGroup;
+			children = (
+				8F401AF195D85F482AA43CA1 /* AddKeystoneHWWalletTests.swift */,
+			);
+			path = AddKeystoneHWWalletTests;
 			sourceTree = "<group>";
 		};
 		9E391122283E4C970073DD9A /* ImportWalletTests */ = {
@@ -1500,6 +1511,7 @@
 				9E3451AF29C855B200177D16 /* SensitiveDataTests.swift in Sources */,
 				9E3451A729C84E9900177D16 /* AppInitializationTests.swift in Sources */,
 				9E3451B029C855E600177D16 /* SettingsTests.swift in Sources */,
+				C847492D3A53CE435F3FDA11 /* AddKeystoneHWWalletTests.swift in Sources */,
 				9E34519F29C849D300177D16 /* ImportWalletTests.swift in Sources */,
 				9E74CCD029DC0628003D6E32 /* ReviewRequestTests.swift in Sources */,
 				9E3451A029C84A2D00177D16 /* MultiLineTextFieldTests.swift in Sources */,

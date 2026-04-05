@@ -14,6 +14,7 @@ import AudioServices
 // Path
 import AddKeystoneHWWallet
 import Scan
+import WalletBirthday
 
 @Reducer
 public struct AddKeystoneHWWalletCoordFlow {
@@ -21,11 +22,16 @@ public struct AddKeystoneHWWalletCoordFlow {
     public enum Path {
         case accountHWWalletSelection(AddKeystoneHWWallet)
         case scan(Scan)
+        case walletBirthday(WalletBirthday)
+        case estimateBirthdaysDate(WalletBirthday)
+        case estimatedBirthday(WalletBirthday)
     }
-    
+
     @ObservableState
     public struct State {
         public var addKeystoneHWWalletState = AddKeystoneHWWallet.State.initial
+        public var birthday: BlockHeight? = nil
+        public var isHelpSheetPresented = false
         public var path = StackState<Path.State>()
 
         public init() { }
@@ -33,11 +39,12 @@ public struct AddKeystoneHWWalletCoordFlow {
 
     public enum Action {
         case addKeystoneHWWallet(AddKeystoneHWWallet.Action)
+        case helpSheetRequested
         case path(StackActionOf<Path>)
     }
 
     @Dependency(\.audioServices) var audioServices
-    
+
     public init() { }
 
     public var body: some Reducer<State, Action> {
@@ -46,7 +53,7 @@ public struct AddKeystoneHWWalletCoordFlow {
         Scope(state: \.addKeystoneHWWalletState, action: \.addKeystoneHWWallet) {
             AddKeystoneHWWallet()
         }
-        
+
         Reduce { state, action in
             switch action {
             default: return .none

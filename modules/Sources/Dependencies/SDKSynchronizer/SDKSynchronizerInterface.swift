@@ -38,7 +38,7 @@ public struct SDKSynchronizerClient {
     public let stop: () -> Void
     public let isSyncing: () -> Bool
     public let isInitialized: () -> Bool
-    public let importAccount: (String, [UInt8]?, Zip32AccountIndex?, AccountPurpose, String, String?) async throws -> AccountUUID?
+    public let importAccount: (String, [UInt8]?, Zip32AccountIndex?, AccountPurpose, String, String?, BlockHeight?) async throws -> AccountUUID?
     
     public let rewind: (RewindPolicy) -> AnyPublisher<Void, Error>
     

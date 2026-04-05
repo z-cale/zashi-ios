@@ -77,14 +77,15 @@ extension SDKSynchronizerClient: DependencyKey {
             stop: { synchronizer.stop() },
             isSyncing: { synchronizer.latestState.syncStatus.isSyncing },
             isInitialized: { synchronizer.latestState.syncStatus != SyncStatus.unprepared },
-            importAccount: { ufvk, seedFingerprint, zip32AccountIndex, purpose, name, keySource in
+            importAccount: { ufvk, seedFingerprint, zip32AccountIndex, purpose, name, keySource, walletBirthday in
                 try await synchronizer.importAccount(
                     ufvk: ufvk,
                     seedFingerprint: seedFingerprint,
                     zip32AccountIndex: zip32AccountIndex,
                     purpose: purpose,
                     name: name,
-                    keySource: keySource
+                    keySource: keySource,
+                    walletBirthday: walletBirthday
                 )
             },
             rewind: { synchronizer.rewind($0) },

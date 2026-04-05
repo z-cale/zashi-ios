@@ -6,6 +6,9 @@ directly impact users rather than highlighting other crucial architectural updat
 
 ## [Unreleased]
 
+### Added
+- Wallet birthday picker added to Keystone hardware wallet import flow, allowing users to enter a block height or estimate from a date.
+
 ## 3.2.0 build 5 (2026-03-09)
 
 ### Changed
