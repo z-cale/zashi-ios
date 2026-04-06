@@ -1594,7 +1594,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
             case .copyHotkeyAddress:
                 if let address = state.hotkeyAddress {
                     pasteboard.setString(address.redacted)
-                    state.$toast.withLock { $0 = .top(L10n.General.copiedToTheClipboard) }
+                    state.$toast.withLock { $0 = .top(String(localizable: .generalCopiedToTheClipboard)) }
                 }
                 return .none
 
