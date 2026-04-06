@@ -96,18 +96,18 @@ public struct SmartBanner {
         
         public var remindMeShieldedText: String {
             remindMeShieldedPhaseCounter == 0
-            ? L10n.SmartBanner.Help.remindMePhase1
+            ? String(localizable: .smartBannerHelpRemindMePhase1)
             : remindMeShieldedPhaseCounter == 1
-            ? L10n.SmartBanner.Help.remindMePhase2
-            : L10n.SmartBanner.Help.remindMePhase3
+            ? String(localizable: .smartBannerHelpRemindMePhase2)
+            : String(localizable: .smartBannerHelpRemindMePhase3)
         }
 
         public var remindMeWalletBackupText: String {
             remindMeWalletBackupPhaseCounter == 0
-            ? L10n.SmartBanner.Help.remindMePhase1
+            ? String(localizable: .smartBannerHelpRemindMePhase1)
             : remindMeWalletBackupPhaseCounter == 1
-            ? L10n.SmartBanner.Help.remindMePhase2
-            : L10n.SmartBanner.Help.remindMePhase3
+            ? String(localizable: .smartBannerHelpRemindMePhase2)
+            : String(localizable: .smartBannerHelpRemindMePhase3)
         }
         
         public init() { }

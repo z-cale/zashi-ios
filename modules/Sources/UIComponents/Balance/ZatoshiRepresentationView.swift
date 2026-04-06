@@ -33,7 +33,7 @@ public struct ZatoshiText: View {
     
     public var body: some View {
         if isSensitiveContentHidden {
-            Text(L10n.General.hideBalancesMost)
+            Text(localizable: .generalHideBalancesMost)
         } else {
             if format == .abbreviated {
                 if let postfix {
@@ -108,20 +108,20 @@ public struct ZatoshiRepresentationView: View {
                 } else {
                     if format == .expanded {
                         Text(couldBeHidden && isSensitiveContentHidden
-                             ? L10n.General.hideBalancesMost
+                             ? String(localizable: .generalHideBalancesMost)
                              : zatoshiStringRepresentation.mostSignificantDigits
                         )
                         .font(.custom(fontName, size: mostSignificantFontSize))
                         .conditionalStrikethrough(strikethrough)
                         + Text(couldBeHidden && isSensitiveContentHidden
-                               ? L10n.General.hideBalancesLeast
+                               ? String(localizable: .generalHideBalancesLeast)
                                : zatoshiStringRepresentation.leastSignificantDigits
                         )
                         .font(.custom(fontName, size: leastSignificantFontSize))
                         .conditionalStrikethrough(strikethrough)
                     } else {
                         Text(couldBeHidden && isSensitiveContentHidden
-                             ? L10n.General.hideBalancesMostStandalone
+                             ? String(localizable: .generalHideBalancesMostStandalone)
                              : zatoshiStringRepresentation.mostSignificantDigits
                         )
                         .font(.custom(fontName, size: mostSignificantFontSize))

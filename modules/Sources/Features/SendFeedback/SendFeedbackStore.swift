@@ -64,8 +64,8 @@ public struct SendFeedback {
                     return .none
                 }
                 
-                var prefixMessage = "\(L10n.SendFeedback.ratingQuestion)\n\(state.ratings[selectedRating]) \(selectedRating + 1)/\(state.ratings.count)\n\n"
-                prefixMessage += "\(L10n.SendFeedback.howCanWeHelp)\n\(state.memoState.text)\n\n"
+                var prefixMessage = "\(String(localizable: .sendFeedbackRatingQuestion))\n\(state.ratings[selectedRating]) \(selectedRating + 1)/\(state.ratings.count)\n\n"
+                prefixMessage += "\(String(localizable: .sendFeedbackHowCanWeHelp))\n\(state.memoState.text)\n\n"
                 
                 if state.canSendMail {
                     state.supportData = SupportDataGenerator.generate(prefixMessage)
@@ -74,7 +74,7 @@ public struct SendFeedback {
                     let sharePrefix =
                     """
                     ===
-                    \(L10n.SendFeedback.Share.notAppleMailInfo) \(SupportDataGenerator.Constants.email)
+                    \(String(localizable: .sendFeedbackShareNotAppleMailInfo)) \(SupportDataGenerator.Constants.email)
                     ===
                     
                     \(prefixMessage)

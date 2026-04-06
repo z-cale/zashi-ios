@@ -24,15 +24,15 @@ public struct TorSetup {
             
             public func title() -> String {
                 switch self {
-                case .optIn: return L10n.CurrencyConversion.enable
-                case .optOut: return L10n.CurrencyConversion.learnMoreOptionDisable
+                case .optIn: return String(localizable: .currencyConversionEnable)
+                case .optOut: return String(localizable: .currencyConversionLearnMoreOptionDisable)
                 }
             }
 
             public func subtitle() -> String {
                 switch self {
-                case .optIn: return L10n.TorSetup.enableDesc
-                case .optOut: return L10n.TorSetup.disableDesc
+                case .optIn: return String(localizable: .torSetupEnableDesc)
+                case .optOut: return String(localizable: .torSetupDisableDesc)
                 }
             }
 
@@ -51,17 +51,17 @@ public struct TorSetup {
 
             public func title() -> String {
                 switch self {
-                case .currencyConversion: return L10n.TorSetup.Option1.title
-                case .transactions: return L10n.TorSetup.Option2.title
-                case .integrations: return L10n.TorSetup.Option3.title
+                case .currencyConversion: return String(localizable: .torSetupOption1Title)
+                case .transactions: return String(localizable: .torSetupOption2Title)
+                case .integrations: return String(localizable: .torSetupOption3Title)
                 }
             }
 
             public func subtitle() -> String {
                 switch self {
-                case .currencyConversion: return L10n.TorSetup.Option1.desc
-                case .transactions: return L10n.TorSetup.Option2.desc
-                case .integrations: return L10n.TorSetup.Option3.desc
+                case .currencyConversion: return String(localizable: .torSetupOption1Desc)
+                case .transactions: return String(localizable: .torSetupOption2Desc)
+                case .integrations: return String(localizable: .torSetupOption3Desc)
                 }
             }
 

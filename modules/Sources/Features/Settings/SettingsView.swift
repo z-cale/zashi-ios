@@ -35,7 +35,7 @@ public struct SettingsView: View {
                         Group {
                             ActionRow(
                                 icon: Asset.Assets.Icons.user.image,
-                                title: L10n.Settings.addressBook
+                                title: String(localizable: .settingsAddressBook)
                             ) {
                                 store.send(.addressBookAccessCheck)
                             }
@@ -43,7 +43,7 @@ public struct SettingsView: View {
                             if store.isEnoughFreeSpaceMode {
                                 ActionRow(
                                     icon: Asset.Assets.Icons.currencyDollar.image,
-                                    title: L10n.CurrencyConversion.title,
+                                    title: String(localizable: .currencyConversionTitle),
                                 ) {
                                     store.send(.currencyConversionTapped)
                                 }
@@ -51,28 +51,28 @@ public struct SettingsView: View {
                             
                             ActionRow(
                                 icon: Asset.Assets.Icons.settings.image,
-                                title: L10n.Settings.advanced
+                                title: String(localizable: .settingsAdvanced)
                             ) {
                                 store.send(.advancedSettingsTapped)
                             }
                             
                             ActionRow(
                                 icon: Asset.Assets.Icons.magicWand.image,
-                                title: L10n.Settings.whatsNew
+                                title: String(localizable: .settingsWhatsNew)
                             ) {
                                 store.send(.whatsNewTapped)
                             }
                             
                             ActionRow(
                                 icon: Asset.Assets.infoOutline.image,
-                                title: L10n.Settings.about
+                                title: String(localizable: .settingsAbout)
                             ) {
                                 store.send(.aboutTapped)
                             }
                             
                             ActionRow(
                                 icon: Asset.Assets.Icons.messageSmile.image,
-                                title: L10n.Settings.feedback,
+                                title: String(localizable: .settingsFeedback),
                                 divider: false
                             ) {
                                 store.send(.sendUsFeedbackTapped)
@@ -103,15 +103,15 @@ public struct SettingsView: View {
                     .onTapGesture(count: 3) {
                         store.send(.enableEnhanceTransactionMode)
                     }
-
-                    Text(L10n.Settings.version(store.appVersion, store.appBuild))
+                    
+                    Text(localizable: .settingsVersion(store.appVersion, store.appBuild))
                         .zFont(size: 16, style: Design.Text.tertiary)
                         .padding(.bottom, 24)
                 }
                 .listStyle(.plain)
                 .applyScreenBackground()
                 .zashiBack() { store.send(.backToHomeTapped) }
-                .screenTitle(L10n.Settings.title)
+                .screenTitle(String(localizable: .settingsTitle))
             } destination: { store in
                 switch store.case {
                 case let .about(store):
@@ -160,12 +160,12 @@ public struct SettingsView: View {
     
     @ViewBuilder private func recoverFundsSheetContent() -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(L10n.RecoverFunds.title)
+            Text(localizable: .recoverFundsTitle)
                 .zFont(.semiBold, size: 24, style: Design.Text.primary)
                 .padding(.top, 24)
                 .padding(.bottom, 12)
 
-            Text(L10n.RecoverFunds.msg)
+            Text(localizable: .recoverFundsMsg)
                 .zFont(size: 14, style: Design.Text.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.bottom, 24)
@@ -173,8 +173,8 @@ public struct SettingsView: View {
             ZashiTextField(
                 addressFont: true,
                 text: $store.addressToRecoverFunds,
-                placeholder: L10n.RecoverFunds.placeholder,
-                title: L10n.RecoverFunds.fieldTitle
+                placeholder: String(localizable: .recoverFundsPlaceholder),
+                title: String(localizable: .recoverFundsFieldTitle)
             )
             .padding(.bottom, 32)
 
@@ -184,14 +184,14 @@ public struct SettingsView: View {
                         .zImage(size: 20, style: Design.Utility.WarningYellow._500)
                         .padding(.trailing, 12)
                     
-                    Text(L10n.RecoverFunds.tor)
+                    Text(localizable: .recoverFundsTor)
                         .zFont(size: 12, style: Design.Utility.WarningYellow._700)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.bottom, 12)
             }
             
-            ZashiButton(L10n.RecoverFunds.btn) {
+            ZashiButton(String(localizable: .recoverFundsBtn)) {
                 store.send(.checkFundsForAddress(store.addressToRecoverFunds))
             }
             .disabled(store.addressToRecoverFunds.isEmpty || !store.isTorOn)
@@ -201,12 +201,12 @@ public struct SettingsView: View {
     
     @ViewBuilder private func enhanceTransactionSheetContent() -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(L10n.EnhanceTransaction.title)
+            Text(localizable: .enhanceTransactionTitle)
                 .zFont(.semiBold, size: 24, style: Design.Text.primary)
                 .padding(.top, 24)
                 .padding(.bottom, 12)
 
-            Text(L10n.EnhanceTransaction.msg)
+            Text(localizable: .enhanceTransactionMsg)
                 .zFont(size: 14, style: Design.Text.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.bottom, 24)
@@ -214,12 +214,12 @@ public struct SettingsView: View {
             ZashiTextField(
                 addressFont: true,
                 text: $store.txidToEnhance,
-                placeholder: L10n.EnhanceTransaction.placeholder,
-                title: L10n.EnhanceTransaction.fieldTitle
+                placeholder: String(localizable: .enhanceTransactionPlaceholder),
+                title: String(localizable: .enhanceTransactionFieldTitle)
             )
             .padding(.bottom, 32)
 
-            ZashiButton(L10n.EnhanceTransaction.btn) {
+            ZashiButton(String(localizable: .enhanceTransactionBtn)) {
                 store.send(.fetchDataForTxid(store.txidToEnhance))
             }
             .disabled(store.txidToEnhance.isEmpty)

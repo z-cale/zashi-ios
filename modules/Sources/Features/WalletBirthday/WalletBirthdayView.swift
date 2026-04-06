@@ -23,19 +23,19 @@ public struct WalletBirthdayView: View {
     public var body: some View {
         WithPerceptionTracking {
             VStack(alignment: .leading, spacing: 0) {
-                Text(L10n.ImportWallet.Birthday.title)
+                Text(localizable: .importWalletBirthdayTitle)
                     .zFont(.semiBold, size: 24, style: Design.Text.primary)
                     .padding(.top, 40)
                     .padding(.bottom, 8)
 
-                Text(L10n.RestoreWallet.Birthday.info)
+                Text(localizable: .restoreWalletBirthdayInfo)
                     .zFont(size: 14, style: Design.Text.primary)
                     .padding(.bottom, 32)
 
                 ZashiTextField(
                     text: $store.birthday,
-                    placeholder: L10n.RestoreWallet.Birthday.placeholder,
-                    title: L10n.RestoreWallet.Birthday.title
+                    placeholder: String(localizable: .restoreWalletBirthdayPlaceholder),
+                    title: String(localizable: .restoreWalletBirthdayTitle)
                 )
                 .padding(.bottom, 6)
                 .keyboardType(.numberPad)
@@ -43,20 +43,20 @@ public struct WalletBirthdayView: View {
                 .disableAutocorrection(true)
                 .focused($isBirthdayFocused)
                 
-                Text(L10n.RestoreWallet.Birthday.fieldInfo)
+                Text(localizable: .restoreWalletBirthdayFieldInfo)
                     .zFont(size: 12, style: Design.Text.tertiary)
 
                 Spacer()
                 
                 ZashiButton(
-                    L10n.RestoreWallet.Birthday.estimate,
+                    String(localizable: .restoreWalletBirthdayEstimate),
                     type: .ghost
                 ) {
                     store.send(.estimateHeightTapped)
                 }
                 .padding(.bottom, 12)
 
-                ZashiButton(L10n.ImportWallet.Button.restoreWallet) {
+                ZashiButton(String(localizable: .importWalletButtonRestoreWallet)) {
                     store.send(.restoreTapped)
                 }
                 .disabled(!store.isValidBirthday)
@@ -78,7 +78,7 @@ public struct WalletBirthdayView: View {
         )
         .screenHorizontalPadding()
         .applyScreenBackground()
-        .screenTitle(L10n.ImportWallet.Button.restoreWallet)
+        .screenTitle(String(localizable: .importWalletButtonRestoreWallet))
         .overlay {
             if keyboardVisible {
                 VStack(spacing: 0) {

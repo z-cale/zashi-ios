@@ -50,7 +50,7 @@ public struct WalletBalancesView: View {
                 }
 
                 if store.migratingDatabase {
-                    Text(L10n.Home.migratingDatabases)
+                    Text(localizable: .homeMigratingDatabases)
                         .font(.custom(FontFamily.Inter.regular.name, size: 14))
                         .foregroundColor(Asset.Colors.primary.color)
                         .padding(.top, 12)
@@ -104,7 +104,7 @@ public struct WalletBalancesView: View {
             if store.isExchangeRateFeatureOn {
                 if store.currencyConversion == nil && !store.isExchangeRateStale {
                     HStack(spacing: 8) {
-                        Text(L10n.General.loading)
+                        Text(localizable: .generalLoading)
                             .font(.custom(FontFamily.Inter.semiBold.name, size: 14))
                             .foregroundColor(Asset.Colors.primary.color)
 
@@ -121,7 +121,7 @@ public struct WalletBalancesView: View {
                     } label: {
                         if store.isExchangeRateStale {
                             HStack {
-                                Text(L10n.Tooltip.ExchangeRate.title)
+                                Text(localizable: .tooltipExchangeRateTitle)
                                     .font(.custom(FontFamily.Inter.semiBold.name, size: 14))
                                     .foregroundColor(Asset.Colors.primary.color)
 

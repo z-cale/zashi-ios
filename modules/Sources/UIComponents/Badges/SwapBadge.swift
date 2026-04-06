@@ -24,14 +24,14 @@ public struct SwapBadge: View {
         
         public var title: String {
             switch self {
-            case .pending: return L10n.SwapAndPay.Status.pending
-            case .processing: return L10n.SwapAndPay.Status.processing
-            case .refunded: return L10n.SwapAndPay.Status.refunded
-            case .success: return L10n.SwapAndPay.Status.success
-            case .failed: return L10n.SwapAndPay.Status.failed
-            case .pendingDeposit: return L10n.SwapAndPay.Status.pendingDeposit
-            case .expired: return L10n.SwapAndPay.Status.expired
-            case .incompleteDeposit: return L10n.SwapAndPay.Status.incompleteDeposit
+            case .pending: return String(localizable: .swapAndPayStatusPending)
+            case .processing: return String(localizable: .swapAndPayStatusProcessing)
+            case .refunded: return String(localizable: .swapAndPayStatusRefunded)
+            case .success: return String(localizable: .swapAndPayStatusSuccess)
+            case .failed: return String(localizable: .swapAndPayStatusFailed)
+            case .pendingDeposit: return String(localizable: .swapAndPayStatusPendingDeposit)
+            case .expired: return String(localizable: .swapAndPayStatusExpired)
+            case .incompleteDeposit: return String(localizable: .swapAndPayStatusIncompleteDeposit)
             }
         }
         

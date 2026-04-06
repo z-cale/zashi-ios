@@ -81,7 +81,7 @@ public struct CrossPayConfirmationView: View {
                 // Send to
                 HStack {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(L10n.Send.toSummary)
+                        Text(localizable: .sendToSummary)
                             .zFont(.medium, size: 14, style: Design.Text.primary)
 
                         if let alias = store.selectedContact?.name {
@@ -101,7 +101,7 @@ public struct CrossPayConfirmationView: View {
                 if store.walletAccounts.count > 1 {
                     HStack {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(L10n.Accounts.sendingFrom)
+                            Text(localizable: .accountsSendingFrom)
                                 .zFont(.medium, size: 14, style: Design.Text.primary)
                             
                             if let selectedWalletAccount = store.selectedWalletAccount {
@@ -129,7 +129,7 @@ public struct CrossPayConfirmationView: View {
 
                 // Amount
                 HStack {
-                    Text(L10n.Send.amount)
+                    Text(localizable: .sendAmount)
                         .zFont(size: 14, style: Design.Text.tertiary)
 
                     Spacer()
@@ -141,7 +141,7 @@ public struct CrossPayConfirmationView: View {
 
                 // Fee
                 HStack {
-                    Text(L10n.Send.feeSummary)
+                    Text(localizable: .sendFeeSummary)
                         .zFont(size: 14, style: Design.Text.tertiary)
 
                     Spacer()
@@ -157,7 +157,7 @@ public struct CrossPayConfirmationView: View {
 
                 // Total Amount
                 HStack {
-                    Text(L10n.Crosspay.total)
+                    Text(localizable: .crosspayTotal)
                         .zFont(size: 14, style: Design.Text.tertiary)
 
                     Spacer()
@@ -177,12 +177,12 @@ public struct CrossPayConfirmationView: View {
                 Spacer()
                 
                 if store.selectedWalletAccount?.vendor == .keystone {
-                    ZashiButton(L10n.Keystone.confirmPay) {
+                    ZashiButton(String(localizable: .keystoneConfirmPay)) {
                         store.send(.confirmWithKeystoneTapped)
                     }
                     .padding(.bottom, 24)
                 } else {
-                    ZashiButton(L10n.Crosspay.pay) {
+                    ZashiButton(String(localizable: .crosspayPay)) {
                         store.send(.confirmButtonTapped)
                     }
                     .padding(.bottom, 24)
@@ -193,8 +193,8 @@ public struct CrossPayConfirmationView: View {
             }
             .screenTitle(
                 store.selectedWalletAccount?.vendor == .keystone
-                ? L10n.Send.review
-                : L10n.Send.confirmationTitle
+                ? String(localizable: .sendReview)
+                : String(localizable: .sendConfirmationTitle)
             )
             .screenHorizontalPadding()
             .applyScreenBackground()

@@ -135,7 +135,7 @@ extension FlexaHandlerClient: DependencyKey {
                         message: message,
                         preferredStyle: .alert
                     )
-                    alert.addAction(UIAlertAction(title: L10n.General.ok, style: .cancel))
+                    alert.addAction(UIAlertAction(title: String(localizable: .generalOk), style: .cancel))
                     UIViewController.showOnTop(alert)
                 }
             },

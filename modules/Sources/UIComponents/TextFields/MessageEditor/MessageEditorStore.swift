@@ -63,7 +63,7 @@ public struct MessageEditor {
         Reduce { state, action in
             switch action {
             case .binding(\.isUAaddedToMemo):
-                let blob = L10n.MessageEditor.addUAformat(state.uAddress)
+                let blob = String(localizable: .messageEditorAddUAformat(state.uAddress))
                 if state.isUAaddedToMemo {
                     state.text += blob
                 } else {

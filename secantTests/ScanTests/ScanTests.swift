@@ -31,7 +31,7 @@ class ScanTests: XCTestCase {
             state.isTorchAvailable = false
             state.isTorchOn = false
             state.isCameraEnabled = false
-            state.info = L10n.Scan.cameraSettings
+            state.info = String(localizable: .scanCameraSettings)
         }
         
         await store.finish()
@@ -86,7 +86,7 @@ class ScanTests: XCTestCase {
         await store.send(.scan(value))
         
         await store.receive(.scanFailed(.invalidQRCode)) { state in
-            state.info = L10n.Scan.invalidQR
+            state.info = String(localizable: .scanInvalidQR)
         }
         
         await store.receive(.clearInfo) { state in
@@ -125,7 +125,7 @@ class ScanTests: XCTestCase {
         store.dependencies.mainQueue = .immediate
 
         await store.send(.scanFailed(.invalidQRCode)) { state in
-            state.info = L10n.Scan.invalidQR
+            state.info = String(localizable: .scanInvalidQR)
         }
         
         await store.receive(.clearInfo) { state in

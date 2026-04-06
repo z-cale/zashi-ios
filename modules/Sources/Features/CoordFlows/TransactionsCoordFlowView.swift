@@ -61,7 +61,7 @@ public struct TransactionsCoordFlowView: View {
         }
         .applyScreenBackground()
         .zashiBack()
-        .screenTitle(L10n.General.request)
+        .screenTitle(String(localizable: .generalRequest))
     }
 }
 

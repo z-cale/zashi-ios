@@ -33,7 +33,7 @@ public struct SuccessView: View {
                     .resizable()
                     .frame(width: 148, height: 148)
 
-                Text(store.isShielding ? L10n.Send.successShielding : L10n.Send.success)
+                Text(store.isShielding ? String(localizable: .sendSuccessShielding) : String(localizable: .sendSuccess))
                     .zFont(.semiBold, size: 28, style: Design.Text.primary)
                     .padding(.top, 16)
 
@@ -52,7 +52,7 @@ public struct SuccessView: View {
 
                 if store.txIdToExpand != nil || store.type == .regular {
                     ZashiButton(
-                        L10n.Send.viewTransaction,
+                        String(localizable: .sendViewTransaction),
                         type: .tertiary,
                         infinityWidth: false
                     ) {
@@ -64,7 +64,7 @@ public struct SuccessView: View {
                 Spacer()
                 
                 ZashiButton(
-                    L10n.General.close,
+                    String(localizable: .generalClose),
                     type: store.type != .regular ? .ghost : .primary
                 ) {
                     store.send(.closeTapped)
@@ -72,7 +72,7 @@ public struct SuccessView: View {
                 .padding(.bottom, store.type != .regular ? 12 : 24)
 
                 if store.type != .regular {
-                    ZashiButton(L10n.SwapAndPay.checkStatus) {
+                    ZashiButton(String(localizable: .swapAndPayCheckStatus)) {
                         store.send(.checkStatusTapped)
                     }
                     .padding(.bottom, 24)

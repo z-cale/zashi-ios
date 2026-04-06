@@ -66,35 +66,35 @@ public struct FilterView: View {
 extension TransactionsManagerView {
     @ViewBuilder func filtersContent() -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(L10n.Filter.title)
+            Text(localizable: .filterTitle)
                 .zFont(.semiBold, size: 20, style: Design.Text.primary)
                 .padding(.top, 32)
                 .padding(.bottom, 24)
             
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
-                    FilterView(title: L10n.Filter.sent, active: store.isSentFilterActive) { store.send(.toggleFilter(.sent)) }
-                    FilterView(title: L10n.Filter.received, active: store.isReceivedFilterActive) { store.send(.toggleFilter(.received)) }
-                    FilterView(title: L10n.Filter.memos, active: store.isMemosFilterActive) { store.send(.toggleFilter(.memos)) }
+                    FilterView(title: String(localizable: .filterSent), active: store.isSentFilterActive) { store.send(.toggleFilter(.sent)) }
+                    FilterView(title: String(localizable: .filterReceived), active: store.isReceivedFilterActive) { store.send(.toggleFilter(.received)) }
+                    FilterView(title: String(localizable: .filterMemos), active: store.isMemosFilterActive) { store.send(.toggleFilter(.memos)) }
                 }
                 
                 HStack(spacing: 8) {
-                    FilterView(title: L10n.Filter.notes, active: store.isNotesFilterActive) { store.send(.toggleFilter(.notes)) }
-                    FilterView(title: L10n.Filter.bookmarked, active: store.isBookmarkedFilterActive) { store.send(.toggleFilter(.bookmarked)) }
-                    FilterView(title: L10n.Filter.swap, active: store.isSwapFilterActive) { store.send(.toggleFilter(.swap)) }
+                    FilterView(title: String(localizable: .filterNotes), active: store.isNotesFilterActive) { store.send(.toggleFilter(.notes)) }
+                    FilterView(title: String(localizable: .filterBookmarked), active: store.isBookmarkedFilterActive) { store.send(.toggleFilter(.bookmarked)) }
+                    FilterView(title: String(localizable: .filterSwap), active: store.isSwapFilterActive) { store.send(.toggleFilter(.swap)) }
                 }
             }
             .padding(.bottom, 32)
             
             HStack(spacing: 12) {
                 ZashiButton(
-                    L10n.Filter.reset,
+                    String(localizable: .filterReset),
                     type: .secondary
                 ) {
                     store.send(.resetFiltersTapped)
                 }
                 
-                ZashiButton(L10n.Filter.apply) {
+                ZashiButton(String(localizable: .filterApply)) {
                     store.send(.applyFiltersTapped)
                 }
             }

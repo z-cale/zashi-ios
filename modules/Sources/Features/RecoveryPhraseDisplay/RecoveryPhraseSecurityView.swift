@@ -41,13 +41,13 @@ public struct RecoveryPhraseSecurityView: View {
                         .zImage(size: 20, style: Design.Utility.WarningYellow._500)
                         .padding(.trailing, 12)
 
-                    Text(L10n.RecoveryPhraseDisplay.proceedWarning)
+                    Text(localizable: .recoveryPhraseDisplayProceedWarning)
                 }
                 .zFont(size: 12, style: Design.Utility.WarningYellow._700)
                 .padding(.bottom, 20)
                 .screenHorizontalPadding()
 
-                ZashiButton(L10n.General.next) {
+                ZashiButton(String(localizable: .generalNext)) {
                     store.send(.securityWarningNextTapped)
                 }
                 .padding(.bottom, 24)
@@ -59,12 +59,12 @@ public struct RecoveryPhraseSecurityView: View {
     
     private func learnMoreLayout() -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(L10n.RecoveryPhraseDisplay.warningTitle)
+            Text(localizable: .recoveryPhraseDisplayWarningTitle)
                 .zFont(.semiBold, size: 18, style: Design.Text.primary)
                 .padding(.top, 24)
                 .padding(.bottom, 8)
             
-            Text(L10n.RecoveryPhraseDisplay.warningInfo)
+            Text(localizable: .recoveryPhraseDisplayWarningInfo)
                 .zFont(size: 14, style: Design.Text.tertiary)
                 .padding(.bottom, 4)
 

@@ -13,7 +13,7 @@ import UIComponents
 extension HomeView {
     @ViewBuilder func accountSwitchContent() -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(L10n.Keystone.Drawer.title)
+            Text(localizable: .keystoneDrawerTitle)
                 .zFont(.semiBold, size: 20, style: Design.Text.primary)
                 .padding(.top, 32)
                 .padding(.bottom, 24)
@@ -23,7 +23,7 @@ extension HomeView {
                 walletAccountView(
                     icon: walletAccount.vendor.icon(),
                     title: walletAccount.vendor.name(),
-                    address: walletAccount.unifiedAddress ?? L10n.Receive.Error.cantExtractUnifiedAddress,
+                    address: walletAccount.unifiedAddress ?? String(localizable: .receiveErrorCantExtractUnifiedAddress),
                     selected: store.selectedWalletAccount == walletAccount
                 ) {
                     store.send(.walletAccountTapped(walletAccount))
@@ -38,7 +38,7 @@ extension HomeView {
                     }
 
                 ZashiButton(
-                    L10n.Keystone.connect,
+                    String(localizable: .keystoneConnect),
                     type: .secondary
                 ) {
                     store.send(.addKeystoneHWWalletTapped)
@@ -98,56 +98,15 @@ extension HomeView {
             }
         }
     }
-    
-    @ViewBuilder func addKeystoneBannerViewOldDesign() -> some View {
-        WithPerceptionTracking {
-            HStack(spacing: 0) {
-                HStack(alignment: .top, spacing: 0) {
-                    Asset.Assets.Partners.keystoneLogo.image
-                        .resizable()
-                        .frame(width: 32, height: 32)
-                        .padding(4)
-                        .background {
-                            Circle()
-                                .fill(Design.Surfaces.bgAlt.color(colorScheme))
-                        }
-                        .padding(.trailing, 12)
-                    
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text(L10n.Keystone.Drawer.Banner.title)
-                            .zFont(.semiBold, size: 14, style: Design.Text.primary)
-                        
-                        Text(L10n.Keystone.Drawer.Banner.desc)
-                            .zFont(size: 14, style: Design.Text.tertiary)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .lineSpacing(2)
-                            .padding(.top, 2)
-                    }
-                    .padding(.trailing, 12)
-                }
 
-                Spacer()
-                
-                Asset.Assets.chevronRight.image
-                    .zImage(size: 24, style: Design.Text.primary)
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .background {
-                RoundedRectangle(cornerRadius: Design.Radius._4xl)
-                    .stroke(Design.Surfaces.strokeSecondary.color(colorScheme))
-            }
-        }
-    }
-    
     @ViewBuilder func addKeystoneBannerView() -> some View {
         WithPerceptionTracking {
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(L10n.Keystone.Drawer.Banner.title)
+                    Text(localizable: .keystoneDrawerBannerTitle)
                         .zFont(.semiBold, size: 18, style: Design.Text.primary)
                     
-                    Text(L10n.Keystone.Drawer.Banner.desc)
+                    Text(localizable: .keystoneDrawerBannerDesc)
                         .zFont(size: 12, style: Design.Text.tertiary)
                         .fixedSize(horizontal: false, vertical: true)
                         .lineSpacing(2)

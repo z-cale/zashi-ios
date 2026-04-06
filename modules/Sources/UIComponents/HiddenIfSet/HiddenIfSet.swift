@@ -18,7 +18,7 @@ struct HiddenIfSetModifier: ViewModifier {
         WithPerceptionTracking {
             VStack(spacing: 0) {
                 if isSensitiveContentHidden {
-                    Text(L10n.General.hideBalancesMostStandalone)
+                    Text(localizable: .generalHideBalancesMostStandalone)
                 } else {
                     content
                 }

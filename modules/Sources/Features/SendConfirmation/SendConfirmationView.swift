@@ -33,7 +33,7 @@ public struct SendConfirmationView: View {
                 ScrollView {
                     // Total Amount
                     VStack(spacing: 0) {
-                        Text(L10n.Send.amountSummary)
+                        Text(localizable: .sendAmountSummary)
                             .zFont(size: 14, style: Design.Text.primary)
                             .padding(.bottom, 2)
                         
@@ -50,7 +50,7 @@ public struct SendConfirmationView: View {
                     // Sending to
                     HStack {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(L10n.Send.toSummary)
+                            Text(localizable: .sendToSummary)
                                 .zFont(.medium, size: 14, style: Design.Text.tertiary)
 
                             if let alias = store.alias {
@@ -71,7 +71,7 @@ public struct SendConfirmationView: View {
                     if store.walletAccounts.count > 1 {
                         HStack {
                             VStack(alignment: .leading, spacing: 6) {
-                                Text(L10n.Accounts.sendingFrom)
+                                Text(localizable: .accountsSendingFrom)
                                     .zFont(.medium, size: 14, style: Design.Text.tertiary)
                                 
                                 if let selectedWalletAccount = store.selectedWalletAccount {
@@ -100,7 +100,7 @@ public struct SendConfirmationView: View {
 
                     // Amount
                     HStack {
-                        Text(L10n.Send.amount)
+                        Text(localizable: .sendAmount)
                             .zFont(.medium, size: 14, style: Design.Text.tertiary)
                         
                         Spacer()
@@ -119,7 +119,7 @@ public struct SendConfirmationView: View {
                     
                     // Fee
                     HStack {
-                        Text(L10n.Send.feeSummary)
+                        Text(localizable: .sendFeeSummary)
                             .zFont(.medium, size: 14, style: Design.Text.tertiary)
                         
                         Spacer()
@@ -139,7 +139,7 @@ public struct SendConfirmationView: View {
                     // Memo
                     if !store.message.isEmpty {
                         VStack(alignment: .leading) {
-                            Text(L10n.Send.message)
+                            Text(localizable: .sendMessage)
                                 .zFont(.medium, size: 14, style: Design.Text.tertiary)
 
                             HStack {
@@ -165,7 +165,7 @@ public struct SendConfirmationView: View {
                 Spacer()
 
                 if store.selectedWalletAccount?.vendor == .keystone {
-                    ZashiButton(L10n.Keystone.confirm) {
+                    ZashiButton(String(localizable: .keystoneConfirm)) {
                         store.send(.confirmWithKeystoneTapped)
                     }
                     .screenHorizontalPadding()
@@ -173,7 +173,7 @@ public struct SendConfirmationView: View {
                 } else {
                     if store.isSending {
                         ZashiButton(
-                            L10n.Send.sending,
+                            String(localizable: .sendSending),
                             accessoryView:
                                 ProgressView()
                                 .progressViewStyle(
@@ -186,7 +186,7 @@ public struct SendConfirmationView: View {
                         .padding(.bottom, 24)
                         .disabled(store.isSending)
                     } else {
-                        ZashiButton(L10n.General.send) {
+                        ZashiButton(String(localizable: .generalSend)) {
                             store.send(.sendTapped)
                         }
                         .screenHorizontalPadding()
@@ -197,8 +197,8 @@ public struct SendConfirmationView: View {
             .onAppear { store.send(.onAppear) }
             .screenTitle(
                 store.selectedWalletAccount?.vendor == .keystone
-                ? L10n.Send.review
-                : L10n.Send.confirmationTitle
+                ? String(localizable: .sendReview)
+                : String(localizable: .sendConfirmationTitle)
             )
             .zashiBack(store.isSending) {
                 store.send(.cancelTapped)

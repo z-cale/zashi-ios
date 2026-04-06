@@ -611,50 +611,50 @@ public struct SendConfirmation {
 extension SendConfirmation.State {
     public var sendingInfo: String {
         isShielding
-        ? L10n.Send.shieldingInfo
+        ? String(localizable: .sendShieldingInfo)
         : type == .regular
-        ? L10n.Send.sendingInfo
-        : L10n.SwapAndPay.sendingInfo
+        ? String(localizable: .sendSendingInfo)
+        : String(localizable: .swapAndPaySendingInfo)
     }
     
     public var successInfo: String {
         isShielding
-        ? L10n.Send.successShieldingInfo
+        ? String(localizable: .sendSuccessShieldingInfo)
         : type == .regular
-        ? L10n.Send.successInfo
+        ? String(localizable: .sendSuccessInfo)
         : type == .swap
-        ? L10n.SwapAndPay.successSwapInfo
-        : L10n.SwapAndPay.successPayInfo
+        ? String(localizable: .swapAndPaySuccessSwapInfo)
+        : String(localizable: .swapAndPaySuccessPayInfo)
     }
     
     public var pendingInfo: String {
         isShielding
-        ? L10n.Send.pendingShieldingInfo
+        ? String(localizable: .sendPendingShieldingInfo)
         : type == .regular
-        ? L10n.Send.pendingInfo
+        ? String(localizable: .sendPendingInfo)
         : type == .swap
-        ? L10n.SwapAndPay.pendingSwapInfo
-        : L10n.SwapAndPay.pendingPayInfo
+        ? String(localizable: .swapAndPayPendingSwapInfo)
+        : String(localizable: .swapAndPayPendingPayInfo)
     }
     
     public var pendingTitle: String {
         isShielding
-        ? L10n.Send.pendingShieldingTitle
+        ? String(localizable: .sendPendingShieldingTitle)
         : type == .regular
-        ? L10n.Send.pendingTitle
+        ? String(localizable: .sendPendingTitle)
         : type == .swap
-        ? L10n.SwapAndPay.pendingSwapTitle
-        : L10n.SwapAndPay.pendingPayTitle
+        ? String(localizable: .swapAndPayPendingSwapTitle)
+        : String(localizable: .swapAndPayPendingPayTitle)
     }
     
     public var failureInfo: String {
         isShielding
-        ? L10n.Send.failureShieldingInfo
+        ? String(localizable: .sendFailureShieldingInfo)
         : type == .regular
-        ? L10n.Send.failureInfo
+        ? String(localizable: .sendFailureInfo)
         : type == .swap
-        ? L10n.SwapAndPay.failureSwapInfo
-        : L10n.SwapAndPay.failurePayInfo
+        ? String(localizable: .swapAndPayFailureSwapInfo)
+        : String(localizable: .swapAndPayFailurePayInfo)
     }
 }
 
@@ -663,9 +663,9 @@ extension SendConfirmation.State {
 extension AlertState where Action == SendConfirmation.Action {
     public static func sendFailure(_ error: ZcashError) -> AlertState {
         AlertState {
-            TextState(L10n.Send.Alert.Failure.title)
+            TextState(String(localizable: .sendAlertFailureTitle))
         } message: {
-            TextState(L10n.Send.Alert.Failure.message(error.detailedMessage))
+            TextState(String(localizable: .sendAlertFailureMessage(error.detailedMessage)))
         }
     }
 }

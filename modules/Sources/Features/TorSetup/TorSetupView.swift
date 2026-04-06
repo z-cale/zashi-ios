@@ -47,7 +47,7 @@ public struct TorSetupView: View {
     
     private func settingsLayout() -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            header(desc1: L10n.TorSetup.Settings.desc1, desc2: L10n.TorSetup.Settings.desc2)
+            header(desc1: String(localizable: .torSetupSettingsDesc1), desc2: String(localizable: .torSetupSettingsDesc2))
                 .padding(.horizontal, 16)
                 .padding(.bottom, 20)
 
@@ -96,7 +96,7 @@ public struct TorSetupView: View {
     
     private func learnMoreLayout() -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            header(desc1: L10n.TorSetup.Learn.desc, desc2: "")
+            header(desc1: String(localizable: .torSetupLearnDesc), desc2: "")
 
             ForEach(TorSetup.State.LearnMoreOptions.allCases, id: \.self) { option in
                 HStack(alignment: .top, spacing: 0) {
@@ -111,7 +111,7 @@ public struct TorSetupView: View {
     }
  
     private func settingsFooter() -> some View {
-        ZashiButton(L10n.CurrencyConversion.saveBtn) {
+        ZashiButton(String(localizable: .currencyConversionSaveBtn)) {
             store.send(.saveChangesTapped)
         }
         .disabled(store.isSaveButtonDisabled)
@@ -122,13 +122,13 @@ public struct TorSetupView: View {
     private func learnMoreFooter() -> some View {
         VStack {
             ZashiButton(
-                L10n.TorSetup.Learn.btnOut,
+                String(localizable: .torSetupLearnBtnOut),
                 type: .ghost
             ) {
                 store.send(.disableTapped)
             }
             
-            ZashiButton(L10n.TorSetup.Learn.btnIn) {
+            ZashiButton(String(localizable: .torSetupLearnBtnIn)) {
                 store.send(.enableTapped)
             }
             .padding(.bottom, 24)
@@ -154,8 +154,8 @@ extension TorSetupView {
     private func title() -> some View {
         Text(
             store.isSettingsView
-            ? L10n.Settings.private
-            : L10n.TorSetup.title
+            ? String(localizable: .settingsPrivate)
+            : String(localizable: .torSetupTitle)
         )
         .zFont(.semiBold, size: 24, style: Design.Text.primary)
     }
@@ -166,7 +166,7 @@ extension TorSetupView {
                 .zImage(size: 20, style: Design.Text.primary)
                 .padding(.trailing, 12)
 
-            Text(L10n.CurrencyConversion.note)
+            Text(localizable: .currencyConversionNote)
                 .zFont(size: 12, style: Design.Text.tertiary)
         }
         .screenHorizontalPadding()

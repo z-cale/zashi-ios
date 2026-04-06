@@ -32,17 +32,17 @@ public struct BalancesView: View {
     public var body: some View {
         WithPerceptionTracking {
             VStack(spacing: 0) {
-                Text(L10n.Balances.SpendableBalance.title)
+                Text(localizable: .balancesSpendableBalanceTitle)
                     .zFont(.semiBold, size: 24, style: Design.Text.primary)
                     .padding(.top, 40)
 
                 if store.spendability == .everything || store.isPendingInProcess {
                     Text(
                         store.spendability == .everything
-                        ? L10n.Balances.everythingDone
+                        ? String(localizable: .balancesEverythingDone)
                         : store.isPendingChange
-                        ? L10n.Balances.infoPending
-                        : L10n.Balances.infoSyncing
+                        ? String(localizable: .balancesInfoPending)
+                        : String(localizable: .balancesInfoSyncing)
                     )
                     .zFont(size: 16, style: Design.Text.tertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -51,7 +51,7 @@ public struct BalancesView: View {
                 }
 
                 if store.isShieldableBalanceAvailable {
-                    Text(L10n.Balances.infoShielding("\(L10n.General.feeShort(store.feeStr)) \(tokenName)"))
+                    Text(localizable: .balancesInfoShielding("\(String(localizable: .generalFeeShort(store.feeStr))) \(tokenName)"))
                     .zFont(size: 16, style: Design.Text.tertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
@@ -67,7 +67,7 @@ public struct BalancesView: View {
                         .padding(.vertical, 32)
                 }
                 
-                ZashiButton(L10n.Balances.dismiss) {
+                ZashiButton(String(localizable: .balancesDismiss)) {
                     store.send(.dismissTapped)
                 }
                 .padding(.bottom, Design.Spacing.sheetBottomSpace)
@@ -82,7 +82,7 @@ extension BalancesView {
     @ViewBuilder func balancesBlock() -> some View {
         VStack(spacing: 20) {
             HStack(spacing: 0) {
-                Text(L10n.Balances.spendableBalance)
+                Text(localizable: .balancesSpendableBalance)
                     .zFont(size: 14, style: Design.Text.tertiary)
                 
                 Spacer()
@@ -97,7 +97,7 @@ extension BalancesView {
             
             if store.isPendingInProcess {
                 HStack(spacing: 0) {
-                    Text(L10n.Balances.pending)
+                    Text(localizable: .balancesPending)
                         .zFont(size: 14, style: Design.Text.tertiary)
 
                     Spacer()
@@ -118,7 +118,7 @@ extension BalancesView {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 0) {
-                    Text(L10n.SmartBanner.Help.Shield.transparent)
+                    Text(localizable: .smartBannerHelpShieldTransparent)
                         .zFont(.medium, size: 16, style: Design.Text.primary)
                         .padding(.trailing, 4)
                     
@@ -134,7 +134,7 @@ extension BalancesView {
             Spacer()
             
             ZashiButton(
-                L10n.SmartBanner.Content.Shield.button,
+                String(localizable: .smartBannerContentShieldButton),
                 infinityWidth: false
             ) {
                 store.send(.shieldFundsTapped)

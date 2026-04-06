@@ -59,7 +59,7 @@ public struct WhatsNewView: View {
         VStack(spacing: 0) {
             ScrollView {
                 HStack(spacing: 0) {
-                    Text(L10n.WhatsNew.version(store.latest.version))
+                    Text(localizable: .whatsNewVersion(store.latest.version))
                         .zFont(.semiBold, size: 20, style: Design.Text.primary)
                     
                     Spacer()
@@ -97,7 +97,7 @@ public struct WhatsNewView: View {
             .padding(.vertical, 1)
             .zashiBack()
             .onAppear { store.send(.onAppear) }
-            .screenTitle(L10n.Settings.whatsNew.uppercased())
+            .screenTitle(String(localizable: .settingsWhatsNew).uppercased())
 
             Spacer()
             
@@ -112,7 +112,7 @@ public struct WhatsNewView: View {
                     store.send(.enableDebugMode)
                 }
 
-            Text(L10n.Settings.version(store.appVersion, store.appBuild))
+            Text(localizable: .settingsVersion(store.appVersion, store.appBuild))
                 .zFont(size: 16, style: Design.Text.tertiary)
                 .padding(.bottom, 24)
         }

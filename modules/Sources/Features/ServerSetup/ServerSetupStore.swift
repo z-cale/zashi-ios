@@ -105,7 +105,7 @@ public struct ServerSetup {
                 let serverConfig = zcashSDKEnvironment.serverConfig()
                 
                 if serverConfig.isCustom {
-                    state.initialServer = L10n.ServerSetup.custom
+                    state.initialServer = String(localizable: .serverSetupCustom)
                     state.customServer = serverConfig.serverString()
                 } else {
                     state.initialServer = serverConfig.serverString()
@@ -163,7 +163,7 @@ public struct ServerSetup {
                 return .send(.evaluateServers)
 
             case .setServerTapped:
-                guard state.initialServer != state.selectedServer || state.selectedServer == L10n.ServerSetup.custom else {
+                guard state.initialServer != state.selectedServer || state.selectedServer == String(localizable: .serverSetupCustom) else {
                     return .none
                 }
                 
@@ -171,7 +171,7 @@ public struct ServerSetup {
                 
                 // custom server needs to be stored first
                 var input = state.selectedServer ?? state.activeServer
-                if input == L10n.ServerSetup.custom {
+                if input == String(localizable: .serverSetupCustom) {
                     input = state.customServer
                 }
                 
@@ -209,7 +209,7 @@ public struct ServerSetup {
                 var isCustom = false
                 state.selectedServer = nil
 
-                if input == L10n.ServerSetup.custom {
+                if input == String(localizable: .serverSetupCustom) {
                     input = state.customServer
                     isCustom = true
                 }
@@ -238,13 +238,13 @@ public struct ServerSetup {
 extension AlertState where Action == ServerSetup.Action {
     public static func endpoindSwitchFailed(_ error: ZcashError) -> AlertState {
         AlertState {
-            TextState(L10n.ServerSetup.Alert.Failed.title)
+            TextState(String(localizable: .serverSetupAlertFailedTitle))
         } actions: {
             ButtonState(action: .alert(.dismiss)) {
-                TextState(L10n.General.ok)
+                TextState(String(localizable: .generalOk))
             }
         } message: {
-            TextState(L10n.ServerSetup.Alert.Failed.message(error.detailedMessage))
+            TextState(String(localizable: .serverSetupAlertFailedMessage(error.detailedMessage)))
         }
     }
 }

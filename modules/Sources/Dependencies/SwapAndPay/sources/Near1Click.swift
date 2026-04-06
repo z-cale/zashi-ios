@@ -164,7 +164,7 @@ struct Near1Click {
                     }
                 }
             } else if errorMsg.contains("Failed to get quote") {
-                errorMsgConverted = exactInput ? L10n.Swap.quoteUnavailableSwap : L10n.Swap.quoteUnavailable
+                errorMsgConverted = exactInput ? String(localizable: .swapQuoteUnavailableSwap) : String(localizable: .swapQuoteUnavailable)
             }
             
             throw SwapAndPayClient.EndpointError.message(errorMsgConverted)
@@ -217,7 +217,7 @@ extension Near1Click {
                 }
 
                 return SwapAsset(
-                    provider: L10n.Swap.nearProvider,
+                    provider: String(localizable: .swapNearProvider),
                     chain: chain,
                     token: symbol,
                     assetId: assetId,

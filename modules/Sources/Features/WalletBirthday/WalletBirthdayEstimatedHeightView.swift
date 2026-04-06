@@ -20,12 +20,12 @@ public struct WalletBirthdayEstimatedHeightView: View {
     public var body: some View {
         WithPerceptionTracking {
             VStack(alignment: .leading, spacing: 0) {
-                Text(L10n.RestoreWallet.Birthday.Estimated.title)
+                Text(localizable: .restoreWalletBirthdayEstimatedTitle)
                     .zFont(.semiBold, size: 24, style: Design.Text.primary)
                     .padding(.top, 40)
                     .padding(.bottom, 8)
 
-                Text(L10n.RestoreWallet.Birthday.Estimated.info)
+                Text(localizable: .restoreWalletBirthdayEstimatedInfo)
                     .zFont(size: 14, style: Design.Text.primary)
                     .padding(.bottom, 56)
 
@@ -35,7 +35,7 @@ public struct WalletBirthdayEstimatedHeightView: View {
                         .padding(.bottom, 12)
 
                     ZashiButton(
-                        L10n.Receive.copy,
+                        String(localizable: .receiveCopy),
                         type: .tertiary,
                         infinityWidth: false,
                         prefixView:
@@ -49,7 +49,7 @@ public struct WalletBirthdayEstimatedHeightView: View {
 
                 Spacer()
                 
-                ZashiButton(L10n.ImportWallet.Button.restoreWallet) {
+                ZashiButton(String(localizable: .importWalletButtonRestoreWallet)) {
                     store.send(.restoreTapped)
                 }
                 .padding(.bottom, 24)
@@ -69,7 +69,7 @@ public struct WalletBirthdayEstimatedHeightView: View {
         )
         .screenHorizontalPadding()
         .applyScreenBackground()
-        .screenTitle(L10n.ImportWallet.Button.restoreWallet)
+        .screenTitle(String(localizable: .importWalletButtonRestoreWallet))
     }
 }
 

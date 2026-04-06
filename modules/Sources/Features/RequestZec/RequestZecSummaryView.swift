@@ -64,7 +64,7 @@ public struct RequestZecSummaryView: View {
                     Spacer()
                     
                     ZashiButton(
-                        L10n.General.close,
+                        String(localizable: .generalClose),
                         type: .ghost
                     ) {
                         store.send(.cancelRequestTapped)
@@ -72,7 +72,7 @@ public struct RequestZecSummaryView: View {
                     .padding(.bottom, 8)
                     
                     ZashiButton(
-                        L10n.RequestZec.Summary.shareQR,
+                        String(localizable: .requestZecSummaryShareQR),
                         prefixView:
                             Asset.Assets.Icons.share.image
                             .zImage(size: 20, style: Design.Btns.Primary.fg)
@@ -89,7 +89,7 @@ public struct RequestZecSummaryView: View {
                 .onAppear { store.send(.onAppear) }
                 .onDisappear { store.send(.onDisappear) }
             }
-            .screenTitle(L10n.General.request)
+            .screenTitle(String(localizable: .generalRequest))
             .screenHorizontalPadding()
             .applyScreenBackground()
             .zashiBack()
@@ -113,7 +113,7 @@ extension RequestZecSummaryView {
     @ViewBuilder public func qrCode(_ qrText: String = "") -> some View {
         Group {
             if let storedImg = store.storedQR {
-                Image(storedImg, scale: 1, label: Text(L10n.qrCodeFor(qrText)))
+                Image(storedImg, scale: 1, label: Text(localizable: .qrCodeFor(qrText)))
                     .resizable()
             } else {
                 ProgressView()
@@ -124,7 +124,7 @@ extension RequestZecSummaryView {
     @ViewBuilder public func qrEnlargedCode(_ qrText: String = "") -> some View {
         Group {
             if let storedImg = store.storedEnlargedQR {
-                Image(storedImg, scale: 1, label: Text(L10n.qrCodeFor(qrText)))
+                Image(storedImg, scale: 1, label: Text(localizable: .qrCodeFor(qrText)))
                     .resizable()
             } else {
                 ProgressView()
@@ -143,9 +143,9 @@ extension RequestZecSummaryView {
             UIShareDialogView(activityItems: [
                 ShareableImage(
                     image: UIImage(cgImage: cgImg),
-                    title: L10n.RequestZec.Summary.shareTitle,
-                    reason: L10n.RequestZec.Summary.shareDesc
-                ), "\(L10n.RequestZec.Summary.shareDesc) \(L10n.RequestZec.Summary.shareMsg)"
+                    title: String(localizable: .requestZecSummaryShareTitle),
+                    reason: String(localizable: .requestZecSummaryShareDesc)
+                ), "\(String(localizable: .requestZecSummaryShareDesc)) \(String(localizable: .requestZecSummaryShareMsg))"
             ]) {
                 store.send(.shareFinished)
             }

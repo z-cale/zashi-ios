@@ -28,7 +28,7 @@ final class TransactionStateTests: XCTestCase {
             isIdExpanded: false
         )
         
-        XCTAssertEqual(transaction.title, L10n.Transaction.sent)
+        XCTAssertEqual(transaction.title, String(localizable: .transactionSent))
     }
 
     func testTitleSentColor() throws {
@@ -64,7 +64,7 @@ final class TransactionStateTests: XCTestCase {
             isIdExpanded: false
         )
         
-        XCTAssertEqual(transaction.title, L10n.Transaction.received)
+        XCTAssertEqual(transaction.title, String(localizable: .transactionReceived))
     }
     
     func testTitleReceivedColor() throws {
@@ -100,7 +100,7 @@ final class TransactionStateTests: XCTestCase {
             isIdExpanded: false
         )
         
-        XCTAssertEqual(transaction.title, L10n.Transaction.sending)
+        XCTAssertEqual(transaction.title, String(localizable: .transactionSending))
     }
     
     func testTitleSendingColor() throws {
@@ -136,7 +136,7 @@ final class TransactionStateTests: XCTestCase {
             isIdExpanded: false
         )
         
-        XCTAssertEqual(transaction.title, L10n.Transaction.receiving)
+        XCTAssertEqual(transaction.title, String(localizable: .transactionReceiving))
     }
     
     func testTitleReceivingColor() throws {
@@ -173,7 +173,7 @@ final class TransactionStateTests: XCTestCase {
             isIdExpanded: false
         )
         
-        XCTAssertEqual(transaction.title, L10n.Transaction.failedSend)
+        XCTAssertEqual(transaction.title, String(localizable: .transactionFailedSend))
     }
     
     func testTitleFailedSendColor() throws {
@@ -211,7 +211,7 @@ final class TransactionStateTests: XCTestCase {
             isIdExpanded: false
         )
         
-        XCTAssertEqual(transaction.title, L10n.Transaction.failedReceive)
+        XCTAssertEqual(transaction.title, String(localizable: .transactionFailedReceive))
     }
     
     func testTitleFailedReceivedColor() throws {

@@ -93,6 +93,7 @@ public struct SDKSynchronizerClient {
 
     public var getTreeState: @Sendable (_ height: UInt64) async throws -> Data
 
+
     public var debugDatabaseSql: (String) -> String = { _ in "" }
     
     public var getSingleUseTransparentAddress: (AccountUUID) async throws -> SingleUseTransparentAddress = { _ in
@@ -102,5 +103,11 @@ public struct SDKSynchronizerClient {
     public var updateTransparentAddressTransactions: (String) async throws -> TransparentAddressCheckResult = { _ in .notFound }
     public var fetchUTXOsByAddress: (String, AccountUUID) async throws -> TransparentAddressCheckResult = { _, _ in .notFound }
     public var enhanceTransactionBy: (String) async throws -> Void
+
+    public var checkWalletSpendability: @Sendable (String, SpendabilityProgressHandler?) async throws -> SpendabilityResult
+    public var getPIRPendingSpends: @Sendable () async throws -> PIRPendingSpends
+
+    public var fetchNoteWitnesses: @Sendable (String, SpendabilityProgressHandler?) async throws -> WitnessResult
+    public var getPIRWitnessedNotes: @Sendable () async throws -> [PIRWitnessedNote]
 }
 

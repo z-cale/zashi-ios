@@ -40,17 +40,17 @@ extension SmartBannerView {
                 .padding(.top, 32)
                 .padding(.bottom, 12)
 
-            Text(L10n.SmartBanner.Help.Diconnected.title)
+            Text(localizable: .smartBannerHelpDiconnectedTitle)
                 .zFont(.semiBold, size: 20, style: Design.Text.primary)
                 .padding(.bottom, 4)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(L10n.SmartBanner.Help.Diconnected.info)
+            Text(localizable: .smartBannerHelpDiconnectedInfo)
                 .zFont(size: 16, style: Design.Text.tertiary)
                 .padding(.bottom, 32)
                 .fixedSize(horizontal: false, vertical: true)
             
-            ZashiButton(L10n.General.ok.uppercased()) {
+            ZashiButton(String(localizable: .generalOk).uppercased()) {
                 store.send(.closeSheetTapped)
             }
             .padding(.bottom, Design.Spacing.sheetBottomSpace)
@@ -59,7 +59,7 @@ extension SmartBannerView {
 
     @ViewBuilder func syncingErrorHelpContent() -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(L10n.SmartBanner.Help.SyncError.title)
+            Text(localizable: .smartBannerHelpSyncErrorTitle)
                 .zFont(.semiBold, size: 20, style: Design.Text.primary)
                 .padding(.top, 32)
                 .padding(.bottom, 12)
@@ -70,14 +70,14 @@ extension SmartBannerView {
                 .fixedSize(horizontal: false, vertical: true)
 
             ZashiButton(
-                L10n.Send.report,
+                String(localizable: .sendReport),
                 type: .ghost
             ) {
                 store.send(.reportTapped)
             }
             .padding(.bottom, 12)
 
-            ZashiButton(L10n.General.ok.uppercased()) {
+            ZashiButton(String(localizable: .generalOk).uppercased()) {
                 store.send(.closeSheetTapped)
             }
             .padding(.bottom, Design.Spacing.sheetBottomSpace)
@@ -86,27 +86,27 @@ extension SmartBannerView {
     
     @ViewBuilder func restoringHelpContent() -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(L10n.SmartBanner.Help.Restore.title)
+            Text(localizable: .smartBannerHelpRestoreTitle)
                 .zFont(.semiBold, size: 20, style: Design.Text.primary)
                 .padding(.top, 32)
                 .padding(.bottom, 12)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(L10n.SmartBanner.Help.Restore.info)
+            Text(localizable: .smartBannerHelpRestoreInfo)
                 .zFont(size: 16, style: Design.Text.tertiary)
                 .padding(.bottom, 12)
                 .fixedSize(horizontal: false, vertical: true)
             
-            bulletpoint(L10n.SmartBanner.Help.Restore.point1)
-            bulletpoint(L10n.SmartBanner.Help.Restore.point2)
+            bulletpoint(String(localizable: .smartBannerHelpRestorePoint1))
+            bulletpoint(String(localizable: .smartBannerHelpRestorePoint2))
                 .padding(.bottom, 32)
 
             if !store.areFundsSpendable {
-                note(L10n.SmartBanner.Help.Restore.warning)
+                note(String(localizable: .smartBannerHelpRestoreWarning))
                     .padding(.bottom, 24)
             }
 
-            ZashiButton(L10n.General.ok.uppercased()) {
+            ZashiButton(String(localizable: .generalOk).uppercased()) {
                 store.send(.closeSheetTapped)
             }
             .padding(.bottom, Design.Spacing.sheetBottomSpace)
@@ -115,18 +115,18 @@ extension SmartBannerView {
 
     @ViewBuilder func syncingHelpContent() -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(L10n.SmartBanner.Help.Sync.title)
+            Text(localizable: .smartBannerHelpSyncTitle)
                 .zFont(.semiBold, size: 20, style: Design.Text.primary)
                 .padding(.top, 32)
                 .padding(.bottom, 12)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(L10n.SmartBanner.Help.Sync.info)
+            Text(localizable: .smartBannerHelpSyncInfo)
                 .zFont(size: 16, style: Design.Text.tertiary)
                 .padding(.bottom, 32)
                 .fixedSize(horizontal: false, vertical: true)
             
-            ZashiButton(L10n.General.ok.uppercased()) {
+            ZashiButton(String(localizable: .generalOk).uppercased()) {
                 store.send(.closeSheetTapped)
             }
             .padding(.bottom, Design.Spacing.sheetBottomSpace)
@@ -146,17 +146,17 @@ extension SmartBannerView {
                 .padding(.top, 32)
                 .padding(.bottom, 12)
 
-            Text(L10n.SmartBanner.Help.UpdatingBalance.title)
+            Text(localizable: .smartBannerHelpUpdatingBalanceTitle)
                 .zFont(.semiBold, size: 20, style: Design.Text.primary)
                 .padding(.bottom, 4)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(L10n.SmartBanner.Help.UpdatingBalance.info)
+            Text(localizable: .smartBannerHelpUpdatingBalanceInfo)
                 .zFont(size: 16, style: Design.Text.tertiary)
                 .padding(.bottom, 32)
                 .fixedSize(horizontal: false, vertical: true)
             
-            ZashiButton(L10n.General.ok.uppercased()) {
+            ZashiButton(String(localizable: .generalOk).uppercased()) {
                 store.send(.closeSheetTapped)
             }
             .padding(.bottom, Design.Spacing.sheetBottomSpace)
@@ -176,31 +176,31 @@ extension SmartBannerView {
                 .padding(.top, 32)
                 .padding(.bottom, 12)
 
-            Text(L10n.SmartBanner.Help.Backup.title)
+            Text(localizable: .smartBannerHelpBackupTitle)
                 .zFont(.semiBold, size: 20, style: Design.Text.primary)
                 .padding(.bottom, 4)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(L10n.SmartBanner.Help.Backup.info1)
+            Text(localizable: .smartBannerHelpBackupInfo1)
                 .zFont(size: 16, style: Design.Text.tertiary)
                 .padding(.bottom, 12)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(L10n.SmartBanner.Help.Backup.info2)
+            Text(localizable: .smartBannerHelpBackupInfo2)
                 .zFont(size: 16, style: Design.Text.tertiary)
                 .padding(.bottom, 12)
                 .fixedSize(horizontal: false, vertical: true)
 
-            bulletpoint(L10n.SmartBanner.Help.Backup.point1)
-            bulletpoint(L10n.SmartBanner.Help.Backup.point2)
+            bulletpoint(String(localizable: .smartBannerHelpBackupPoint1))
+            bulletpoint(String(localizable: .smartBannerHelpBackupPoint2))
                 .padding(.bottom, 12)
 
-            Text(L10n.SmartBanner.Help.Backup.info3)
+            Text(localizable: .smartBannerHelpBackupInfo3)
                 .zFont(size: 16, style: Design.Text.tertiary)
                 .padding(.bottom, 24)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(L10n.SmartBanner.Help.Backup.info4)
+            Text(localizable: .smartBannerHelpBackupInfo4)
                 .zFont(size: 16, style: Design.Text.tertiary)
                 .padding(.bottom, 32)
                 .fixedSize(horizontal: false, vertical: true)
@@ -208,7 +208,7 @@ extension SmartBannerView {
             if !store.isWalletBackupAcknowledgedAtKeychain {
                 ZashiToggle(
                     isOn: $store.isWalletBackupAcknowledged,
-                    label: L10n.SmartBanner.Help.Backup.acknowledge
+                    label: String(localizable: .smartBannerHelpBackupAcknowledge)
                 )
                 .padding(.bottom, 24)
                 .fixedSize(horizontal: false, vertical: true)
@@ -223,7 +223,7 @@ extension SmartBannerView {
             .padding(.bottom, 12)
             .disabled(!store.isWalletBackupAcknowledged)
 
-            ZashiButton(L10n.SmartBanner.Content.Backup.button) {
+            ZashiButton(String(localizable: .smartBannerContentBackupButton)) {
                 store.send(.walletBackupTapped)
             }
             .padding(.bottom, Design.Spacing.sheetBottomSpace)
@@ -243,24 +243,24 @@ extension SmartBannerView {
                 .padding(.top, 32)
                 .padding(.bottom, 12)
 
-            Text(L10n.SmartBanner.Help.Shield.title)
+            Text(localizable: .smartBannerHelpShieldTitle)
                 .zFont(.semiBold, size: 20, style: Design.Text.primary)
                 .padding(.bottom, 4)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(L10n.SmartBanner.Help.Shield.info1)
+            Text(localizable: .smartBannerHelpShieldInfo1)
                 .zFont(size: 16, style: Design.Text.tertiary)
                 .padding(.bottom, 12)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(L10n.SmartBanner.Help.Shield.info2("\(L10n.General.feeShort(store.feeStr)) \(tokenName)"))
+            Text(localizable: .smartBannerHelpShieldInfo2("\(String(localizable: .generalFeeShort(store.feeStr))) \(tokenName)"))
                 .zFont(size: 16, style: Design.Text.tertiary)
                 .padding(.bottom, 32)
                 .fixedSize(horizontal: false, vertical: true)
 
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 0) {
-                    Text(L10n.SmartBanner.Help.Shield.transparent)
+                    Text(localizable: .smartBannerHelpShieldTransparent)
                         .zFont(.medium, size: 16, style: Design.Text.primary)
                         .padding(.trailing, 4)
                     
@@ -290,20 +290,20 @@ extension SmartBannerView {
             
             ZashiToggle(
                 isOn: $store.isShieldingAcknowledged,
-                label: L10n.SmartBanner.Help.Shield.doNotShowAgain
+                label: String(localizable: .smartBannerHelpShieldDoNotShowAgain)
             )
             .padding(.bottom, 24)
             .fixedSize(horizontal: false, vertical: true)
 
             ZashiButton(
-                L10n.SmartBanner.Help.Shield.notNow,
+                String(localizable: .smartBannerHelpShieldNotNow),
                 type: .ghost
             ) {
                 store.send(.closeSheetTapped)
             }
             .padding(.bottom, 12)
 
-            ZashiButton(L10n.SmartBanner.Content.Shield.button) {
+            ZashiButton(String(localizable: .smartBannerContentShieldButton)) {
                 store.send(.shieldFundsTapped)
             }
             .disabled(store.isShielding)

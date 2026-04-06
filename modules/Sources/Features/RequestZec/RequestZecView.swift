@@ -41,7 +41,7 @@ public struct RequestZecView: View {
                         PrivacyBadge(store.maxPrivacy ? .max : .low)
                             .padding(.top, 26)
                         
-                        Text(L10n.RequestZec.title)
+                        Text(localizable: .requestZecTitle)
                             .zFont(.medium, size: 18, style: Design.Text.tertiary)
                             .padding(.top, 12)
                         
@@ -59,7 +59,7 @@ public struct RequestZecView: View {
                             MessageEditorView(
                                 store: store.memoStore(),
                                 title: "",
-                                placeholder: L10n.RequestZec.whatFor
+                                placeholder: String(localizable: .requestZecWhatFor)
                             )
                             .frame(minHeight: 155)
                             .frame(maxHeight: 300)
@@ -72,14 +72,14 @@ public struct RequestZecView: View {
                     }
                     .padding(.vertical, 1)
                     
-                    ZashiButton(L10n.General.request) {
+                    ZashiButton(String(localizable: .generalRequest)) {
                         store.send(.requestTapped)
                     }
                     .disabled(!store.memoState.isValid)
                     .padding(.bottom, keyboardVisible ? 48 : 24)
                     .padding(.top, 8)
                 }
-                .screenTitle(L10n.General.request)
+                .screenTitle(String(localizable: .generalRequest))
                 .zashiBack()
                 .screenHorizontalPadding()
                 .applyScreenBackground()
@@ -99,7 +99,7 @@ public struct RequestZecView: View {
                         Button {
                             isMemoFocused = false
                         } label: {
-                            Text(L10n.General.done.uppercased())
+                            Text(String(localizable: .generalDone).uppercased())
                                 .zFont(.regular, size: 14, style: Design.Text.primary)
                         }
                         .padding(.bottom, 4)

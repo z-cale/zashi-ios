@@ -21,22 +21,22 @@ public struct AboutView: View {
         WithPerceptionTracking {
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(L10n.About.title)
+                    Text(localizable: .aboutTitle)
                         .zFont(.semiBold, size: 24, style: Design.Text.primary)
                         .padding(.top, 40)
                     
-                    Text(L10n.About.info)
+                    Text(localizable: .aboutInfo)
                         .zFont(size: 14, style: Design.Text.primary)
                         .padding(.top, 12)
                     
-                    Text(L10n.About.additionalInfo)
+                    Text(localizable: .aboutAdditionalInfo)
                         .zFont(size: 14, style: Design.Text.primary)
                         .padding(.top, 8)
                 }
 
                 ActionRow(
                     icon: Asset.Assets.infoCircle.image,
-                    title: L10n.About.privacyPolicy,
+                    title: String(localizable: .aboutPrivacyPolicy),
                     divider: true,
                     horizontalPadding: 4
                 ) {
@@ -46,7 +46,7 @@ public struct AboutView: View {
 
                 ActionRow(
                     icon: Asset.Assets.Icons.terms.image,
-                    title: L10n.About.termsOfUse,
+                    title: String(localizable: .aboutTermsOfUse),
                     divider: false,
                     horizontalPadding: 4
                 ) {
@@ -63,7 +63,7 @@ public struct AboutView: View {
                     .zImage(width: 73, height: 20, color: Asset.Colors.primary.color)
                     .padding(.bottom, 16)
                 
-                Text(L10n.Settings.version(store.appVersion, store.appBuild))
+                Text(localizable: .settingsVersion(store.appVersion, store.appBuild))
                     .zFont(size: 16, style: Design.Text.tertiary)
                     .padding(.bottom, 24)
             }
@@ -79,7 +79,7 @@ public struct AboutView: View {
                 }
             }
             .zashiBack()
-            .screenTitle(L10n.Settings.about)
+            .screenTitle(String(localizable: .settingsAbout))
         }
         .screenHorizontalPadding()
         .applyScreenBackground()

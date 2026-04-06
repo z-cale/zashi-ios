@@ -24,15 +24,15 @@ public struct CurrencyConversionSetup {
             
             public func title() -> String {
                 switch self {
-                case .optIn: return L10n.CurrencyConversion.enable
-                case .optOut: return L10n.CurrencyConversion.learnMoreOptionDisable
+                case .optIn: return String(localizable: .currencyConversionEnable)
+                case .optOut: return String(localizable: .currencyConversionLearnMoreOptionDisable)
                 }
             }
 
             public func subtitle() -> String {
                 switch self {
-                case .optIn: return L10n.CurrencyConversion.learnMoreOptionEnableDesc
-                case .optOut: return L10n.CurrencyConversion.learnMoreOptionDisableDesc
+                case .optIn: return String(localizable: .currencyConversionLearnMoreOptionEnableDesc)
+                case .optOut: return String(localizable: .currencyConversionLearnMoreOptionDisableDesc)
                 }
             }
             
@@ -50,15 +50,15 @@ public struct CurrencyConversionSetup {
             
             public func title() -> String {
                 switch self {
-                case .ipAddress: return L10n.CurrencyConversion.ipTitle
-                case .refresh: return L10n.CurrencyConversion.refresh
+                case .ipAddress: return String(localizable: .currencyConversionIpTitle)
+                case .refresh: return String(localizable: .currencyConversionRefresh)
                 }
             }
 
             public func subtitle() -> String {
                 switch self {
-                case .ipAddress: return L10n.CurrencyConversion.ipDesc
-                case .refresh: return L10n.CurrencyConversion.refreshDesc
+                case .ipAddress: return String(localizable: .currencyConversionIpDesc)
+                case .refresh: return String(localizable: .currencyConversionRefreshDesc)
                 }
             }
 

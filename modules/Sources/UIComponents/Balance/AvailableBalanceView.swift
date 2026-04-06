@@ -31,7 +31,7 @@ public struct AvailableBalanceView: View {
                 .zImage(size: 16, style: Design.Text.tertiary)
                 .padding(.trailing, 4)
             
-            Text(L10n.Balance.availableTitle)
+            Text(localizable: .balanceAvailableTitle)
                 .zFont(.semiBold, size: 14, style: Design.Btns.Tertiary.fg)
                 .padding(.trailing, 6)
 

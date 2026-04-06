@@ -103,7 +103,7 @@ public struct SwapAndPay {
 
         public var crosspaySlippageWarning: String {
             !isSwapExperienceEnabled && !isSwapToZecExperienceEnabled
-            ? " \(L10n.SwapAndPay.slippageWarn)"
+            ? " \(String(localizable: .swapAndPaySlippageWarn))"
             : ""
         }
         
@@ -1038,7 +1038,7 @@ public struct SwapAndPay {
                     return .none
                 }
                 pasteboard.setString("\(quote.amountIn)".redacted)
-                state.$toast.withLock { $0 = .top(L10n.General.copiedAmount) }
+                state.$toast.withLock { $0 = .top(String(localizable: .generalCopiedAmount)) }
                 return .none
 
             case .qrCodeTapped:
@@ -1064,7 +1064,7 @@ public struct SwapAndPay {
                     return .none
                 }
                 pasteboard.setString(depositAddress.redacted)
-                state.$toast.withLock { $0 = .topDelayed(L10n.General.copiedAddress(depositAddress.truncateMiddle10)) }
+                state.$toast.withLock { $0 = .topDelayed(String(localizable: .generalCopiedAddress(depositAddress.truncateMiddle10))) }
                 return .none
 
             case .generateQRCode:
@@ -1863,16 +1863,16 @@ extension SwapAndPay.State {
 extension AlertState where Action == SwapAndPay.Action {
     public static func confirmCancel() -> AlertState {
         AlertState {
-            TextState(L10n.DepositFunds.Alert.title)
+            TextState(String(localizable: .depositFundsAlertTitle))
         } actions: {
             ButtonState(role: .destructive, action: .cancelSwapRequired) {
-                TextState(L10n.DepositFunds.Alert.cancel)
+                TextState(String(localizable: .depositFundsAlertCancel))
             }
             ButtonState(role: .cancel, action: .sentTheFundsButtonTapped) {
-                TextState(L10n.SwapToZec.sentTheFunds)
+                TextState(String(localizable: .swapToZecSentTheFunds))
             }
         } message: {
-            TextState(L10n.DepositFunds.Alert.message)
+            TextState(String(localizable: .depositFundsAlertMessage))
         }
     }
 }

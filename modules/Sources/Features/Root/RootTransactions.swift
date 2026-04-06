@@ -37,7 +37,7 @@ extension Root {
                             .throttle(for: .seconds(0.2), scheduler: mainQueue, latest: true)
                             .map {
                                 if $0.syncStatus == .upToDate {
-                                    return Root.Action.fetchTransactionsForTheSelectedAccount
+                                    return Root.Action.syncReachedUpToDate
                                 }
                                 return Root.Action.noChangeInTransactions
                             }
@@ -49,8 +49,17 @@ extension Root {
             case .noChangeInTransactions:
                 return .none
                 
-            case .foundTransactions:
-                return .send(.fetchTransactionsForTheSelectedAccount)
+            case .foundTransactions, .syncReachedUpToDate:
+                var effects: [Effect<Root.Action>] = [
+                    .send(.fetchTransactionsForTheSelectedAccount)
+                ]
+                if state.walletConfig.isEnabled(.pirSpendability) {
+                    effects.append(.send(.initialization(.checkSpendabilityPIR)))
+                }
+                if state.walletConfig.isEnabled(.pirWitness) {
+                    effects.append(.send(.initialization(.checkWitnessPIR)))
+                }
+                return .merge(effects)
                 
             case .minedTransaction:
                 return .send(.fetchTransactionsForTheSelectedAccount)
@@ -59,13 +68,22 @@ extension Root {
                 guard let accountUUID = state.selectedWalletAccount?.id else {
                     return .none
                 }
+                let pirEnabled = state.walletConfig.isEnabled(.pirSpendability)
                 return .run { send in
-                    if let transactions = try? await sdkSynchronizer.getAllTransactions(accountUUID) {
-                        await send(.fetchedTransactions(transactions))
+                    async let txTask = sdkSynchronizer.getAllTransactions(accountUUID)
+                    let pirPending: PIRPendingSpends?
+                    if pirEnabled {
+                        pirPending = try? await sdkSynchronizer.getPIRPendingSpends()
+                    } else {
+                        pirPending = nil
+                    }
+
+                    if let transactions = try? await txTask {
+                        await send(.fetchedTransactions(transactions, pirPending))
                     }
                 }
                 
-            case .fetchedTransactions(var transactions):
+            case .fetchedTransactions(var transactions, let pirPendingSpends):
                 let mempoolHeight = sdkSynchronizer.latestState().latestBlockHeight + 1
 
                 // Resolve Swaps
@@ -97,6 +115,16 @@ extension Root {
                             timestamp: TimeInterval(swap.lastUpdated / 1000),
                             zecAmount: swap.amountOutFormatted.localeString ?? swap.amountOutFormatted,
                             swapStatus: swap.swapStatus
+                        )
+                    )
+                }
+
+                // PIR placeholder -- DB-backed, auto-reconciles with scanning
+                if state.walletConfig.isEnabled(.pirSpendability),
+                   let pirPending = pirPendingSpends, !pirPending.notes.isEmpty {
+                    mixedTransactions.append(
+                        TransactionState(
+                            pirDetectedSpentValue: Int64(pirPending.totalValue)
                         )
                     )
                 }

@@ -43,7 +43,7 @@ public struct SendingView: View {
                 .looping()
                 .frame(width: 170, height: 170)
 
-                Text(store.isShielding ? L10n.Send.shielding : L10n.Send.sending)
+                Text(store.isShielding ? String(localizable: .sendShielding) : String(localizable: .sendSending))
                     .zFont(.semiBold, size: 28, style: Design.Text.primary)
                     .padding(.top, 16)
 

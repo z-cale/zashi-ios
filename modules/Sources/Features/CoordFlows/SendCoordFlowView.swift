@@ -42,7 +42,7 @@ public struct SendCoordFlowView: View {
                         ),
                     tokenName: tokenName
                 )
-                .screenTitle(L10n.General.send)
+                .screenTitle(String(localizable: .generalSend))
                 .navigationBarItems(
                     trailing:
                         HStack(spacing: 0) {

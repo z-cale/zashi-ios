@@ -19,11 +19,10 @@ import WalletStorage
 
 @Reducer
 public struct WalletBalances {
-    private let CancelStateId = UUID()
-    private let CancelRateId = UUID()
-
     @ObservableState
     public struct State: Equatable {
+        public var CancelStateId = UUID()
+        public var CancelRateId = UUID()
         public var autoShieldingThreshold: Zatoshi = .zero
         @Shared(.inMemory(.exchangeRate)) public var currencyConversion: CurrencyConversion? = nil
         public var fiatCurrencyResult: FiatCurrencyResult?
@@ -120,20 +119,20 @@ public struct WalletBalances {
                             .map { $0.redacted }
                             .map(Action.synchronizerStateChanged)
                     }
-                    .cancellable(id: CancelStateId, cancelInFlight: true),
+                    .cancellable(id: state.CancelStateId, cancelInFlight: true),
                     .publisher {
                         exchangeRate.exchangeRateEventStream()
                             .map(Action.exchangeRateEvent)
                             .receive(on: mainQueue)
                     }
-                    .cancellable(id: CancelRateId, cancelInFlight: true)
+                    .cancellable(id: state.CancelRateId, cancelInFlight: true)
                 )
 
             case .onDisappear:
                 // __LD2 TESTED
                 return .merge(
-                    .cancel(id: CancelStateId),
-                    .cancel(id: CancelRateId)
+                    .cancel(id: state.CancelStateId),
+                    .cancel(id: state.CancelRateId)
                 )
                 
             case .availableBalanceTapped:

@@ -39,7 +39,7 @@ extension ZcashSDKEnvironment {
             var value: String?
             
             if case .default = self {
-                value = L10n.ServerSetup.default
+                value = String(localizable: .serverSetupDefault)
             }
             
             return value
@@ -48,7 +48,7 @@ extension ZcashSDKEnvironment {
         public func value(for network: NetworkType) -> String {
             switch self {
             case .custom:
-                return L10n.ServerSetup.custom
+                return String(localizable: .serverSetupCustom)
             case .default:
                 return defaultEndpoint(for: network).server()
             case .hardcoded(let value):

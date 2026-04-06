@@ -34,7 +34,7 @@ public struct ZecKeyboardView: View {
                                 .zImage(size: 20, style: Design.Utility.WarningYellow._500)
                                 .padding(.trailing, 12)
                             
-                            Text(L10n.ZecKeyboard.invalid)
+                            Text(localizable: .zecKeyboardInvalid)
                                 .zFont(.medium, size: 14, style: Design.Utility.WarningYellow._700)
                                 .padding(.top, 3)
                         }
@@ -154,7 +154,7 @@ public struct ZecKeyboardView: View {
                     .padding(.bottom, 24)
                 }
 
-                ZashiButton(L10n.General.next) {
+                ZashiButton(String(localizable: .generalNext)) {
                     store.send(.nextTapped)
                 }
                 .disabled(store.isNextButtonDisabled)
@@ -165,7 +165,7 @@ public struct ZecKeyboardView: View {
         }
         .applyScreenBackground()
         .zashiBack()
-        .screenTitle(L10n.General.request)
+        .screenTitle(String(localizable: .generalRequest))
     }
 }
 

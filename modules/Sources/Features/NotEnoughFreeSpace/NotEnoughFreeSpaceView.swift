@@ -34,21 +34,21 @@ public struct NotEnoughFreeSpaceView: View {
                     .rotationEffect(.degrees(180))
                     .padding(.top, 100)
 
-                Text(L10n.NotEnoughFreeSpace.title)
+                Text(localizable: .notEnoughFreeSpaceTitle)
                     .zFont(.semiBold, size: 24, style: Design.Text.primary)
                     .padding(.top, 16)
                     .padding(.bottom, 12)
 
                 Group {
-                    Text(L10n.NotEnoughFreeSpace.messagePre(store.freeSpaceRequiredForSync))
-                    + Text(L10n.NotEnoughFreeSpace.dataAvailable(store.freeSpace)).bold()
-                    + Text(L10n.NotEnoughFreeSpace.messagePost)
+                    Text(localizable: .notEnoughFreeSpaceMessagePre(store.freeSpaceRequiredForSync))
+                    + Text(localizable: .notEnoughFreeSpaceDataAvailable(store.freeSpace)).bold()
+                    + Text(localizable: .notEnoughFreeSpaceMessagePost)
                 }
                 .zFont(size: 14, style: Design.Text.primary)
                 .multilineTextAlignment(.center)
                 .lineSpacing(1.5)
 
-                Text(L10n.NotEnoughFreeSpace.requiredSpace(store.spaceToFreeUp))
+                Text(localizable: .notEnoughFreeSpaceRequiredSpace(store.spaceToFreeUp))
                     .zFont(size: 12, style: Design.Text.primary)
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)

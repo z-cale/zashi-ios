@@ -131,12 +131,12 @@ extension SmartBannerView {
                 .padding(.top, 48)
                 .padding(.leading, 12)
 
-            Text(L10n.Sheet.SyncTimeout.title)
+            Text(localizable: .sheetSyncTimeoutTitle)
                 .zFont(.semiBold, size: 24, style: Design.Text.primary)
                 .padding(.top, 24)
                 .padding(.bottom, 12)
             
-            Text(L10n.Sheet.SyncTimeout.desc)
+            Text(localizable: .sheetSyncTimeoutDesc)
                 .zFont(size: 14, style: Design.Text.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
                 .multilineTextAlignment(.leading)
@@ -145,7 +145,7 @@ extension SmartBannerView {
             
             ActionRow(
                 icon: Asset.Assets.Icons.server.image,
-                title: L10n.Sheet.SyncTimeout.server,
+                title: String(localizable: .sheetSyncTimeoutServer),
                 divider: false,
                 horizontalPadding: Design.Spacing._xl
             ) {
@@ -160,7 +160,7 @@ extension SmartBannerView {
 
             ActionRow(
                 icon: Asset.Assets.Icons.powerOff.image,
-                title: L10n.Sheet.SyncTimeout.tor,
+                title: String(localizable: .sheetSyncTimeoutTor),
                 divider: false,
                 horizontalPadding: Design.Spacing._xl
             ) {
@@ -173,7 +173,7 @@ extension SmartBannerView {
             }
             .padding(.bottom, 32)
 
-            ZashiButton(L10n.ErrorPage.Action.contactSupport) {
+            ZashiButton(String(localizable: .errorPageActionContactSupport)) {
                 store.send(.reportTapped)
             }
             .padding(.bottom, Design.Spacing.sheetBottomSpace)

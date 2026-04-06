@@ -22,21 +22,21 @@ public struct DeleteWalletView: View {
     public var body: some View {
         WithPerceptionTracking {
             VStack(alignment: .leading, spacing: 0) {
-                Text(L10n.DeleteWallet.title)
+                Text(localizable: .deleteWalletTitle)
                     .zFont(.semiBold, size: 24, style: Design.Text.primary)
                     .padding(.top, 40)
 
-                Text(L10n.DeleteWallet.message2)
+                Text(localizable: .deleteWalletMessage2)
                     .zFont(size: 14, style: Design.Text.primary)
                     .padding(.top, 12)
                     .lineSpacing(2)
 
-                Text(L10n.DeleteWallet.message3)
+                Text(localizable: .deleteWalletMessage3)
                     .zFont(size: 14, style: Design.Text.primary)
                     .padding(.top, 12)
                     .lineSpacing(2)
 
-                Text(L10n.DeleteWallet.message4)
+                Text(localizable: .deleteWalletMessage4)
                     .zFont(size: 14, style: Design.Text.primary)
                     .padding(.top, 12)
                     .lineSpacing(2)
@@ -47,11 +47,11 @@ public struct DeleteWalletView: View {
                     ZashiToggle(isOn: $store.areMetadataPreserved)
 
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(L10n.DeleteWallet.metadataWarn1)
+                        Text(localizable: .deleteWalletMetadataWarn1)
                             .zFont(.medium, size: 14, style: Design.Text.tertiary)
                             .fixedSize(horizontal: false, vertical: true)
 
-                        Text(L10n.DeleteWallet.metadataWarn2)
+                        Text(localizable: .deleteWalletMetadataWarn2)
                             .zFont(.semiBold, size: 12, style: Design.Utility.WarningYellow._500)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -66,7 +66,7 @@ public struct DeleteWalletView: View {
 
                 if store.isProcessing {
                     ZashiButton(
-                        L10n.DeleteWallet.actionButtonTitle,
+                        String(localizable: .deleteWalletActionButtonTitle),
                         type: .destructive1,
                         accessoryView: ProgressView()
                     ) { }
@@ -74,7 +74,7 @@ public struct DeleteWalletView: View {
                     .padding(.bottom, 24)
                 } else {
                     ZashiButton(
-                        L10n.DeleteWallet.actionButtonTitle,
+                        String(localizable: .deleteWalletActionButtonTitle),
                         type: .destructive1
                     ) {
                         store.send(.deleteRequested)
@@ -91,7 +91,7 @@ public struct DeleteWalletView: View {
         .navigationBarTitleDisplayMode(.inline)
         .screenHorizontalPadding()
         .applyScreenBackground()
-        .screenTitle(L10n.DeleteWallet.screenTitle.uppercased())
+        .screenTitle(String(localizable: .deleteWalletScreenTitle).uppercased())
     }
     
     @ViewBuilder private func helpSheetContent() -> some View {
@@ -105,12 +105,12 @@ public struct DeleteWalletView: View {
                 }
                 .padding(.top, 48)
 
-            Text(L10n.DeleteWallet.Sheet.title)
+            Text(localizable: .deleteWalletSheetTitle)
                 .zFont(.semiBold, size: 24, style: Design.Text.primary)
                 .padding(.top, 16)
                 .padding(.bottom, 12)
             
-            Text(L10n.DeleteWallet.Sheet.msg)
+            Text(localizable: .deleteWalletSheetMsg)
                 .zFont(size: 14, style: Design.Text.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
                 .multilineTextAlignment(.center)
@@ -118,14 +118,14 @@ public struct DeleteWalletView: View {
                 .padding(.bottom, 32)
 
             ZashiButton(
-                L10n.Settings.deleteZashi,
+                String(localizable: .settingsDeleteZashi),
                 type: .destructive2
             ) {
                 store.send(.deleteTappedDelayed(store.areMetadataPreserved))
             }
             .padding(.bottom, 12)
 
-            ZashiButton(L10n.General.cancel) {
+            ZashiButton(String(localizable: .generalCancel)) {
                 store.send(.dismissSheet)
             }
             .padding(.bottom, Design.Spacing.sheetBottomSpace)

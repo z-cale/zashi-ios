@@ -30,9 +30,9 @@ public struct RecoveryPhraseDisplayView: View {
         WithPerceptionTracking {
             VStack(alignment: .leading, spacing: 0) {
                 if let _ = store.phrase?.words {
-                    Text(L10n.RecoveryPhraseDisplay.title)
+                    Text(localizable: .recoveryPhraseDisplayTitle)
 
-                    Text(L10n.RecoveryPhraseDisplay.description)
+                    Text(localizable: .recoveryPhraseDisplayDescription)
                         .zFont(size: 14, style: Design.Text.primary)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 8)
@@ -45,7 +45,7 @@ public struct RecoveryPhraseDisplayView: View {
                     
                     if store.isRecoveryPhraseHidden {
                         ZashiButton(
-                            L10n.RecoveryPhraseDisplay.reveal,
+                            String(localizable: .recoveryPhraseDisplayReveal),
                             prefixView:
                                 Asset.Assets.eyeOn.image
                                 .zImage(size: 20, style: Design.Btns.Primary.fg)
@@ -56,7 +56,7 @@ public struct RecoveryPhraseDisplayView: View {
                     } else {
                         if store.isWalletBackup {
                             ZashiButton(
-                                L10n.RecoveryPhraseDisplay.Button.remindMeLater,
+                                String(localizable: .recoveryPhraseDisplayButtonRemindMeLater),
                                 type: .ghost
                             ) {
                                 store.send(.remindMeLaterTapped)
@@ -64,14 +64,14 @@ public struct RecoveryPhraseDisplayView: View {
                             .padding(.bottom, 8)
                             
                             ZashiButton(
-                                L10n.RecoveryPhraseDisplay.Button.wroteItDown
+                                String(localizable: .recoveryPhraseDisplayButtonWroteItDown)
                             ) {
                                 store.send(.seedSavedTapped)
                             }
                             .padding(.bottom, 24)
                         } else {
                             ZashiButton(
-                                L10n.RecoveryPhraseDisplay.hide,
+                                String(localizable: .recoveryPhraseDisplayHide),
                                 prefixView:
                                     Asset.Assets.eyeOff.image
                                     .zImage(size: 20, style: Design.Btns.Primary.fg)
@@ -82,7 +82,7 @@ public struct RecoveryPhraseDisplayView: View {
                         }
                     }
                 } else {
-                    Text(L10n.RecoveryPhraseDisplay.noWords)
+                    Text(localizable: .recoveryPhraseDisplayNoWords)
                         .zFont(.semiBold, size: 24, style: Design.Text.primary)
                         .padding(.top, 40)
                         .multilineTextAlignment(.center)
@@ -127,7 +127,7 @@ public struct RecoveryPhraseDisplayView: View {
         }
         .padding(.horizontal, 20)
         .applyScreenBackground()
-        .screenTitle(L10n.RecoveryPhraseDisplay.screenTitle.uppercased())
+        .screenTitle(String(localizable: .recoveryPhraseDisplayScreenTitle).uppercased())
     }
     
     @ViewBuilder func threeColumnSeed() -> some View {
@@ -211,7 +211,7 @@ public struct RecoveryPhraseDisplayView: View {
     @ViewBuilder func birthday() -> some View {
         if let birthdayValue = store.birthdayValue {
             VStack(alignment: .leading, spacing: 0) {
-                Text(L10n.RecoveryPhraseDisplay.birthdayTitle)
+                Text(localizable: .recoveryPhraseDisplayBirthdayTitle)
                     .zFont(.medium, size: 14, style: Design.Inputs.Filled.text)
 
                 HStack {
@@ -235,18 +235,18 @@ public struct RecoveryPhraseDisplayView: View {
     
     @ViewBuilder private func helpSheetContent() -> some View {
         VStack(spacing: 0) {
-            Text(L10n.RestoreWallet.Help.title)
+            Text(localizable: .restoreWalletHelpTitle)
                 .zFont(.semiBold, size: 24, style: Design.Text.primary)
                 .padding(.top, 24)
                 .padding(.bottom, 12)
             
-            infoContent(text: L10n.RestoreWallet.Help.phrase)
+            infoContent(text: String(localizable: .restoreWalletHelpPhrase))
                 .padding(.bottom, 12)
             
-            infoContent(text: L10n.RestoreWallet.Help.birthday)
+            infoContent(text: String(localizable: .restoreWalletHelpBirthday))
                 .padding(.bottom, 32)
             
-            ZashiButton(L10n.General.ok.uppercased()) {
+            ZashiButton(String(localizable: .generalOk).uppercased()) {
                 store.send(.helpSheetRequested)
             }
             .padding(.bottom, Design.Spacing.sheetBottomSpace)

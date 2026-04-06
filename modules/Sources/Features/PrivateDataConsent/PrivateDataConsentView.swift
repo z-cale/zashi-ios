@@ -23,23 +23,23 @@ public struct PrivateDataConsentView: View {
     public var body: some View {
         WithPerceptionTracking {
             VStack(alignment: .leading, spacing: 0) {
-                Text(L10n.PrivateDataConsent.title)
+                Text(localizable: .privateDataConsentTitle)
                     .zFont(.semiBold, size: 24, style: Design.Text.primary)
                     .padding(.top, 40)
                 
-                Text(L10n.PrivateDataConsent.message1)
+                Text(localizable: .privateDataConsentMessage1)
                     .zFont(size: 14, style: Design.Text.primary)
                     .padding(.top, 12)
                 
-                Text(L10n.PrivateDataConsent.message2)
+                Text(localizable: .privateDataConsentMessage2)
                     .zFont(size: 14, style: Design.Text.primary)
                     .padding(.top, 8)
                 
-                Text(L10n.PrivateDataConsent.message3)
+                Text(localizable: .privateDataConsentMessage3)
                     .zFont(size: 14, style: Design.Text.primary)
                     .padding(.top, 8)
                 
-                Text(L10n.PrivateDataConsent.message4)
+                Text(localizable: .privateDataConsentMessage4)
                     .zFont(size: 14, style: Design.Text.primary)
                     .padding(.top, 8)
                 
@@ -47,14 +47,14 @@ public struct PrivateDataConsentView: View {
                 
                 ZashiToggle(
                     isOn: $store.isAcknowledged,
-                    label: L10n.PrivateDataConsent.confirmation
+                    label: String(localizable: .privateDataConsentConfirmation)
                 )
                 .padding(.vertical, 24)
                 .padding(.leading, 1)
                 
                 if store.isExportingData {
                     ZashiButton(
-                        L10n.Settings.exportPrivateData,
+                        String(localizable: .settingsExportPrivateData),
                         type: .secondary,
                         accessoryView: ProgressView()
                     ) {
@@ -64,7 +64,7 @@ public struct PrivateDataConsentView: View {
                     .padding(.bottom, 8)
                 } else {
                     ZashiButton(
-                        L10n.Settings.exportPrivateData,
+                        String(localizable: .settingsExportPrivateData),
                         type: .secondary
                     ) {
                         store.send(.exportRequested)
@@ -76,7 +76,7 @@ public struct PrivateDataConsentView: View {
 #if DEBUG
                 if store.isExportingLogs {
                     ZashiButton(
-                        L10n.Settings.exportLogsOnly,
+                        String(localizable: .settingsExportLogsOnly),
                         accessoryView: ProgressView()
                     ) {
                         store.send(.exportLogsRequested)
@@ -85,7 +85,7 @@ public struct PrivateDataConsentView: View {
                     .padding(.bottom, 20)
                 } else {
                     ZashiButton(
-                        L10n.Settings.exportLogsOnly
+                        String(localizable: .settingsExportLogsOnly)
                     ) {
                         store.send(.exportLogsRequested)
                     }
@@ -102,7 +102,7 @@ public struct PrivateDataConsentView: View {
         .navigationBarTitleDisplayMode(.inline)
         .screenHorizontalPadding()
         .applyScreenBackground()
-        .screenTitle(L10n.PrivateDataConsent.screenTitle.uppercased())
+        .screenTitle(String(localizable: .privateDataConsentScreenTitle).uppercased())
     }
 }
 

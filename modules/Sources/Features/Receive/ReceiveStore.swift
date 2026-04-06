@@ -50,15 +50,15 @@ public struct Receive {
         public var requestZecState = RequestZec.State.initial
         
         public var unifiedAddress: String {
-            selectedWalletAccount?.privateUnifiedAddress ?? L10n.Receive.Error.cantExtractUnifiedAddress
+            selectedWalletAccount?.privateUnifiedAddress ?? String(localizable: .receiveErrorCantExtractUnifiedAddress)
         }
 
         public var saplingAddress: String {
-            selectedWalletAccount?.saplingAddress ?? L10n.Receive.Error.cantExtractSaplingAddress
+            selectedWalletAccount?.saplingAddress ?? String(localizable: .receiveErrorCantExtractSaplingAddress)
         }
 
         public var transparentAddress: String {
-            selectedWalletAccount?.transparentAddress ?? L10n.Receive.Error.cantExtractTransparentAddress
+            selectedWalletAccount?.transparentAddress ?? String(localizable: .receiveErrorCantExtractTransparentAddress)
         }
 
         public init() { }
@@ -91,7 +91,7 @@ public struct Receive {
 
             case .copyToPastboard(let text):
                 pasteboard.setString(text)
-                state.$toast.withLock { $0 = .top(L10n.General.copiedToTheClipboard) }
+                state.$toast.withLock { $0 = .top(String(localizable: .generalCopiedToTheClipboard)) }
                 return .none
 
             case .requestTapped:

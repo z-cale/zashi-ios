@@ -26,11 +26,11 @@ public struct AccountsSelectionView: View {
                     .frame(width: 193, height: 32)
                     .padding(.top, 16)
                 
-                Text(L10n.Keystone.AddHWWallet.title)
+                Text(localizable: .keystoneAddHWWalletTitle)
                     .zFont(.semiBold, size: 24, style: Design.Text.primary)
                     .padding(.top, 24)
                 
-                Text(L10n.Keystone.AddHWWallet.desc)
+                Text(localizable: .keystoneAddHWWalletDesc)
                     .zFont(size: 14, style: Design.Text.tertiary)
                     .lineSpacing(1.5)
                     .padding(.top, 8)
@@ -40,9 +40,7 @@ public struct AccountsSelectionView: View {
                 
                 Spacer()
 
-                ZashiButton(
-                    L10n.Keystone.AddHWWallet.connect
-                ) {
+                ZashiButton(String(localizable: .keystoneAddHWWalletConnect)) {
                     store.send(.unlockTapped)
                 }
                 .padding(.bottom, 24)
@@ -73,7 +71,7 @@ public struct AccountsSelectionView: View {
                         .padding(.trailing, 8)
                     
                     VStack(alignment: .leading, spacing: 0) {
-                        Text(L10n.Keystone.wallet)
+                        Text(localizable: .keystoneWallet)
                             .zFont(.semiBold, size: 14, style: Design.Text.primary)
                         
                         Text(store.keystoneAddress.zip316)

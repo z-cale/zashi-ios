@@ -60,30 +60,30 @@ public struct CurrencyConversionSetupView: View {
                 .padding(.top, 32)
                 .padding(.bottom, 12)
 
-            Text(L10n.TorSetup.CcSheet.title)
+            Text(localizable: .torSetupCcSheetTitle)
                 .zFont(.semiBold, size: 24, style: Design.Text.primary)
                 .padding(.bottom, 12)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(L10n.TorSetup.CcSheet.desc1)
+            Text(localizable: .torSetupCcSheetDesc1)
                 .zFont(size: 16, style: Design.Text.tertiary)
                 .padding(.bottom, 12)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(L10n.TorSetup.CcSheet.desc2)
+            Text(localizable: .torSetupCcSheetDesc2)
                 .zFont(size: 16, style: Design.Text.tertiary)
                 .padding(.bottom, 32)
                 .fixedSize(horizontal: false, vertical: true)
 
             ZashiButton(
-                L10n.TorSetup.CcSheet.later,
+                String(localizable: .torSetupCcSheetLater),
                 type: .ghost
             ) {
                 store.send(.laterTapped)
             }
             .padding(.bottom, 12)
 
-            ZashiButton(L10n.TorSetup.CcSheet.enable) {
+            ZashiButton(String(localizable: .torSetupCcSheetEnable)) {
                 store.send(.enableTorTapped)
             }
             .padding(.bottom, Design.Spacing.sheetBottomSpace)
@@ -92,7 +92,7 @@ public struct CurrencyConversionSetupView: View {
     
     private func settingsLayout() -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            header(L10n.CurrencyConversion.settingsDesc)
+            header(String(localizable: .currencyConversionSettingsDesc))
                 .padding(.horizontal, 16)
                 .padding(.bottom, 20)
 
@@ -141,7 +141,7 @@ public struct CurrencyConversionSetupView: View {
     
     private func learnMoreLayout() -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            header(L10n.CurrencyConversion.learnMoreDesc)
+            header(String(localizable: .currencyConversionLearnMoreDesc))
 
             ForEach(CurrencyConversionSetup.State.LearnMoreOptions.allCases, id: \.self) { option in
                 HStack(alignment: .top, spacing: 0) {
@@ -163,15 +163,15 @@ public struct CurrencyConversionSetupView: View {
                     .padding(.trailing, 12)
                 
                 Text(store.isTorOn
-                     ? L10n.CurrencyConversion.torOnInfo
-                     : L10n.CurrencyConversion.torOffInfo
+                     ? String(localizable: .currencyConversionTorOnInfo)
+                     : String(localizable: .currencyConversionTorOffInfo)
                 )
                 .zFont(size: 12, style: Design.Text.tertiary)
             }
             .padding(.bottom, 20)
             .screenHorizontalPadding()
             
-            primaryButton(L10n.CurrencyConversion.saveBtn, disabled: store.isSaveButtonDisabled) {
+            primaryButton(String(localizable: .currencyConversionSaveBtn), disabled: store.isSaveButtonDisabled) {
                 store.send(.saveChangesTapped)
             }
             .padding(.bottom, 24)
@@ -180,11 +180,11 @@ public struct CurrencyConversionSetupView: View {
     
     private func learnMoreFooter() -> some View {
         VStack {
-            secondaryButton(L10n.CurrencyConversion.skipBtn) {
+            secondaryButton(String(localizable: .currencyConversionSkipBtn)) {
                 store.send(.skipTapped)
             }
             
-            primaryButton(L10n.CurrencyConversion.enable) {
+            primaryButton(String(localizable: .currencyConversionEnable)) {
                 store.send(.enableTapped)
             }
         }
@@ -246,7 +246,7 @@ extension CurrencyConversionSetupView {
     }
     
     private func title() -> some View {
-        Text(L10n.CurrencyConversion.title)
+        Text(localizable: .currencyConversionTitle)
             .zFont(.semiBold, size: 24, style: Design.Text.primary)
     }
     
@@ -256,7 +256,7 @@ extension CurrencyConversionSetupView {
                 .zImage(size: 20, style: Design.Text.primary)
                 .padding(.trailing, 12)
 
-            Text(L10n.CurrencyConversion.note)
+            Text(localizable: .currencyConversionNote)
                 .zFont(size: 12, style: Design.Text.tertiary)
         }
         .screenHorizontalPadding()

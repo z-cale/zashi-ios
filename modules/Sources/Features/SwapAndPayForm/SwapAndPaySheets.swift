@@ -59,11 +59,11 @@ public extension SwapAndPayForm {
                         .frame(width: 164, height: 164)
                         .padding(.bottom, 20)
                     
-                    Text(L10n.SwapAndPay.EmptyAssets.title)
+                    Text(localizable: .swapAndPayEmptyAssetsTitle)
                         .zFont(.semiBold, size: 20, style: Design.Text.primary)
                         .padding(.bottom, 8)
                     
-                    Text(L10n.SwapAndPay.EmptyAssets.subtitle)
+                    Text(localizable: .swapAndPayEmptyAssetsSubtitle)
                         .zFont(size: 14, style: Design.Text.tertiary)
                         .padding(.bottom, 20)
                 }
@@ -98,11 +98,11 @@ public extension SwapAndPayForm {
                         .zImage(size: 164, style: Design.Text.primary)
                         .padding(.bottom, 20)
                     
-                    Text(L10n.SwapAndPay.Failure.wrong)
+                    Text(localizable: .swapAndPayFailureWrong)
                         .zFont(.semiBold, size: 20, style: Design.Text.primary)
                         .padding(.bottom, 8)
                     
-                    Text(L10n.SwapAndPay.Failure.wrongDesc)
+                    Text(localizable: .swapAndPayFailureWrongDesc)
                         .zFont(size: 14, style: Design.Text.tertiary)
                         .padding(.bottom, 20)
                         .multilineTextAlignment(.center)
@@ -111,7 +111,7 @@ public extension SwapAndPayForm {
                     
                     if let retryFailure = store.swapAssetFailedWithRetry, retryFailure {
                         ZashiButton(
-                            L10n.SwapAndPay.Failure.tryAgain,
+                            String(localizable: .swapAndPayFailureTryAgain),
                             type: .tertiary,
                             infinityWidth: false
                         ) {

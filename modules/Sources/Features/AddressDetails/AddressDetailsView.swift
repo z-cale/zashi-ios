@@ -71,7 +71,7 @@ public struct AddressDetailsView: View {
                     Spacer()
                     
                     ZashiButton(
-                        L10n.AddressDetails.shareQR,
+                        String(localizable: .addressDetailsShareQR),
                         prefixView:
                             Asset.Assets.Icons.share.image
                             .zImage(size: 20, style: Design.Btns.Primary.fg)
@@ -82,7 +82,7 @@ public struct AddressDetailsView: View {
                     .disabled(store.addressToShare != nil)
                     
                     ZashiButton(
-                        L10n.AddressDetails.copyAddress,
+                        String(localizable: .addressDetailsCopyAddress),
                         type: .ghost,
                         prefixView:
                             Asset.Assets.copy.image
@@ -122,7 +122,7 @@ extension AddressDetailsView {
     @ViewBuilder public func qrCode(_ qrText: String) -> some View {
         Group {
             if let storedImg = store.storedQR {
-                Image(storedImg, scale: 1, label: Text(L10n.qrCodeFor(qrText)))
+                Image(storedImg, scale: 1, label: Text(localizable: .qrCodeFor(qrText)))
                     .resizable()
             } else {
                 ProgressView()
@@ -133,7 +133,7 @@ extension AddressDetailsView {
     @ViewBuilder public func qrEnlargedCode(_ qrText: String) -> some View {
         Group {
             if let storedImg = store.storedEnlargedQR {
-                Image(storedImg, scale: 1, label: Text(L10n.qrCodeFor(qrText)))
+                Image(storedImg, scale: 1, label: Text(localizable: .qrCodeFor(qrText)))
                     .resizable()
             } else {
                 ProgressView()
@@ -152,9 +152,9 @@ extension AddressDetailsView {
             UIShareDialogView(activityItems: [
                 ShareableImage(
                     image: UIImage(cgImage: cgImg),
-                    title: L10n.AddressDetails.shareTitle,
-                    reason: L10n.AddressDetails.shareDesc
-                ), L10n.AddressDetails.shareDesc
+                    title: String(localizable: .addressDetailsShareTitle),
+                    reason: String(localizable: .addressDetailsShareDesc)
+                ), String(localizable: .addressDetailsShareDesc)
             ]) {
                 store.send(.shareFinished)
             }

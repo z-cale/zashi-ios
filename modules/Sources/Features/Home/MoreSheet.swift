@@ -18,8 +18,8 @@ extension HomeView {
                     icon: walletStatus == .restoring
                     ? Asset.Assets.Partners.flexaDisabled.image
                     : Asset.Assets.Partners.flexa.image,
-                    title: L10n.Settings.flexa,
-                    desc: L10n.Settings.flexaDesc,
+                    title: String(localizable: .settingsFlexa),
+                    desc: String(localizable: .settingsFlexaDesc),
                     customIcon: true,
                     divider: store.featureFlags.flexa && !store.isKeystoneAccountActive
                 ) {
@@ -33,8 +33,8 @@ extension HomeView {
             if !store.isKeystoneConnected {
                 ActionRow(
                     icon: Asset.Assets.Partners.keystone.image,
-                    title: L10n.Settings.keystone,
-                    desc: L10n.Settings.keystoneDesc,
+                    title: String(localizable: .settingsKeystone),
+                    desc: String(localizable: .settingsKeystoneDesc),
                     customIcon: true,
                     divider: true
                 ) {
@@ -54,7 +54,7 @@ extension HomeView {
 
             ActionRow(
                 icon: Asset.Assets.Icons.settings.image,
-                title: L10n.HomeScreen.moreDotted,
+                title: String(localizable: .homeScreenMoreDotted),
                 divider: false
             ) {
                 store.send(.moreInMoreTapped)
@@ -66,7 +66,7 @@ extension HomeView {
                     .zImage(size: 20, style: Design.Text.tertiary)
                     .padding(.trailing, 12)
 
-                Text(L10n.HomeScreen.moreWarning)
+                Text(localizable: .homeScreenMoreWarning)
                     .zFont(size: 12, style: Design.Text.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -83,8 +83,8 @@ extension HomeView {
                 icon: walletStatus == .restoring
                 ? Asset.Assets.Partners.payWithNearDisabled.image
                 : Asset.Assets.Partners.payWithNear.image,
-                title: L10n.SendSelect.payWithNear,
-                desc: L10n.SendSelect.PayWithNear.desc,
+                title: String(localizable: .sendSelectPayWithNear),
+                desc: String(localizable: .sendSelectPayWithNearDesc),
                 customIcon: true,
                 divider: !store.isKeystoneAccountActive
             ) {
@@ -99,8 +99,8 @@ extension HomeView {
                     icon: walletStatus == .restoring
                     ? Asset.Assets.Partners.flexaDisabled.image
                     : Asset.Assets.Partners.flexa.image,
-                    title: L10n.Settings.flexa,
-                    desc: L10n.Settings.flexaDesc,
+                    title: String(localizable: .settingsFlexa),
+                    desc: String(localizable: .settingsFlexaDesc),
                     customIcon: true,
                     divider: false
                 ) {
@@ -115,7 +115,7 @@ extension HomeView {
                     .zImage(size: 20, style: Design.Text.tertiary)
                     .padding(.trailing, 12)
 
-                Text(L10n.HomeScreen.moreWarning)
+                Text(localizable: .homeScreenMoreWarning)
                     .zFont(size: 12, style: Design.Text.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }

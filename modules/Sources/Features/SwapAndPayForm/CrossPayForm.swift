@@ -31,7 +31,7 @@ public extension SwapAndPayForm {
                         .frame(height: 144)
                         
                         VStack(alignment: .leading) {
-                            Text(L10n.Send.to)
+                            Text(localizable: .sendTo)
                                 .zFont(.medium, size: 14, style: Design.Text.primary)
                             
                             HStack(spacing: 0) {
@@ -51,8 +51,8 @@ public extension SwapAndPayForm {
                                     ZashiTextField(
                                         text: $store.amountAssetText,
                                         placeholder: store.selectedAsset?.tokenName ?? store.zeroPlaceholder,
-                                        title: L10n.Send.amount,
-                                        error: store.isCrossPayInsufficientFunds ? L10n.Send.Error.insufficientFunds : nil
+                                        title: String(localizable: .sendAmount),
+                                        error: store.isCrossPayInsufficientFunds ? String(localizable: .sendErrorInsufficientFunds) : nil
                                     )
                                     .keyboardType(.decimalPad)
                                     .focused($isAmountFocused)
@@ -64,7 +64,7 @@ public extension SwapAndPayForm {
                                     
                                     ZashiTextField(
                                         text: $store.amountUsdText,
-                                        placeholder: L10n.Send.currencyPlaceholder,
+                                        placeholder: String(localizable: .sendCurrencyPlaceholder),
                                         error: store.isCrossPayInsufficientFunds ? "" : nil,
                                         prefixView:
                                             Asset.Assets.Icons.currencyDollar.image
@@ -106,22 +106,22 @@ public extension SwapAndPayForm {
                                     .padding(.top, 32)
                                 
                                 Text(retryFailure
-                                     ? L10n.SwapAndPay.Failure.retryTitle
-                                     : L10n.SwapAndPay.Failure.laterTitle
+                                     ? String(localizable: .swapAndPayFailureRetryTitle)
+                                     : String(localizable: .swapAndPayFailureLaterTitle)
                                 )
                                 .zFont(.medium, size: 14, style: Design.Text.error)
                                 .padding(.bottom, 8)
                                 
                                 Text(retryFailure
-                                     ? L10n.SwapAndPay.Failure.retryDesc
-                                     : L10n.SwapAndPay.Failure.laterDesc
+                                     ? String(localizable: .swapAndPayFailureRetryDesc)
+                                     : String(localizable: .swapAndPayFailureLaterDesc)
                                 )
                                 .zFont(size: 14, style: Design.Text.error)
                                 .padding(.bottom, retryFailure ? 32 : 56)
                                 
                                 if retryFailure {
                                     ZashiButton(
-                                        L10n.SwapAndPay.Failure.tryAgain,
+                                        String(localizable: .swapAndPayFailureTryAgain),
                                         type: .destructive1
                                     ) {
                                         store.send(.trySwapsAssetsAgainTapped)
@@ -132,14 +132,14 @@ public extension SwapAndPayForm {
                         } else {
                             if store.isQuoteRequestInFlight {
                                 ZashiButton(
-                                    L10n.Send.review,
+                                    String(localizable: .sendReview),
                                     accessoryView: ProgressView()
                                 ) { }
                                     .disabled(true)
                                     .padding(.top, keyboardVisible ? 40 : 0)
                                     .padding(.bottom, 56)
                             } else {
-                                ZashiButton(L10n.Send.review) {
+                                ZashiButton(String(localizable: .sendReview)) {
                                     store.send(.getQuoteTapped)
                                 }
                                 .padding(.top, keyboardVisible ? 40 : 0)
@@ -196,7 +196,7 @@ public extension SwapAndPayForm {
                                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
                                                                     to: nil, from: nil, for: nil)
                                 } label: {
-                                    Text(L10n.General.done.uppercased())
+                                    Text(String(localizable: .generalDone).uppercased())
                                         .zFont(.regular, size: 14, style: Design.Text.primary)
                                 }
                                 .padding(.bottom, 4)
@@ -230,7 +230,7 @@ public extension SwapAndPayForm {
                                     .zImage(size: 20, style: Design.HintTooltips.titleText)
                                     .padding(.trailing, 12)
                                 
-                                Text(L10n.Send.addressNotInBook)
+                                Text(localizable: .sendAddressNotInBook)
                                     .zFont(.medium, size: 14, style: Design.HintTooltips.titleText)
                                     .padding(.top, 2)
                                     .lineLimit(1)
@@ -267,7 +267,7 @@ public extension SwapAndPayForm {
                                 isAddressFocused = false
                                 isUsdFocused = false
                             } label: {
-                                Text(L10n.General.done.uppercased())
+                                Text(String(localizable: .generalDone).uppercased())
                                     .zFont(.regular, size: 14, style: Design.Text.primary)
                             }
                             .padding(.bottom, 4)

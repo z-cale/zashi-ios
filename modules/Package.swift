@@ -1,4 +1,4 @@
-// swift-tools-version: 5.7
+// swift-tools-version: 5.9
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -112,7 +112,8 @@ let package = Package(
         .package(url: "https://github.com/KeystoneHQ/keystone-sdk-ios/", from: "0.0.1"),
         .package(url: "https://github.com/mgriebling/BigDecimal.git", from: Version(stringLiteral: "2.2.3")),
         .package(url: "https://github.com/siteline/swiftui-introspect", from: "26.0.0"),
-        .package(url: "https://github.com/pointfreeco/swift-navigation", from: "2.5.1")
+        .package(url: "https://github.com/pointfreeco/swift-navigation", from: "2.5.1"),
+        .package(url: "https://github.com/liamnichols/xcstrings-tool-plugin", from: "1.2.0")
     ],
     targets: [
         .target(
@@ -427,7 +428,10 @@ let package = Package(
         ),
         .target(
             name: "Generated",
-            resources: [.process("Resources")]
+            resources: [.process("Resources")],
+            plugins: [
+                .plugin(name: "XCStringsToolPlugin", package: "xcstrings-tool-plugin")
+            ]
         ),
         .target(
             name: "Home",

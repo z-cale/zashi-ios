@@ -155,22 +155,22 @@ public struct TransactionDetailsView: View {
                         .padding(.top, 32)
                     
                     Text(retryFailure
-                         ? L10n.SwapAndPay.Failure.retryTitle
-                         : L10n.SwapAndPay.Failure.laterTitle
+                         ? String(localizable: .swapAndPayFailureRetryTitle)
+                         : String(localizable: .swapAndPayFailureLaterTitle)
                     )
                     .zFont(.medium, size: 14, style: Design.Text.error)
                     .padding(.bottom, 8)
                     
                     Text(retryFailure
-                         ? L10n.SwapAndPay.Failure.retryDesc
-                         : L10n.SwapAndPay.Failure.laterDesc
+                         ? String(localizable: .swapAndPayFailureRetryDesc)
+                         : String(localizable: .swapAndPayFailureLaterDesc)
                     )
                     .zFont(size: 14, style: Design.Text.error)
                     .padding(.bottom, 24)
                     
                     if retryFailure {
                         ZashiButton(
-                            L10n.SwapAndPay.Failure.tryAgain,
+                            String(localizable: .swapAndPayFailureTryAgain),
                             type: .destructive1
                         ) {
                             store.send(.trySwapsAssetsAgainTapped)
@@ -185,7 +185,7 @@ public struct TransactionDetailsView: View {
             if store.isSwap {
                 if store.swapStatus == .refunded || store.swapStatus == .expired || store.swapStatus == .failed || store.swapStatus == .processing {
                     ZashiButton(
-                        L10n.ReportSwap.contact,
+                        String(localizable: .reportSwapContact),
                         type: .tertiary
                     ) {
                         store.send(.contactSupportTapped)
@@ -201,7 +201,7 @@ public struct TransactionDetailsView: View {
                         .zImage(size: 16, style: Design.Text.tertiary)
                         .padding(.trailing, 12)
                     
-                    Text(L10n.Deposits.info)
+                    Text(localizable: .depositsInfo)
                         .zFont(size: 12, style: Design.Text.tertiary)
                 }
                 .padding(.bottom, 20)
@@ -212,8 +212,8 @@ public struct TransactionDetailsView: View {
             HStack(spacing: 12) {
                 ZashiButton(
                     store.annotation.isEmpty
-                    ? L10n.Annotation.addArticle
-                    : L10n.Annotation.edit,
+                    ? String(localizable: .annotationAddArticle)
+                    : String(localizable: .annotationEdit),
                     type: .tertiary
                 ) {
                     store.send(.noteButtonTapped)
@@ -221,11 +221,11 @@ public struct TransactionDetailsView: View {
                 
                 if store.transaction.isSentTransaction && !store.transaction.isShieldingTransaction && !store.isSwap {
                     if store.alias == nil {
-                        ZashiButton(L10n.TransactionHistory.saveAddress) {
+                        ZashiButton(String(localizable: .transactionHistorySaveAddress)) {
                             store.send(.saveAddressTapped)
                         }
                     } else {
-                        ZashiButton(L10n.TransactionHistory.sendAgain) {
+                        ZashiButton(String(localizable: .transactionHistorySendAgain)) {
                             store.send(.sendAgainTapped)
                         }
                     }
@@ -274,9 +274,9 @@ extension TransactionDetailsView {
         if let message = store.messageToBeShared {
             UIShareDialogView(activityItems: [
                 ShareableMessage(
-                    title: L10n.SendFeedback.Share.title,
+                    title: String(localizable: .sendFeedbackShareTitle),
                     message: message,
-                    desc: L10n.SendFeedback.Share.desc
+                    desc: String(localizable: .sendFeedbackShareDesc)
                 ),
             ]) {
                 store.send(.shareFinished)
@@ -333,7 +333,7 @@ extension TransactionDetailsView {
             
             Group {
                 if store.isSensitiveContentHidden {
-                    Text(L10n.General.hideBalancesMost)
+                    Text(localizable: .generalHideBalancesMost)
                 } else if store.transaction.isSwapToZec {
                     if let amount = store.swapAmountOut {
                         Text(amount)
@@ -426,7 +426,7 @@ extension TransactionDetailsView {
 
             Group {
                 if store.isSensitiveContentHidden {
-                    Text(L10n.General.hideBalancesMost)
+                    Text(localizable: .generalHideBalancesMost)
                 } else if store.transaction.isSwapToZec {
                     if let amount = store.swapAmountOut {
                         Text(amount)
@@ -454,8 +454,8 @@ extension TransactionDetailsView {
         HStack(spacing: 0) {
             Text(
                 store.transaction.isSwapToZec
-                ? L10n.SwapToZec.swapDetails
-                : L10n.TransactionHistory.details
+                ? String(localizable: .swapToZecSwapDetails)
+                : String(localizable: .transactionHistoryDetails)
             )
             .zFont(.medium, size: 14, style: Design.Text.tertiary)
             .padding(.bottom, 8)
@@ -465,7 +465,7 @@ extension TransactionDetailsView {
             if store.transaction.isSentTransaction && !store.transaction.isShieldingTransaction {
                 if store.areDetailsExpanded {
                     ZashiButton(
-                        L10n.General.less,
+                        String(localizable: .generalLess),
                         type: .tertiary,
                         infinityWidth: false,
                         fontSize: 14,
@@ -480,7 +480,7 @@ extension TransactionDetailsView {
                     }
                 } else {
                     ZashiButton(
-                        L10n.General.more,
+                        String(localizable: .generalMore),
                         type: .tertiary,
                         infinityWidth: false,
                         fontSize: 14,
@@ -505,7 +505,7 @@ extension TransactionDetailsView {
 
                 if store.isSwap {
                     detailAnyView(
-                        title: L10n.SwapAndPay.status,
+                        title: String(localizable: .swapAndPayStatus),
                         rowAppereance: .top
                     ) {
                         if let status = store.swapStatus {
@@ -522,10 +522,10 @@ extension TransactionDetailsView {
                 if store.transaction.isSentTransaction && !store.transaction.isShieldingTransaction {
                     detailView(
                         title: store.transaction.isSwapToZec
-                        ? L10n.SwapToZec.depositTo
-                        : L10n.TransactionHistory.sentTo,
+                        ? String(localizable: .swapToZecDepositTo)
+                        : String(localizable: .transactionHistorySentTo),
                         value: isSensitiveContentHidden
-                        ? L10n.General.hideBalancesMost
+                        ? String(localizable: .generalHideBalancesMost)
                         : store.alias ?? store.transaction.address.zip316,
                         addressFont: isSensitiveContentHidden ? false : store.alias == nil,
                         icon: Asset.Assets.copy.image,
@@ -541,9 +541,9 @@ extension TransactionDetailsView {
                 if store.areDetailsExpanded || !store.transaction.isSentTransaction {
                     if let recipient = store.swapRecipient, store.isSwap {
                         detailView(
-                            title: L10n.SwapAndPay.recipient,
+                            title: String(localizable: .swapAndPayRecipient),
                             value: isSensitiveContentHidden
-                            ? L10n.General.hideBalancesMost
+                            ? String(localizable: .generalHideBalancesMost)
                             : recipient.zip316,
                             addressFont: !isSensitiveContentHidden,
                             icon: Asset.Assets.copy.image,
@@ -556,9 +556,9 @@ extension TransactionDetailsView {
                     
                     if !store.transaction.isSwapToZec {
                         detailView(
-                            title: L10n.TransactionList.transactionId,
+                            title: String(localizable: .transactionListTransactionId),
                             value: isSensitiveContentHidden
-                            ? L10n.General.hideBalancesMost
+                            ? String(localizable: .generalHideBalancesMost)
                             : store.transaction.id.truncateMiddle,
                             icon: Asset.Assets.copy.image,
                             rowAppereance: (store.transaction.isSentTransaction && !store.transaction.isShieldingTransaction) ? .middle : .top
@@ -571,14 +571,14 @@ extension TransactionDetailsView {
                     if store.transaction.isSentTransaction {
                         if store.isSensitiveContentHidden {
                             detailView(
-                                title: L10n.TransactionDetail.feeSummary,
-                                value: L10n.General.hideBalancesMost,
+                                title: String(localizable: .transactionDetailFeeSummary),
+                                value: String(localizable: .generalHideBalancesMost),
                                 rowAppereance: .middle
                             )
                         } else {
                             if store.transaction.isSwapToZec {
                                 detailAnyView(
-                                    title: L10n.SwapAndPay.totalFees,
+                                    title: String(localizable: .swapAndPayTotalFees),
                                     rowAppereance: .middle
                                 ) {
                                     if let fee = store.totalSwapToZecFee, let assetName = store.totalSwapToZecFeeAssetName {
@@ -595,20 +595,20 @@ extension TransactionDetailsView {
                             } else {
                                 if let totalFeesStr = store.totalFeesStr {
                                     detailView(
-                                        title: L10n.SwapAndPay.totalFees,
+                                        title: String(localizable: .swapAndPayTotalFees),
                                         value: "\(totalFeesStr) \(tokenName)",
                                         rowAppereance: .middle
                                     )
                                 } else {
                                     if store.transaction.fee == nil {
                                         detailView(
-                                            title: L10n.Send.feeSummary,
-                                            value: "\(L10n.General.feeShort(store.feeStr)) \(tokenName)",
+                                            title: String(localizable: .sendFeeSummary),
+                                            value: "\(String(localizable: .generalFeeShort(store.feeStr))) \(tokenName)",
                                             rowAppereance: .middle
                                         )
                                     } else {
                                         detailView(
-                                            title: L10n.Send.feeSummary,
+                                            title: String(localizable: .sendFeeSummary),
                                             value: "\(store.feeStr) \(tokenName)",
                                             rowAppereance: .middle
                                         )
@@ -621,8 +621,8 @@ extension TransactionDetailsView {
                     if store.isSwap {
                         detailAnyView(
                             title: store.swapStatus == .success
-                            ? L10n.SwapAndPay.executedSlippage
-                            : L10n.SwapAndPay.maxSlippageTitle,
+                            ? String(localizable: .swapAndPayExecutedSlippage)
+                            : String(localizable: .swapAndPayMaxSlippageTitle),
                             rowAppereance: .middle
                         ) {
                             if let slippage = store.swapSlippage {
@@ -639,7 +639,7 @@ extension TransactionDetailsView {
                         
                         if store.swapStatus == .refunded {
                             detailAnyView(
-                                title: L10n.SwapAndPay.refundedAmount,
+                                title: String(localizable: .swapAndPayRefundedAmount),
                                 rowAppereance: .middle
                             ) {
                                 if let refundedAmount = store.refundedAmount {
@@ -657,10 +657,10 @@ extension TransactionDetailsView {
                     }
 
                     detailView(
-                        title: L10n.TransactionHistory.timestamp,
+                        title: String(localizable: .transactionHistoryTimestamp),
                         value: isSensitiveContentHidden
-                        ? L10n.General.hideBalancesMost
-                        : store.transaction.listDateYearString ?? L10n.TransactionHistory.pending,
+                        ? String(localizable: .generalHideBalancesMost)
+                        : store.transaction.listDateYearString ?? String(localizable: .transactionHistoryPending),
                         rowAppereance: store.annotation.isEmpty ? .bottom : .middle
                     )
                 }
@@ -673,7 +673,7 @@ extension TransactionDetailsView {
     @ViewBuilder func noteView() -> some View {
         if !store.annotation.isEmpty {
             VStack(alignment: .leading, spacing: 0) {
-                Text(L10n.Annotation.title)
+                Text(localizable: .annotationTitle)
                     .zFont(size: 14, style: Design.Text.tertiary)
                     .padding(.bottom, 4)
                 
@@ -748,7 +748,7 @@ extension TransactionDetailsView {
     @ViewBuilder func messageViews() -> some View {
         WithPerceptionTracking {
             VStack(alignment: .leading, spacing: 8) {
-                Text(L10n.Send.message)
+                Text(localizable: .sendMessage)
                     .zFont(.medium, size: 14, style: Design.Text.tertiary)
                     .padding(.bottom, 8)
 
@@ -766,8 +766,8 @@ extension TransactionDetailsView {
                         if index < store.messageStates.count && store.messageStates[index] != .short {
                             HStack(spacing: 6) {
                                 Text(index < store.messageStates.count && store.messageStates[index] == .longExpanded
-                                     ? L10n.TransactionHistory.viewMore
-                                     : L10n.TransactionHistory.viewLess
+                                     ? String(localizable: .transactionHistoryViewMore)
+                                     : String(localizable: .transactionHistoryViewLess)
                                 )
                                 .zFont(.medium, size: 14, style: Design.Text.primary)
                                 
@@ -801,7 +801,7 @@ extension TransactionDetailsView {
     @ViewBuilder func noMessageView() -> some View {
         WithPerceptionTracking {
             VStack(alignment: .leading, spacing: 8) {
-                Text(L10n.Send.message)
+                Text(localizable: .sendMessage)
                     .zFont(.medium, size: 14, style: Design.Text.tertiary)
                     .padding(.bottom, 8)
 
@@ -810,7 +810,7 @@ extension TransactionDetailsView {
                         .zImage(size: 20, style: Design.Text.support)
                         .padding(.trailing, 8)
                     
-                    Text(L10n.TransactionHistory.noMessage)
+                    Text(localizable: .transactionHistoryNoMessage)
                         .zFont(size: 14, style: Design.Text.support)
                     
                     Spacer()

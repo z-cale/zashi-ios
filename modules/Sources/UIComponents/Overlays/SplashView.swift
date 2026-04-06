@@ -171,9 +171,9 @@ struct SplashView: View {
         @Dependency(\.localAuthentication) var localAuthentication
 
         switch localAuthentication.method() {
-        case .faceID: return L10n.Splash.authFaceID
-        case .touchID: return L10n.Splash.authTouchID
-        case .passcode: return L10n.Splash.authPasscode
+        case .faceID: return String(localizable: .splashAuthFaceID)
+        case .touchID: return String(localizable: .splashAuthTouchID)
+        case .passcode: return String(localizable: .splashAuthPasscode)
         default: return ""
         }
     }
@@ -246,7 +246,7 @@ struct SplashView: View {
                         .foregroundColor(.white)
                 }
 
-                Text(L10n.Splash.authTitle)
+                Text(localizable: .splashAuthTitle)
                     .font(.custom(FontFamily.Inter.semiBold.name, size: 20))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)

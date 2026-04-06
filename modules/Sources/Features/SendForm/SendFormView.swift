@@ -58,8 +58,8 @@ public struct SendFormView: View {
                                             ZashiTextField(
                                                 addressFont: true,
                                                 text: store.bindingForAddress,
-                                                placeholder: L10n.Send.addressPlaceholder,
-                                                title: L10n.Send.to,
+                                                placeholder: String(localizable: .sendAddressPlaceholder),
+                                                title: String(localizable: .sendTo),
                                                 error: store.invalidAddressErrorText,
                                                 accessoryView:
                                                     HStack(spacing: 4) {
@@ -102,7 +102,7 @@ public struct SendFormView: View {
                                                     ZashiTextField(
                                                         text: store.bindingForZecAmount,
                                                         placeholder: tokenName.uppercased(),
-                                                        title: L10n.Send.amount,
+                                                        title: String(localizable: .sendAmount),
                                                         error: store.invalidZecAmountErrorText,
                                                         prefixView:
                                                             Asset.Assets.Icons.currencyZec.image
@@ -119,7 +119,7 @@ public struct SendFormView: View {
                                                         
                                                         ZashiTextField(
                                                             text: store.bindingForCurrency,
-                                                            placeholder: L10n.Send.currencyPlaceholder,
+                                                            placeholder: String(localizable: .sendCurrencyPlaceholder),
                                                             error: store.invalidCurrencyAmountErrorText,
                                                             prefixView:
                                                                 Asset.Assets.Icons.currencyDollar.image
@@ -144,7 +144,7 @@ public struct SendFormView: View {
                                                 .focused($isMemoFocused)
                                         } else {
                                             VStack(alignment: .leading, spacing: 0) {
-                                                Text(L10n.Send.message)
+                                                Text(localizable: .sendMessage)
                                                     .zFont(.medium, size: 14, style: Design.Inputs.Filled.label)
                                                     .padding(.bottom, 6)
                                                 
@@ -157,7 +157,7 @@ public struct SendFormView: View {
                                                         Spacer(minLength: 0)
                                                     }
                                                     
-                                                    Text(L10n.Send.Info.memo)
+                                                    Text(localizable: .sendInfoMemo)
                                                         .zFont(size: 12, style: Design.Utility.Gray._700)
                                                     
                                                     Spacer()
@@ -170,7 +170,7 @@ public struct SendFormView: View {
                                             }
                                         }
                                         
-                                        ZashiButton(L10n.Send.review) {
+                                        ZashiButton(String(localizable: .sendReview)) {
                                             store.send(.reviewTapped)
                                         }
                                         .disabled(!store.isValidForm)
@@ -229,7 +229,7 @@ public struct SendFormView: View {
                                     .zImage(size: 20, style: Design.HintTooltips.titleText)
                                     .padding(.trailing, 12)
                                 
-                                Text(L10n.Send.addressNotInBook)
+                                Text(localizable: .sendAddressNotInBook)
                                     .zFont(.medium, size: 14, style: Design.HintTooltips.titleText)
                                     .padding(.top, 2)
                                     .lineLimit(1)
@@ -267,7 +267,7 @@ public struct SendFormView: View {
                                 isCurrencyFocused = false
                                 isMemoFocused = false
                             } label: {
-                                Text(L10n.General.done.uppercased())
+                                Text(String(localizable: .generalDone).uppercased())
                                     .zFont(.regular, size: 14, style: Design.Text.primary)
                             }
                             .padding(.bottom, 4)
@@ -313,21 +313,21 @@ public struct SendFormView: View {
                 }
                 .padding(.top, 48)
 
-            Text(L10n.TexKeystone.title)
+            Text(localizable: .texKeystoneTitle)
                 .zFont(.semiBold, size: 24, style: Design.Text.primary)
                 .padding(.top, 24)
                 .padding(.bottom, 8)
 
             Group {
-                Text(L10n.TexKeystone.warn1).bold()
-                + Text(L10n.TexKeystone.warn2)
+                Text(localizable: .texKeystoneWarn1).bold()
+                + Text(localizable: .texKeystoneWarn2)
             }
             .zFont(size: 14, style: Design.Text.tertiary)
             .fixedSize(horizontal: false, vertical: true)
             .lineSpacing(2)
             .padding(.bottom, 24)
 
-            Text(L10n.TexKeystone.workaround)
+            Text(localizable: .texKeystoneWorkaround)
                 .zFont(.semiBold, size: 16, style: Design.Text.primary)
                 .padding(.bottom, 16)
 
@@ -335,7 +335,7 @@ public struct SendFormView: View {
             texSupportPoint(1)
                 .padding(.bottom, 8)
 
-            ZashiButton(L10n.TexKeystone.gotIt) {
+            ZashiButton(String(localizable: .texKeystoneGotIt)) {
                 store.send(.gotTexSupportTapped)
             }
             .padding(.top, 32)
@@ -375,7 +375,7 @@ public struct SendFormView: View {
             .padding(.trailing, Design.Spacing._xl)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(L10n.TexKeystone.step("\(index + 1)"))
+                Text(localizable: .texKeystoneStep("\(index + 1)"))
                     .zFont(.medium, size: 12, style: Design.Utility.Gray._700)
                     .padding(.vertical, 4)
                     .padding(.horizontal, 6)
@@ -389,11 +389,11 @@ public struct SendFormView: View {
                     )
                     .padding(.vertical, 4)
                 
-                Text(index == 0 ? L10n.TexKeystone.Step1.title : L10n.TexKeystone.Step2.title)
+                Text(index == 0 ? String(localizable: .texKeystoneStep1Title) : String(localizable: .texKeystoneStep2Title))
                     .zFont(.medium, size: 14, style: Design.Text.primary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text(index == 0 ? L10n.TexKeystone.Step1.desc : L10n.TexKeystone.Step2.desc)
+                Text(index == 0 ? String(localizable: .texKeystoneStep1Desc) : String(localizable: .texKeystoneStep2Desc))
                     .zFont(.medium, size: 14, style: Design.Text.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.bottom, 24)

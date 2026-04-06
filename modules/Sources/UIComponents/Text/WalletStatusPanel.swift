@@ -16,8 +16,8 @@ public enum WalletStatus: Equatable {
     
     public func text() -> String {
         switch self {
-        case .restoring: return L10n.WalletStatus.restoringWallet
-        case .disconnected: return L10n.WalletStatus.disconnected
+        case .restoring: return String(localizable: .walletStatusRestoringWallet)
+        case .disconnected: return String(localizable: .walletStatusDisconnected)
         default: return ""
         }
     }

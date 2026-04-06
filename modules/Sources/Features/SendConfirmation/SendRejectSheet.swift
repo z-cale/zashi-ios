@@ -23,23 +23,23 @@ extension SignWithKeystoneView {
                 .padding(.top, 48)
                 .padding(.bottom, 20)
 
-            Text(L10n.KeystoneTransactionReject.title)
+            Text(localizable: .keystoneTransactionRejectTitle)
                 .zFont(.semiBold, size: 24, style: Design.Text.primary)
                 .padding(.bottom, 8)
 
-            Text(L10n.KeystoneTransactionReject.msg)
+            Text(localizable: .keystoneTransactionRejectMsg)
                 .zFont(size: 14, style: Design.Text.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
                 .multilineTextAlignment(.center)
                 .padding(.bottom, 32)
 
-            ZashiButton(L10n.KeystoneTransactionReject.goBack) {
+            ZashiButton(String(localizable: .keystoneTransactionRejectGoBack)) {
                 store.send(.rejectRequestCanceled)
             }
             .padding(.bottom, 8)
             
             ZashiButton(
-                L10n.KeystoneTransactionReject.rejectSig,
+                String(localizable: .keystoneTransactionRejectRejectSig),
                 type: .destructive2
             ) {
                 store.send(.rejectTapped)

@@ -36,20 +36,20 @@ public struct SwapAndPayOptInView: View {
                         .zImage(size: 20, style: Design.Text.primary)
                         .padding(.trailing, 12)
 
-                    Text(L10n.SwapAndPay.OptIn.warn)
+                    Text(localizable: .swapAndPayOptInWarn)
                         .zFont(size: 12, style: Design.Text.tertiary)
                 }
                 .padding(.bottom, 20)
                 
                 ZashiButton(
-                    L10n.CurrencyConversion.skipBtn,
+                    String(localizable: .currencyConversionSkipBtn),
                     type: .ghost
                 ) {
                     store.send(.skipOptInTapped)
                 }
                 .padding(.bottom, 12)
 
-                ZashiButton(L10n.General.confirm) {
+                ZashiButton(String(localizable: .generalConfirm)) {
                     store.send(.confirmOptInTapped)
                 }
                 .padding(.bottom, 24)
@@ -82,7 +82,7 @@ public struct SwapAndPayOptInView: View {
             .padding(.vertical, 24)
 
             HStack(spacing: 6) {
-                Text(L10n.SwapAndPay.OptIn.title)
+                Text(localizable: .swapAndPayOptInTitle)
                     .zFont(.semiBold, size: 24, style: Design.Text.primary)
                     .padding(.bottom, 8)
                 
@@ -91,7 +91,7 @@ public struct SwapAndPayOptInView: View {
                     .offset(y: -4)
             }
             
-            Text(L10n.SwapAndPay.OptIn.desc)
+            Text(localizable: .swapAndPayOptInDesc)
                 .zFont(size: 14, style: Design.Text.tertiary)
                 .padding(.bottom, 4)
         }
@@ -110,10 +110,10 @@ public struct SwapAndPayOptInView: View {
                         .padding(.trailing, 8)
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(L10n.SwapAndPay.OptIn.optionOneTitle)
+                        Text(localizable: .swapAndPayOptInOptionOneTitle)
                             .zFont(.semiBold, size: 14, style: Design.Text.primary)
                         
-                        Text(L10n.SwapAndPay.OptIn.optionOneSubtitle)
+                        Text(localizable: .swapAndPayOptInOptionOneSubtitle)
                             .zFont(size: 14, style: Design.Text.tertiary)
                     }
                     
@@ -137,10 +137,10 @@ public struct SwapAndPayOptInView: View {
                         .padding(.trailing, 8)
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(L10n.SwapAndPay.OptIn.optionTwoTitle)
+                        Text(localizable: .swapAndPayOptInOptionTwoTitle)
                             .zFont(.semiBold, size: 14, style: Design.Text.primary)
                         
-                        Text(L10n.SwapAndPay.OptIn.optionTwoSubtitle)
+                        Text(localizable: .swapAndPayOptInOptionTwoSubtitle)
                             .zFont(size: 14, style: Design.Text.tertiary)
                     }
                     

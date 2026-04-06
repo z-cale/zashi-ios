@@ -44,11 +44,11 @@ extension Root {
 
             case .confirmationDialog(.presented(.quickRescan)):
                 state.destinationState.destination = .home
-                return rewind(policy: .quick, sourceAction: .quickRescan)
+                return rewind(policy: .quick, sourceAction: .quickRescan, cancelId: state.SynchronizerCancelId)
 
             case .confirmationDialog(.presented(.fullRescan)):
                 state.destinationState.destination = .home
-                return rewind(policy: .birthday, sourceAction: .fullRescan)
+                return rewind(policy: .birthday, sourceAction: .fullRescan, cancelId: state.SynchronizerCancelId)
 
             case let .debug(.rewindDone(error, _)):
                 if let error {
@@ -70,7 +70,7 @@ extension Root {
                         .receive(on: mainQueue)
                         .map { _ in return Action.debug(.flagUpdated) }
                 }
-                .cancellable(id: WalletConfigCancelId, cancelInFlight: true)
+                .cancellable(id: state.WalletConfigCancelId, cancelInFlight: true)
 
             case .debug(.flagUpdated):
                 return .publisher {
@@ -78,7 +78,7 @@ extension Root {
                         .receive(on: mainQueue)
                         .map { Action.debug(.walletConfigLoaded($0)) }
                 }
-                .cancellable(id: WalletConfigCancelId, cancelInFlight: true)
+                .cancellable(id: state.WalletConfigCancelId, cancelInFlight: true)
 
             case .debug(.copySeedToPasteboard):
                 let storedWallet = try? walletStorage.exportWallet()
@@ -101,7 +101,7 @@ extension Root {
         }
     }
 
-    private func rewind(policy: RewindPolicy, sourceAction: Action.ConfirmationDialog) -> Effect<Root.Action> {
+    private func rewind(policy: RewindPolicy, sourceAction: Action.ConfirmationDialog, cancelId: UUID) -> Effect<Root.Action> {
         Effect.publisher {
             sdkSynchronizer.rewind(policy)
                 .replaceEmpty(with: Void())
@@ -116,7 +116,7 @@ extension Root {
                 }
                 .receive(on: mainQueue)
         }
-        .cancellable(id: SynchronizerCancelId, cancelInFlight: true)
+        .cancellable(id: cancelId, cancelInFlight: true)
     }
 }
 

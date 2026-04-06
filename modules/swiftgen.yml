@@ -23,11 +23,3 @@ fonts:
       params:
         publicAccess: true
       output: Fonts+Generated.swift
-
-strings:
-  inputs: en.lproj/Localizable.strings
-  outputs:
-    - templateName: structured-swift5
-      params:
-        publicAccess: true
-      output: L10n.swift

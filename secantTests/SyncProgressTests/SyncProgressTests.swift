@@ -72,7 +72,7 @@ final class SyncProgressTests: XCTestCase {
         
         await store.send(.synchronizerStateChanged(syncState.redacted)) { state in
             state.synchronizerStatusSnapshot = snapshot
-            state.syncStatusMessage = L10n.Balances.synced
+            state.syncStatusMessage = String(localizable: .balancesSynced)
             state.lastKnownSyncPercentage = 1.0
         }
     }
@@ -93,7 +93,7 @@ final class SyncProgressTests: XCTestCase {
         
         await store.send(.synchronizerStateChanged(syncState.redacted)) { state in
             state.synchronizerStatusSnapshot = snapshot
-            state.syncStatusMessage = L10n.Balances.syncing
+            state.syncStatusMessage = String(localizable: .balancesSyncing)
             state.lastKnownSyncPercentage = 0.545
         }
     }

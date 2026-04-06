@@ -34,24 +34,24 @@ public struct OSStatusErrorView: View {
                     }
                     .rotationEffect(.degrees(180))
 
-                Text(L10n.OsStatusError.title)
+                Text(localizable: .osStatusErrorTitle)
                     .zFont(.semiBold, size: 24, style: Design.Text.primary)
                     .padding(.top, 16)
                     .padding(.bottom, 12)
 
-                Text(L10n.OsStatusError.message)
+                Text(localizable: .osStatusErrorMessage)
                     .zFont(size: 14, style: Design.Text.primary)
                     .multilineTextAlignment(.center)
                     .lineSpacing(3)
                     .padding(.bottom, 12)
 
-                Text(L10n.OsStatusError.error(String(format: "%d", store.osStatus)))
+                Text(localizable: .osStatusErrorError(String(format: "%d", store.osStatus)))
                     .zFont(.medium, size: 14, style: Design.Text.primary)
                     .padding(.bottom, 100)
 
                 Spacer()
                 
-                ZashiButton(L10n.ErrorPage.Action.contactSupport) {
+                ZashiButton(String(localizable: .errorPageActionContactSupport)) {
                     store.send(.sendSupportMail)
                 }
                 .padding(.bottom, 24)

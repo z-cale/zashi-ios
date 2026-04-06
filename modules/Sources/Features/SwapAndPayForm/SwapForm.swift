@@ -42,13 +42,13 @@ public extension SwapAndPayForm {
                         .padding(.bottom, 16)
 
                     HStack(spacing: 0) {
-                        Text(L10n.SwapAndPay.rate)
+                        Text(localizable: .swapAndPayRate)
                             .zFont(.medium, size: 14, style: Design.Text.tertiary)
                         
                         Spacer()
                         
                         if let rateValue = store.rateToOneZec, let selectedToken = store.selectedAsset?.token {
-                            Text(L10n.SwapAndPay.oneZecRate(rateValue, selectedToken))
+                            Text(localizable: .swapAndPayOneZecRate(rateValue, selectedToken))
                                 .zFont(.medium, size: 14, style: Design.Text.primary)
                         } else {
                             RoundedRectangle(cornerRadius: Design.Radius._sm)
@@ -68,22 +68,22 @@ public extension SwapAndPayForm {
                                 .padding(.top, 32)
                             
                             Text(retryFailure
-                                 ? L10n.SwapAndPay.Failure.retryTitle
-                                 : L10n.SwapAndPay.Failure.laterTitle
+                                 ? String(localizable: .swapAndPayFailureRetryTitle)
+                                 : String(localizable: .swapAndPayFailureLaterTitle)
                             )
                             .zFont(.medium, size: 14, style: Design.Text.error)
                             .padding(.bottom, 8)
                             
                             Text(retryFailure
-                                 ? L10n.SwapAndPay.Failure.retryDesc
-                                 : L10n.SwapAndPay.Failure.laterDesc
+                                 ? String(localizable: .swapAndPayFailureRetryDesc)
+                                 : String(localizable: .swapAndPayFailureLaterDesc)
                             )
                             .zFont(size: 14, style: Design.Text.error)
                             .padding(.bottom, retryFailure ? 32 : 56)
                             
                             if retryFailure {
                                 ZashiButton(
-                                    L10n.SwapAndPay.Failure.tryAgain,
+                                    String(localizable: .swapAndPayFailureTryAgain),
                                     type: .destructive1
                                 ) {
                                     store.send(.trySwapsAssetsAgainTapped)
@@ -95,13 +95,13 @@ public extension SwapAndPayForm {
                         VStack(spacing: 0) {
                             if store.isQuoteRequestInFlight {
                                 ZashiButton(
-                                    L10n.SwapAndPay.getQuote,
+                                    String(localizable: .swapAndPayGetQuote),
                                     accessoryView: ProgressView()
                                 ) { }
                                     .disabled(true)
                                     .padding(.bottom, 56)
                             } else {
-                                ZashiButton(L10n.SwapAndPay.getQuote) {
+                                ZashiButton(String(localizable: .swapAndPayGetQuote)) {
                                     store.send(.getQuoteTapped)
                                 }
                                 .padding(.bottom, 56)
@@ -139,7 +139,7 @@ public extension SwapAndPayForm {
                                     .zImage(size: 20, style: Design.HintTooltips.titleText)
                                     .padding(.trailing, 12)
                                 
-                                Text(L10n.Send.addressNotInBook)
+                                Text(localizable: .sendAddressNotInBook)
                                     .zFont(.medium, size: 14, style: Design.HintTooltips.titleText)
                                     .padding(.top, 2)
                                     .lineLimit(1)
@@ -174,7 +174,7 @@ public extension SwapAndPayForm {
                             isAmountFocused = false
                             isAddressFocused = false
                         } label: {
-                            Text(L10n.General.done.uppercased())
+                            Text(String(localizable: .generalDone).uppercased())
                                 .zFont(.regular, size: 14, style: Design.Text.primary)
                         }
                         .padding(.bottom, 4)
@@ -205,7 +205,7 @@ public extension SwapAndPayForm {
                                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
                                                                     to: nil, from: nil, for: nil)
                                 } label: {
-                                    Text(L10n.General.done.uppercased())
+                                    Text(String(localizable: .generalDone).uppercased())
                                         .zFont(.regular, size: 14, style: Design.Text.primary)
                                 }
                                 .padding(.bottom, 4)
@@ -249,8 +249,8 @@ public extension SwapAndPayForm {
                 HStack(spacing: 0) {
                     Text(
                         store.isSwapToZecExperienceEnabled
-                        ? L10n.SwapAndPay.to
-                        : L10n.SwapAndPay.from
+                        ? String(localizable: .swapAndPayTo)
+                        : String(localizable: .swapAndPayFrom)
                     )
                     .zFont(.medium, size: 14, style: Design.Text.primary)
                     .padding(.bottom, 4)
@@ -261,10 +261,10 @@ public extension SwapAndPayForm {
                         HStack(spacing: 0) {
                             Text(
                                 (store.isSensitiveContentHidden && store.spendability != .nothing)
-                                ? L10n.SwapAndPay.max(L10n.General.hideBalancesMost)
+                                ? String(localizable: .swapAndPayMax(String(localizable: .generalHideBalancesMost)))
                                 : store.spendability == .nothing
-                                ? L10n.SwapAndPay.max("")
-                                : L10n.SwapAndPay.max(store.maxLabel)
+                                ? String(localizable: .swapAndPayMax(""))
+                                : String(localizable: .swapAndPayMax(store.maxLabel))
                             )
                             .zFont(
                                 .medium,
@@ -393,7 +393,7 @@ public extension SwapAndPayForm {
                 HStack {
                     Spacer()
                     
-                    Text(L10n.Send.Error.insufficientFunds)
+                    Text(localizable: .sendErrorInsufficientFunds)
                         .zFont(size: 14, style: Design.Inputs.ErrorFilled.hint)
                 }
                 .padding(.top, 6)
@@ -405,8 +405,8 @@ public extension SwapAndPayForm {
         VStack(alignment: .leading, spacing: 0) {
             Text(
                 store.isSwapToZecExperienceEnabled
-                ? L10n.SwapAndPay.from
-                : L10n.SwapAndPay.to
+                ? String(localizable: .swapAndPayFrom)
+                : String(localizable: .swapAndPayTo)
             )
             .zFont(.medium, size: 14, style: Design.Text.primary)
             .padding(.bottom, 4)
@@ -520,7 +520,7 @@ public extension SwapAndPayForm {
                 HStack {
                     Spacer()
                     
-                    Text(L10n.Send.Error.insufficientFunds)
+                    Text(localizable: .sendErrorInsufficientFunds)
                         .zFont(size: 14, style: Design.Inputs.ErrorFilled.hint)
                 }
                 .padding(.top, 6)

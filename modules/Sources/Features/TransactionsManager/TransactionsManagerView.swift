@@ -33,7 +33,7 @@ public struct TransactionsManagerView: View {
                 HStack(spacing: 0) {
                     ZashiTextField(
                         text: $store.searchTerm,
-                        placeholder: L10n.Filter.search,
+                        placeholder: String(localizable: .filterSearch),
                         eraseAction: { store.send(.eraseSearchTermTapped) },
                         accessoryView: !store.searchTerm.isEmpty ? Asset.Assets.Icons.xClose.image
                             .zImage(size: 16, style: Design.Btns.Tertiary.fg) : nil,
@@ -124,6 +124,7 @@ public struct TransactionsManagerView: View {
                                                             }
                                                         }
                                                     }
+                                                    .disabled(transaction.isPIRDetectedSpend)
                                                     .listRowInsets(EdgeInsets())
                                                 }
                                             }
@@ -161,7 +162,7 @@ public struct TransactionsManagerView: View {
         .zashiBack() {
             store.send(.dismissRequired)
         }
-        .screenTitle(L10n.General.activity.uppercased())
+        .screenTitle(String(localizable: .generalActivity).uppercased())
     }
     
     @ViewBuilder func hideBalancesButton() -> some View {
@@ -202,11 +203,11 @@ public struct TransactionsManagerView: View {
                         .frame(width: 164, height: 164)
                         .padding(.bottom, 20)
 
-                    Text(L10n.Filter.noResults)
+                    Text(localizable: .filterNoResults)
                         .zFont(.semiBold, size: 20, style: Design.Text.primary)
                         .padding(.bottom, 8)
 
-                    Text(L10n.Filter.weTried)
+                    Text(localizable: .filterWeTried)
                         .zFont(size: 14, style: Design.Text.tertiary)
                         .padding(.bottom, 20)
                 }

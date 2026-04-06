@@ -90,7 +90,7 @@ extension Root {
                         .map(Root.Action.flexaOnTransactionRequest)
                         .receive(on: mainQueue)
                 }
-                .cancellable(id: CancelFlexaId, cancelInFlight: true)
+                .cancellable(id: state.CancelFlexaId, cancelInFlight: true)
                 
                 // MARK: - Currency Conversion Setup
                 
@@ -146,6 +146,10 @@ extension Root {
                 return .none
 
             case .home(.transactionList(.transactionTapped(let txId))):
+                if let index = state.transactions.index(id: txId),
+                   state.transactions[index].isPIRDetectedSpend {
+                    return .none
+                }
                 state.transactionsCoordFlowState = .initial
                 state.transactionsCoordFlowState.transactionToOpen = txId
                 if let index = state.transactions.index(id: txId) {

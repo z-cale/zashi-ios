@@ -24,12 +24,12 @@ extension Receive {
                 addressDetailsState.maxPrivacy = maxPrivacy
                 if state.selectedWalletAccount?.vendor == .keystone {
                     addressDetailsState.addressTitle = maxPrivacy
-                    ? L10n.Accounts.Keystone.shieldedAddress
-                    : L10n.Accounts.Keystone.transparentAddress
+                    ? String(localizable: .accountsKeystoneShieldedAddress)
+                    : String(localizable: .accountsKeystoneTransparentAddress)
                 } else {
                     addressDetailsState.addressTitle = maxPrivacy
-                    ? L10n.Accounts.Zashi.shieldedAddress
-                    : L10n.Accounts.Zashi.transparentAddress
+                    ? String(localizable: .accountsZashiShieldedAddress)
+                    : String(localizable: .accountsZashiTransparentAddress)
                 }
                 state.path.append(.addressDetails(addressDetailsState))
                 return .none

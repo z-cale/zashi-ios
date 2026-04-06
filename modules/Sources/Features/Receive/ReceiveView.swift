@@ -42,7 +42,7 @@ public struct ReceiveView: View {
                             if store.selectedWalletAccount?.vendor == .keystone {
                                 addressBlock(
                                     prefixIcon: Asset.Assets.Partners.keystoneSeekLogo.image,
-                                    title: L10n.Accounts.Keystone.shieldedAddress,
+                                    title: String(localizable: .accountsKeystoneShieldedAddress),
                                     address: store.unifiedAddress,
                                     iconFg: Design.Utility.Indigo._800,
                                     iconBg: Design.Utility.Indigo._100,
@@ -64,7 +64,7 @@ public struct ReceiveView: View {
                                 if let transparentAddress = store.selectedWalletAccount?.transparentAddress {
                                     addressBlock(
                                         prefixIcon: Asset.Assets.Partners.keystoneSeekLogo.image,
-                                        title: L10n.Accounts.Keystone.transparentAddress,
+                                        title: String(localizable: .accountsKeystoneTransparentAddress),
                                         address: transparentAddress,
                                         iconFg: Design.Text.primary,
                                         iconBg: Design.Surfaces.bgTertiary,
@@ -85,7 +85,7 @@ public struct ReceiveView: View {
                             } else {
                                 addressBlock(
                                     prefixIcon: Asset.Assets.Brandmarks.brandmarkMax.image,
-                                    title: L10n.Accounts.Zashi.shieldedAddress,
+                                    title: String(localizable: .accountsZashiShieldedAddress),
                                     address: store.unifiedAddress,
                                     iconFg: Design.Utility.Purple._800,
                                     iconBg: Design.Utility.Purple._100,
@@ -106,7 +106,7 @@ public struct ReceiveView: View {
                                 
                                 addressBlock(
                                     prefixIcon: Asset.Assets.Brandmarks.brandmarkMax.image,
-                                    title: L10n.Accounts.Zashi.transparentAddress,
+                                    title: String(localizable: .accountsZashiTransparentAddress),
                                     address: store.transparentAddress,
                                     iconFg: Design.Text.primary,
                                     iconBg: Design.Surfaces.bgTertiary,
@@ -127,7 +127,7 @@ public struct ReceiveView: View {
                                 if networkType == .testnet {
                                     addressBlock(
                                         prefixIcon: Asset.Assets.Brandmarks.brandmarkMax.image,
-                                        title: L10n.Receive.saplingAddress,
+                                        title: String(localizable: .receiveSaplingAddress),
                                         address: store.saplingAddress,
                                         iconFg: Design.Text.primary,
                                         iconBg: Design.Surfaces.bgTertiary,
@@ -160,7 +160,7 @@ public struct ReceiveView: View {
                         .zImage(size: 24, style: Design.Text.tertiary)
                         .padding(.bottom, 8)
                     
-                    Text(L10n.Receive.warning)
+                    Text(localizable: .receiveWarning)
                         .zFont(size: 14, style: Design.Text.tertiary)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
@@ -169,7 +169,7 @@ public struct ReceiveView: View {
                 }
                 .padding(.horizontal, 4)
                 .applyScreenBackground()
-                .screenTitle(L10n.Tabs.receiveZec)
+                .screenTitle(String(localizable: .tabsReceiveZec))
                 .zashiBack() { store.send(.backToHomeTapped) }
             } destination: { store in
                 switch store.case {
@@ -212,24 +212,24 @@ public struct ReceiveView: View {
                 .padding(.top, 24)
                 .padding(.bottom, 12)
 
-            Text(L10n.Receive.Help.Shielded.title)
+            Text(localizable: .receiveHelpShieldedTitle)
                 .zFont(.semiBold, size: 20, style: Design.Text.primary)
                 .padding(.bottom, 12)
                 .fixedSize(horizontal: false, vertical: true)
             
-            infoContent(text: L10n.Receive.Help.Shielded.desc1)
+            infoContent(text: String(localizable: .receiveHelpShieldedDesc1))
                 .padding(.bottom, 12)
             
-            infoContent(text: L10n.Receive.Help.Shielded.desc2)
+            infoContent(text: String(localizable: .receiveHelpShieldedDesc2))
                 .padding(.bottom, 12)
             
-            infoContent(text: L10n.Receive.Help.Shielded.desc3)
+            infoContent(text: String(localizable: .receiveHelpShieldedDesc3))
                 .padding(.bottom, 12)
             
-            infoContent(text: L10n.Receive.Help.Shielded.desc4)
+            infoContent(text: String(localizable: .receiveHelpShieldedDesc4))
                 .padding(.bottom, 32)
             
-            ZashiButton(L10n.General.ok.uppercased()) {
+            ZashiButton(String(localizable: .generalOk).uppercased()) {
                 store.send(.infoTapped(true))
                 explainer = false
             }
@@ -249,24 +249,24 @@ public struct ReceiveView: View {
                 .padding(.top, 24)
                 .padding(.bottom, 12)
             
-            Text(L10n.Receive.Help.Transparent.title)
+            Text(localizable: .receiveHelpTransparentTitle)
                 .zFont(.semiBold, size: 20, style: Design.Text.primary)
                 .padding(.bottom, 12)
                 .fixedSize(horizontal: false, vertical: true)
 
-            infoContent(text: L10n.Receive.Help.Transparent.desc1)
+            infoContent(text: String(localizable: .receiveHelpTransparentDesc1))
                 .padding(.bottom, 12)
 
-            infoContent(text: L10n.Receive.Help.Transparent.desc2)
+            infoContent(text: String(localizable: .receiveHelpTransparentDesc2))
                 .padding(.bottom, 12)
 
-            infoContent(text: L10n.Receive.Help.Transparent.desc3)
+            infoContent(text: String(localizable: .receiveHelpTransparentDesc3))
                 .padding(.bottom, 12)
 
-            infoContent(text: L10n.Receive.Help.Transparent.desc4)
+            infoContent(text: String(localizable: .receiveHelpTransparentDesc4))
                 .padding(.bottom, 32)
             
-            ZashiButton(L10n.General.ok.uppercased()) {
+            ZashiButton(String(localizable: .generalOk).uppercased()) {
                 store.send(.infoTapped(false))
                 explainer = false
             }
@@ -368,7 +368,7 @@ public struct ReceiveView: View {
                 HStack(spacing: 8) {
                     if copyButton {
                         button(
-                            L10n.Receive.copy,
+                            String(localizable: .receiveCopy),
                             fill: iconBg.color(colorScheme),
                             icon: Asset.Assets.copy.image
                         ) {
@@ -377,7 +377,7 @@ public struct ReceiveView: View {
                     }
                     
                     button(
-                        L10n.Receive.qrCode,
+                        String(localizable: .receiveQrCode),
                         fill: iconBg.color(colorScheme),
                         icon: Asset.Assets.Icons.qr.image
                     ) {
@@ -385,7 +385,7 @@ public struct ReceiveView: View {
                     }
                     
                     button(
-                        L10n.Receive.request,
+                        String(localizable: .receiveRequest),
                         fill: iconBg.color(colorScheme),
                         icon: Asset.Assets.Icons.coinsHand.image
                     ) {

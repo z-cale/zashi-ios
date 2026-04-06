@@ -23,19 +23,19 @@ extension TransactionDetailsView {
                 }
                 .padding(.top, 48)
 
-            Text(L10n.ReportSwap.title)
+            Text(localizable: .reportSwapTitle)
                 .zFont(.semiBold, size: 24, style: Design.Text.primary)
                 .padding(.top, 16)
                 .padding(.bottom, 12)
             
-            Text(L10n.ReportSwap.msg)
+            Text(localizable: .reportSwapMsg)
                 .zFont(size: 14, style: Design.Text.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
                 .multilineTextAlignment(.leading)
                 .lineSpacing(2)
                 .padding(.bottom, 32)
 
-            ZashiButton(L10n.ReportSwap.report) {
+            ZashiButton(String(localizable: .reportSwapReport)) {
                 store.send(.reportSwapTapped)
             }
             .padding(.bottom, Design.Spacing.sheetBottomSpace)
@@ -49,10 +49,10 @@ extension TransactionDetailsView {
                 .padding(.trailing, 12)
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(L10n.SwapAndPay.refundTitle)
+                Text(localizable: .swapAndPayRefundTitle)
                     .zFont(.medium, size: 14, style: Design.Utility.WarningYellow._700)
 
-                Text(L10n.SwapAndPay.refundInfo)
+                Text(localizable: .swapAndPayRefundInfo)
                     .zFont(size: 12, style: Design.Utility.WarningYellow._800)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
@@ -74,10 +74,10 @@ extension TransactionDetailsView {
                 .padding(.trailing, 12)
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(L10n.SwapAndPay.processingTitle)
+                Text(localizable: .swapAndPayProcessingTitle)
                     .zFont(.medium, size: 14, style: Design.Utility.HyperBlue._700)
 
-                Text(L10n.SwapAndPay.processingMsg)
+                Text(localizable: .swapAndPayProcessingMsg)
                     .zFont(size: 12, style: Design.Utility.HyperBlue._800)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
@@ -100,14 +100,14 @@ extension TransactionDetailsView {
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(failed
-                     ? L10n.SwapAndPay.failedTitle
-                     : L10n.SwapAndPay.expiredTitle
+                     ? String(localizable: .swapAndPayFailedTitle)
+                     : String(localizable: .swapAndPayExpiredTitle)
                 )
                 .zFont(.medium, size: 14, style: Design.Utility.ErrorRed._700)
 
                 Text(failed
-                     ? L10n.SwapAndPay.failedMsg
-                     : L10n.SwapAndPay.expiredMsg
+                     ? String(localizable: .swapAndPayFailedMsg)
+                     : String(localizable: .swapAndPayExpiredMsg)
                 )
                 .zFont(size: 12, style: Design.Utility.ErrorRed._800)
                 .multilineTextAlignment(.leading)
@@ -130,16 +130,16 @@ extension TransactionDetailsView {
                 .padding(.trailing, 12)
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(L10n.SwapAndPay.Status.incompleteDeposit)
+                Text(localizable: .swapAndPayStatusIncompleteDeposit)
                     .zFont(.medium, size: 14, style: Design.Utility.WarningYellow._700)
 
                 if let incompleteSwapData = store.incompleteSwapData {
                     if let attrText = try? AttributedString(
-                        markdown: L10n.SwapAndPay.incompleteInfo(
+                        markdown: String(localizable: .swapAndPayIncompleteInfo(
                             incompleteSwapData.missingFunds,
                             incompleteSwapData.tokenName,
                             incompleteSwapData.date
-                        ),
+                        )),
                         including: \.zashiApp
                     ) {
                         ZashiText(
@@ -254,7 +254,7 @@ extension TransactionDetailsView {
             VStack(alignment: .leading, spacing: 0) {
                 Text(
                     store.isSensitiveContentHidden
-                    ? L10n.General.hideBalancesMost
+                    ? String(localizable: .generalHideBalancesMost)
                     : swapAmountIn
                 )
                 .zFont(.medium, size: 14, style: Design.Text.primary)
@@ -267,7 +267,7 @@ extension TransactionDetailsView {
                 if let swapAmountInUsd = store.swapAmountInUsd {
                     Text(
                         store.isSensitiveContentHidden
-                        ? L10n.General.hideBalancesMost
+                        ? String(localizable: .generalHideBalancesMost)
                         : swapAmountInUsd
                     )
                     .zFont(.medium, size: 10, style: Design.Text.tertiary)
@@ -372,7 +372,7 @@ extension TransactionDetailsView {
             if let swapAmountOut = store.swapAmountOut {
                 Text(
                     store.isSensitiveContentHidden
-                    ? L10n.General.hideBalancesMost
+                    ? String(localizable: .generalHideBalancesMost)
                     : swapAmountOut
                 )
                 .zFont(.medium, size: 14, style: Design.Text.primary)
@@ -388,7 +388,7 @@ extension TransactionDetailsView {
             if let swapAmountOutUsd = store.swapAmountOutUsd {
                 Text(
                     store.isSensitiveContentHidden
-                    ? L10n.General.hideBalancesMost
+                    ? String(localizable: .generalHideBalancesMost)
                     : swapAmountOutUsd
                 )
                 .zFont(.medium, size: 10, style: Design.Text.tertiary)

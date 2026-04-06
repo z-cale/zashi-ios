@@ -15,8 +15,8 @@ extension HomeView {
 //        VStack(spacing: 8) {
 //            optionView(
 //                icon: Asset.Assets.Brandmarks.brandmarkMax.image,
-//                title: L10n.SendSelect.Zashi.send,
-//                subtitle: L10n.SendSelect.Zashi.Send.desc
+//                title: String(localizable: .sendSelectZashiSend),
+//                subtitle: String(localizable: .sendSelectZashiSendDesc)
 //            ) {
 //                store.send(.sendTapped)
 //            }
@@ -25,8 +25,8 @@ extension HomeView {
 //            optionView(
 //                icon: Asset.Assets.Partners.swapAndPay.image,
 //                iconOriginalColors: true,
-//                title: L10n.SendSelect.swapWithNear,
-//                subtitle: L10n.SendSelect.SwapWithNear.desc
+//                title: String(localizable: .sendSelectSwapWithNear),
+//                subtitle: String(localizable: .sendSelectSwapWithNearDesc)
 //            ) {
 //                store.send(.swapWithNearTapped)
 //            }

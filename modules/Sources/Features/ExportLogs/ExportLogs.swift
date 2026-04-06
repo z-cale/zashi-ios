@@ -15,9 +15,9 @@ import ZcashLightClientKit
 extension AlertState where Action == ExportLogs.Action {
     public static func failed(_ error: ZcashError) -> AlertState {
         AlertState {
-            TextState(L10n.ExportLogs.Alert.Failed.title)
+            TextState(String(localizable: .exportLogsAlertFailedTitle))
         } message: {
-            TextState(L10n.ExportLogs.Alert.Failed.message(error.detailedMessage))
+            TextState(String(localizable: .exportLogsAlertFailedMessage(error.detailedMessage)))
         }
     }
 }

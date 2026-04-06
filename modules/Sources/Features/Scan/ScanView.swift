@@ -92,13 +92,13 @@ public struct ScanView: View {
                             .padding(.bottom, 15)
                             
                             if !store.isCameraEnabled {
-                                primaryButton(L10n.Scan.openSettings) {
+                                primaryButton(String(localizable: .scanOpenSettings)) {
                                     if let url = URL(string: UIApplication.openSettingsURLString) {
                                         openURL(url)
                                     }
                                 }
                             } else {
-                                primaryButton(L10n.General.cancel) {
+                                primaryButton(String(localizable: .generalCancel)) {
                                     store.send(.cancelTapped)
                                 }
                             }

@@ -394,9 +394,9 @@ private extension RootView {
         if let message = store.messageShareBinding {
             UIShareDialogView(activityItems: [
                 ShareableMessage(
-                    title: L10n.SendFeedback.Share.title,
+                    title: String(localizable: .sendFeedbackShareTitle),
                     message: message,
-                    desc: L10n.SendFeedback.Share.desc
+                    desc: String(localizable: .sendFeedbackShareDesc)
                 ),
             ]) {
                 store.send(.shareFinished)
@@ -412,7 +412,7 @@ private extension RootView {
     @ViewBuilder func debugView(_ store: StoreOf<Root>) -> some View {
         VStack(alignment: .leading) {
             if store.destinationState.previousDestination == .home {
-                ZashiButton(L10n.General.back) {
+                ZashiButton(String(localizable: .generalBack)) {
                     store.goToDestination(.home)
                 }
                 .frame(width: 150)
@@ -420,14 +420,14 @@ private extension RootView {
             }
 
             List {
-                Section(header: Text(L10n.Root.Debug.title)) {
-                    Button(L10n.Root.Debug.Option.exportLogs) {
+                Section(header: Text(localizable: .rootDebugTitle)) {
+                    Button(String(localizable: .rootDebugOptionExportLogs)) {
                         store.send(.exportLogs(.start))
                     }
                     .disabled(store.exportLogsState.exportLogsDisabled)
 
 #if DEBUG
-                    Button(L10n.Root.Debug.Option.appReview) {
+                    Button(String(localizable: .rootDebugOptionAppReview)) {
                         store.send(.debug(.rateTheApp))
                         if let currentScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
                             SKStoreReviewController.requestReview(in: currentScene)
@@ -435,15 +435,15 @@ private extension RootView {
                     }
 #endif
                     
-                    Button(L10n.Root.Debug.Option.copySeed) {
+                    Button(String(localizable: .rootDebugOptionCopySeed)) {
                         store.send(.debug(.copySeedToPasteboard))
                     }
 
-                    Button(L10n.Root.Debug.Option.rescanBlockchain) {
+                    Button(String(localizable: .rootDebugOptionRescanBlockchain)) {
                         store.send(.debug(.rescanBlockchain))
                     }
 
-                    Button(L10n.Root.Debug.Option.nukeWallet) {
+                    Button(String(localizable: .rootDebugOptionNukeWallet)) {
                         store.send(.initialization(.resetZashiRequest(true)))
                     }
                 }
@@ -455,7 +455,7 @@ private extension RootView {
                 )
             )
         }
-        .navigationBarTitle(L10n.Root.Debug.navigationTitle)
+        .navigationBarTitle(String(localizable: .rootDebugNavigationTitle))
     }
 }
 

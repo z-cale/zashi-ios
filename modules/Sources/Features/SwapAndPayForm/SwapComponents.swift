@@ -21,7 +21,7 @@ public extension SwapAndPayForm {
             VStack(alignment: .leading, spacing: 0) {
                 ZStack {
                     VStack {
-                        Text(L10n.SwapAndPay.selectToken.uppercased())
+                        Text(String(localizable: .swapAndPaySelectToken).uppercased())
                             .zFont(.semiBold, size: 16, style: Design.Text.primary)
                             .fixedSize()
                     }
@@ -44,7 +44,7 @@ public extension SwapAndPayForm {
                 
                 ZashiTextField(
                     text: $store.searchTerm,
-                    placeholder: L10n.SwapAndPay.search,
+                    placeholder: String(localizable: .swapAndPaySearch),
                     eraseAction: { store.send(.eraseSearchTermTapped) },
                     accessoryView: !store.searchTerm.isEmpty ? Asset.Assets.Icons.xClose.image
                         .zImage(size: 16, style: Design.Btns.Tertiary.fg) : nil,
@@ -149,11 +149,11 @@ extension SwapAndPayForm {
                 }
                 .padding(.vertical, 24)
                 
-                Text(L10n.SwapAndPay.slippage)
+                Text(localizable: .swapAndPaySlippage)
                     .zFont(.semiBold, size: 24, style: Design.Text.primary)
                     .padding(.bottom, 8)
                 
-                Text(L10n.SwapAndPay.slippageDesc)
+                Text(localizable: .swapAndPaySlippageDesc)
                     .zFont(size: 14, style: Design.Text.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
                 
@@ -205,7 +205,7 @@ extension SwapAndPayForm {
                                 }
                         }
                     } else {
-                        Text(L10n.SwapAndPay.custom)
+                        Text(localizable: .swapAndPayCustom)
                             .zFont(.medium, size: 16, style: Design.Switcher.defaultText)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 8)
@@ -223,51 +223,7 @@ extension SwapAndPayForm {
                 }
                 .padding(.top, 24)
                 
-                Group {
-                    if store.isSwapExperienceEnabled || store.isSwapToZecExperienceEnabled {
-                        if store.slippageInSheet > 30.0 {
-                            Text(L10n.SwapAndPay.maxAllowedSlippage1)
-                            + Text(L10n.SwapAndPay.maxAllowedSlippage2(Constants.maxAllowedSlippage)).bold()
-                            + Text(store.crosspaySlippageWarning)
-                        } else if let slippageDiff = store.slippageDiff {
-                            Text(L10n.SwapAndPay.slippageSet1)
-                            + Text(
-                                L10n.SwapAndPay.slippageSet2a(
-                                    store.currentSlippageInSheetString,
-                                    slippageDiff
-                                )
-                            ).bold()
-                            + Text(L10n.SwapAndPay.slippageSet3)
-                            + Text(store.crosspaySlippageWarning)
-                        } else {
-                            Text(L10n.SwapAndPay.slippageSet1)
-                            + Text(L10n.SwapAndPay.slippageSet2b(store.currentSlippageInSheetString)).bold()
-                            + Text(L10n.SwapAndPay.slippageSet3)
-                            + Text(store.crosspaySlippageWarning)
-                        }
-                    } else {
-                        if store.slippageInSheet > 30.0 {
-                            Text(L10n.SwapAndPay.maxAllowedSlippage1)
-                            + Text(L10n.SwapAndPay.maxAllowedSlippage2(Constants.maxAllowedSlippage)).bold()
-                            + Text(store.crosspaySlippageWarning)
-                        } else if let slippageDiff = store.slippageDiff {
-                            Text(L10n.Crosspay.slippageSet1)
-                            + Text(
-                                L10n.Crosspay.slippageSet2a(
-                                    store.currentSlippageInSheetString,
-                                    slippageDiff
-                                )
-                            ).bold()
-                            + Text(L10n.Crosspay.slippageSet3)
-                            + Text(store.crosspaySlippageWarning)
-                        } else {
-                            Text(L10n.Crosspay.slippageSet1)
-                            + Text(L10n.Crosspay.slippageSet2b(store.currentSlippageInSheetString)).bold()
-                            + Text(L10n.Crosspay.slippageSet3)
-                            + Text(store.crosspaySlippageWarning)
-                        }
-                    }
-                }
+                slippageInfoText()
                 .zFont(size: 12, style: slippageWarnTextStyle())
                 .fixedSize(horizontal: false, vertical: true)
                 .multilineTextAlignment(.leading)
@@ -284,7 +240,7 @@ extension SwapAndPayForm {
 
                 if store.slippageInSheet < 2.0 {
                     if let attrText = try? AttributedString(
-                        markdown: L10n.SwapAndPay.smallSlippageWarn(SwapAndPay.Constants.defaultSlippage, SwapAndPay.Constants.defaultSlippage),
+                        markdown: String(localizable: .swapAndPaySmallSlippageWarn("\(SwapAndPay.Constants.defaultSlippage)", "\(SwapAndPay.Constants.defaultSlippage)")),
                         including: \.zashiApp
                     ) {
                         ZashiText(
@@ -305,7 +261,7 @@ extension SwapAndPayForm {
                     }
                 }
 
-                ZashiButton(L10n.General.confirm) {
+                ZashiButton(String(localizable: .generalConfirm)) {
                     store.send(.slippageSetConfirmTapped)
                 }
                 .padding(.bottom, keyboardVisible ? 74 : Design.Spacing.sheetBottomSpace)
@@ -315,6 +271,32 @@ extension SwapAndPayForm {
         }
     }
     
+    @ViewBuilder private func slippageInfoText() -> some View {
+        if store.isSwapExperienceEnabled || store.isSwapToZecExperienceEnabled {
+            if store.slippageInSheet > 30.0 {
+                let part2 = Text(localizable: .swapAndPayMaxAllowedSlippage2(Constants.maxAllowedSlippage)).bold()
+                Text(localizable: .swapAndPayMaxAllowedSlippage1) + part2 + Text(store.crosspaySlippageWarning)
+            } else if let slippageDiff = store.slippageDiff {
+                let part2 = Text(localizable: .swapAndPaySlippageSet2a(store.currentSlippageInSheetString, slippageDiff)).bold()
+                Text(localizable: .swapAndPaySlippageSet1) + part2 + Text(localizable: .swapAndPaySlippageSet3) + Text(store.crosspaySlippageWarning)
+            } else {
+                let part2 = Text(localizable: .swapAndPaySlippageSet2b(store.currentSlippageInSheetString)).bold()
+                Text(localizable: .swapAndPaySlippageSet1) + part2 + Text(localizable: .swapAndPaySlippageSet3) + Text(store.crosspaySlippageWarning)
+            }
+        } else {
+            if store.slippageInSheet > 30.0 {
+                let part2 = Text(localizable: .swapAndPayMaxAllowedSlippage2(Constants.maxAllowedSlippage)).bold()
+                Text(localizable: .swapAndPayMaxAllowedSlippage1) + part2 + Text(store.crosspaySlippageWarning)
+            } else if let slippageDiff = store.slippageDiff {
+                let part2 = Text(localizable: .crosspaySlippageSet2a(store.currentSlippageInSheetString, slippageDiff)).bold()
+                Text(localizable: .crosspaySlippageSet1) + part2 + Text(localizable: .crosspaySlippageSet3) + Text(store.crosspaySlippageWarning)
+            } else {
+                let part2 = Text(localizable: .crosspaySlippageSet2b(store.currentSlippageInSheetString)).bold()
+                Text(localizable: .crosspaySlippageSet1) + part2 + Text(localizable: .crosspaySlippageSet3) + Text(store.crosspaySlippageWarning)
+            }
+        }
+    }
+
     @ViewBuilder private func slippageChip(index: Int, text: String, _ colorScheme: ColorScheme) -> some View {
         if store.selectedSlippageChip == index {
             Text(text)
@@ -356,7 +338,7 @@ extension SwapAndPayForm {
                     .padding(.top, 24)
                     .padding(.bottom, 12)
 
-                Text(L10n.SwapAndPay.quoteUnavailable)
+                Text(localizable: .swapAndPayQuoteUnavailable)
                     .zFont(.semiBold, size: 24, style: Design.Text.primary)
                     .padding(.bottom, 8)
 
@@ -369,8 +351,8 @@ extension SwapAndPayForm {
 
                 ZashiButton(
                     (store.isSwapExperienceEnabled || store.isSwapToZecExperienceEnabled)
-                    ? L10n.SwapAndPay.cancelSwap
-                    : L10n.SwapAndPay.cancelPayment,
+                    ? String(localizable: .swapAndPayCancelSwap)
+                    : String(localizable: .swapAndPayCancelPayment),
                     type: .destructive1
                 ) {
                     store.send(.cancelPaymentTapped)
@@ -379,8 +361,8 @@ extension SwapAndPayForm {
 
                 ZashiButton(
                     (store.isSwapExperienceEnabled || store.isSwapToZecExperienceEnabled)
-                    ? L10n.SwapAndPay.editSwap
-                    : L10n.SwapAndPay.editPayment
+                    ? String(localizable: .swapAndPayEditSwap)
+                    : String(localizable: .swapAndPayEditPayment)
                 ) {
                     store.send(.editPaymentTapped)
                 }
@@ -394,8 +376,8 @@ extension SwapAndPayForm {
             VStack(spacing: 0) {
                 Text(
                     store.isSwapExperienceEnabled
-                    ? L10n.SwapAndPay.swapNow
-                    : L10n.SwapAndPay.payNow
+                    ? String(localizable: .swapAndPaySwapNow)
+                    : String(localizable: .swapAndPayPayNow)
                 )
                 .zFont(.semiBold, size: 24, style: Design.Text.primary)
                 .padding(.vertical, 24)
@@ -414,22 +396,22 @@ extension SwapAndPayForm {
 
                 quoteLineContent(
                     store.isSwapExperienceEnabled
-                    ? L10n.SwapAndPay.swapFrom
-                    : L10n.SwapAndPay.payFrom,
-                    store.selectedWalletAccount?.vendor.name() ?? L10n.SwapAndPay.Quote.zashi
+                    ? String(localizable: .swapAndPaySwapFrom)
+                    : String(localizable: .swapAndPayPayFrom),
+                    store.selectedWalletAccount?.vendor.name() ?? String(localizable: .swapAndPayQuoteZashi)
                 )
                 .padding(.bottom, 12)
                 
                 quoteLineContent(
                     store.isSwapExperienceEnabled
-                    ? L10n.SwapAndPay.swapTo
-                    : L10n.SwapAndPay.payTo,
+                    ? String(localizable: .swapAndPaySwapTo)
+                    : String(localizable: .swapAndPayPayTo),
                     store.address.zip316,
                     addressFont: true
                 )
                 .padding(.bottom, 12)
 
-                quoteLineContent(L10n.SwapAndPay.totalFees, "\(store.totalFeesStr) \(tokenName)")
+                quoteLineContent(String(localizable: .swapAndPayTotalFees), "\(store.totalFeesStr) \(tokenName)")
                 if !store.isSwapExperienceEnabled {
                     HStack(spacing: 0) {
                         Spacer()
@@ -441,7 +423,7 @@ extension SwapAndPayForm {
 
                 if !store.isSwapExperienceEnabled {
                     quoteLineContent(
-                        L10n.SwapAndPay.maxSlippage(store.currentSlippageString),
+                        String(localizable: .swapAndPayMaxSlippage(store.currentSlippageString)),
                         "\(store.swapSlippageStr) \(tokenName)"
                     )
                     .padding(.top, 12)
@@ -462,7 +444,7 @@ extension SwapAndPayForm {
                     .padding(.vertical, 12)
                 
                 HStack(spacing: 0) {
-                    Text(L10n.SwapAndPay.totalAmount)
+                    Text(localizable: .swapAndPayTotalAmount)
                         .zFont(.medium, size: 14, style: Design.Text.primary)
 
                     Spacer()
@@ -484,7 +466,7 @@ extension SwapAndPayForm {
                             .zImage(size: 16, style: Design.Text.tertiary)
                             .padding(.trailing, 12)
                         
-                        Text(L10n.SwapAndPay.swapQuoteSlippageWarn(store.swapQuoteSlippageUsdStr, store.currentSlippageString))
+                        Text(localizable: .swapAndPaySwapQuoteSlippageWarn(store.swapQuoteSlippageUsdStr, store.currentSlippageString))
                     }
                     .zFont(size: 12, style: Design.Text.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -493,12 +475,12 @@ extension SwapAndPayForm {
                 }
 
                 if store.selectedWalletAccount?.vendor == .keystone {
-                    ZashiButton(L10n.Keystone.confirmSwap) {
+                    ZashiButton(String(localizable: .keystoneConfirmSwap)) {
                         store.send(.confirmWithKeystoneTapped)
                     }
                     .padding(.bottom, Design.Spacing.sheetBottomSpace)
                 } else {
-                    ZashiButton(L10n.General.confirm) {
+                    ZashiButton(String(localizable: .generalConfirm)) {
                         store.send(.confirmButtonTapped)
                     }
                     .padding(.bottom, Design.Spacing.sheetBottomSpace)
@@ -510,7 +492,7 @@ extension SwapAndPayForm {
     @ViewBuilder func quoteToZecContent(_ colorScheme: ColorScheme) -> some View {
         WithPerceptionTracking {
             VStack(spacing: 0) {
-                Text(L10n.SwapToZec.review)
+                Text(localizable: .swapToZecReview)
                 .zFont(.semiBold, size: 24, style: Design.Text.primary)
                 .padding(.vertical, 24)
 
@@ -527,7 +509,7 @@ extension SwapAndPayForm {
                 )
                 .padding(.bottom, 32)
 
-                quoteLineContent(L10n.SwapAndPay.totalFees, "\(store.swapToZecTotalFees) \(store.selectedAsset?.tokenName ?? "")")
+                quoteLineContent(String(localizable: .swapAndPayTotalFees), "\(store.swapToZecTotalFees) \(store.selectedAsset?.tokenName ?? "")")
 
                 Divider()
                     .frame(height: 1)
@@ -535,7 +517,7 @@ extension SwapAndPayForm {
                     .padding(.vertical, 12)
                 
                 HStack(spacing: 0) {
-                    Text(L10n.SwapAndPay.totalAmount)
+                    Text(localizable: .swapAndPayTotalAmount)
                         .zFont(.medium, size: 14, style: Design.Text.primary)
 
                     Spacer()
@@ -556,14 +538,14 @@ extension SwapAndPayForm {
                         .zImage(size: 16, style: Design.Text.tertiary)
                         .padding(.trailing, 12)
                     
-                    Text(L10n.SwapAndPay.swapQuoteSlippageWarn(store.swapToZecQuoteSlippageUsdStr, store.currentSlippageString))
+                    Text(localizable: .swapAndPaySwapQuoteSlippageWarn(store.swapToZecQuoteSlippageUsdStr, store.currentSlippageString))
                 }
                 .zFont(size: 12, style: Design.Text.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 12)
                 .padding(.bottom, 24)
 
-                ZashiButton(L10n.General.confirm) {
+                ZashiButton(String(localizable: .generalConfirm)) {
                     store.send(.confirmToZecButtonTapped)
                 }
                 .padding(.bottom, Design.Spacing.sheetBottomSpace)
@@ -599,25 +581,25 @@ extension SwapAndPayForm {
                 .padding(.top, 48)
                 .padding(.bottom, 20)
 
-            Text(L10n.SwapAndPay.canceltitle)
+            Text(localizable: .swapAndPayCanceltitle)
                 .zFont(.semiBold, size: 24, style: Design.Text.primary)
                 .padding(.bottom, 8)
 
-            Text(L10n.SwapAndPay.cancelMsg)
+            Text(localizable: .swapAndPayCancelMsg)
                 .zFont(size: 14, style: Design.Text.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
                 .multilineTextAlignment(.center)
                 .padding(.bottom, 32)
 
             ZashiButton(
-                L10n.SwapAndPay.cancelSwap,
+                String(localizable: .swapAndPayCancelSwap),
                 type: .destructive1
             ) {
                 store.send(.cancelSwapTapped)
             }
             .padding(.bottom, 8)
             
-            ZashiButton(L10n.SwapAndPay.cancelDont) {
+            ZashiButton(String(localizable: .swapAndPayCancelDont)) {
                 store.send(.dontCancelTapped)
             }
             .padding(.bottom, Design.Spacing.sheetBottomSpace)
@@ -626,23 +608,23 @@ extension SwapAndPayForm {
     
     @ViewBuilder func refundAddressSheetContent(_ colorScheme: ColorScheme) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(L10n.SwapToZec.RefundAddress.title)
+            Text(localizable: .swapToZecRefundAddressTitle)
                 .zFont(.semiBold, size: 24, style: Design.Text.primary)
                 .padding(.bottom, 8)
                 .padding(.top, 32)
 
-            Text(L10n.SwapToZec.RefundAddress.msg1)
+            Text(localizable: .swapToZecRefundAddressMsg1)
                 .zFont(size: 14, style: Design.Text.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 16)
 
-            Text(L10n.SwapToZec.RefundAddress.msg2)
+            Text(localizable: .swapToZecRefundAddressMsg2)
                 .zFont(size: 14, style: Design.Text.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 16)
                 .padding(.bottom, 32)
 
-            ZashiButton(L10n.General.ok) {
+            ZashiButton(String(localizable: .generalOk)) {
                 store.send(.refundAddressCloseTapped)
             }
             .padding(.bottom, Design.Spacing.sheetBottomSpace)

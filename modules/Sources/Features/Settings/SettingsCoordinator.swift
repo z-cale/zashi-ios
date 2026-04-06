@@ -31,7 +31,7 @@ extension Settings {
             case .path(.element(id: _, action: .addKeystoneHWWallet(.readyToScanTapped))):
                 var scanState = Scan.State.initial
                 scanState.checkers = [.keystoneScanChecker]
-                scanState.instructions = L10n.Keystone.scanInfo
+                scanState.instructions = String(localizable: .keystoneScanInfo)
                 scanState.forceLibraryToHide = true
                 state.path.append(.scan(scanState))
                 return .none

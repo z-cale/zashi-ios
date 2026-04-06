@@ -31,11 +31,11 @@ public struct PreSendingFailureView: View {
                     .resizable()
                     .frame(width: 148, height: 148)
 
-                Text(store.isShielding ? L10n.Send.failureShielding : L10n.Send.failure)
+                Text(store.isShielding ? String(localizable: .sendFailureShielding) : String(localizable: .sendFailure))
                     .zFont(.semiBold, size: 28, style: Design.Text.primary)
                     .padding(.top, 16)
 
-                Text(store.isShielding ? L10n.Send.failureShieldingInfo : L10n.Send.failureInfo)
+                Text(store.isShielding ? String(localizable: .sendFailureShieldingInfo) : String(localizable: .sendFailureInfo))
                     .zFont(size: 14, style: Design.Text.primary)
                     .multilineTextAlignment(.center)
                     .lineSpacing(1.5)
@@ -43,13 +43,13 @@ public struct PreSendingFailureView: View {
 
                 Spacer()
                 
-                ZashiButton(L10n.General.close) {
+                ZashiButton(String(localizable: .generalClose)) {
                     store.send(.backFromPCZTFailureTapped)
                 }
                 .padding(.bottom, 8)
 
                 ZashiButton(
-                    L10n.Send.report,
+                    String(localizable: .sendReport),
                     type: .ghost
                 ) {
                     store.send(.reportTapped)

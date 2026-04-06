@@ -51,14 +51,6 @@ public struct Root {
         static let maxResetZashiSDKAttempts = 3
     }
 
-    let CancelId = UUID()
-    let CancelStateId = UUID()
-    let CancelBatteryStateId = UUID()
-    let SynchronizerCancelId = UUID()
-    let WalletConfigCancelId = UUID()
-    let DidFinishLaunchingId = UUID()
-    let CancelFlexaId = UUID()
-
     @ObservableState
     public struct State {
         public enum Path {
@@ -78,8 +70,16 @@ public struct Root {
         }
         
         public var CancelEventId = UUID()
+        public var CancelId = UUID()
         public var CancelStateId = UUID()
+        public var CancelBatteryStateId = UUID()
+        public var SynchronizerCancelId = UUID()
+        public var WalletConfigCancelId = UUID()
+        public var DidFinishLaunchingId = UUID()
+        public var CancelFlexaId = UUID()
         public var shieldingProcessorCancelId = UUID()
+        public var PIRCheckCancelId = UUID()
+        public var WitnessPIRCheckCancelId = UUID()
 
         @Shared(.inMemory(.addressBookContacts)) public var addressBookContacts: AddressBookContacts = .empty
         @Presents public var alert: AlertState<Action>?
@@ -120,6 +120,8 @@ public struct Root {
         @Shared(.inMemory(.walletAccounts)) public var walletAccounts: [WalletAccount] = []
         public var walletConfig: WalletConfig
         @Shared(.inMemory(.walletStatus)) public var walletStatus: WalletStatus = .none
+        @Shared(.inMemory(.pirSpendabilityResult)) public var pirSpendabilityResult: SpendabilityResult? = nil
+        @Shared(.inMemory(.pirWitnessResult)) public var pirWitnessResult: WitnessResult? = nil
         public var wasRestoringWhenDisconnected = false
         public var welcomeState: Welcome.State
         @Shared(.inMemory(.zashiWalletAccount)) public var zashiWalletAccount: WalletAccount? = nil
@@ -244,8 +246,9 @@ public struct Root {
         case foundTransactions([ZcashTransaction.Overview])
         case minedTransaction(ZcashTransaction.Overview)
         case fetchTransactionsForTheSelectedAccount
-        case fetchedTransactions(IdentifiedArrayOf<TransactionState>)
+        case fetchedTransactions(IdentifiedArrayOf<TransactionState>, PIRPendingSpends?)
         case noChangeInTransactions
+        case syncReachedUpToDate
         
         // Address Book
         case loadContacts
@@ -451,12 +454,12 @@ public struct Root {
                 
             case .cancelAllRunningEffects:
                 return .concatenate(
-                    .cancel(id: CancelId),
-                    .cancel(id: CancelStateId),
-                    .cancel(id: CancelBatteryStateId),
-                    .cancel(id: SynchronizerCancelId),
-                    .cancel(id: WalletConfigCancelId),
-                    .cancel(id: DidFinishLaunchingId)
+                    .cancel(id: state.CancelId),
+                    .cancel(id: state.CancelStateId),
+                    .cancel(id: state.CancelBatteryStateId),
+                    .cancel(id: state.SynchronizerCancelId),
+                    .cancel(id: state.WalletConfigCancelId),
+                    .cancel(id: state.DidFinishLaunchingId)
                 )
 
             case .onboarding(.newWalletSuccessfulyCreated):
@@ -508,80 +511,80 @@ extension Root {
 extension AlertState where Action == Root.Action {
     public static func cantLoadSeedPhrase() -> AlertState {
         AlertState {
-            TextState(L10n.Root.Initialization.Alert.Failed.title)
+            TextState(String(localizable: .rootInitializationAlertFailedTitle))
         } message: {
-            TextState(L10n.Root.Initialization.Alert.CantLoadSeedPhrase.message)
+            TextState(String(localizable: .rootInitializationAlertCantLoadSeedPhraseMessage))
         }
     }
     
     public static func cantStartSync(_ error: ZcashError) -> AlertState {
         AlertState {
-            TextState(L10n.Root.Debug.Alert.Rewind.CantStartSync.title)
+            TextState(String(localizable: .rootDebugAlertRewindCantStartSyncTitle))
         } message: {
-            TextState(L10n.Root.Debug.Alert.Rewind.CantStartSync.message(error.detailedMessage))
+            TextState(String(localizable: .rootDebugAlertRewindCantStartSyncMessage(error.detailedMessage)))
         }
     }
     
     public static func cantStoreThatUserPassedPhraseBackupTest(_ error: ZcashError) -> AlertState {
         AlertState {
-            TextState(L10n.Root.Initialization.Alert.Failed.title)
+            TextState(String(localizable: .rootInitializationAlertFailedTitle))
         } message: {
             TextState(
-                L10n.Root.Initialization.Alert.CantStoreThatUserPassedPhraseBackupTest.message(error.detailedMessage)
+                String(localizable: .rootInitializationAlertCantStoreThatUserPassedPhraseBackupTestMessage(error.detailedMessage))
             )
         }
     }
     
     public static func failedToProcessDeeplink(_ url: URL, _ error: ZcashError) -> AlertState {
         AlertState {
-            TextState(L10n.Root.Destination.Alert.FailedToProcessDeeplink.title)
+            TextState(String(localizable: .rootDestinationAlertFailedToProcessDeeplinkTitle))
         } message: {
-            TextState(L10n.Root.Destination.Alert.FailedToProcessDeeplink.message(url, error.message, error.code.rawValue))
+            TextState(String(localizable: .rootDestinationAlertFailedToProcessDeeplinkMessage("\(url)", error.message, "\(error.code.rawValue)")))
         }
     }
     
     public static func initializationFailed(_ error: ZcashError) -> AlertState {
         AlertState {
-            TextState(L10n.Root.Initialization.Alert.SdkInitFailed.title)
+            TextState(String(localizable: .rootInitializationAlertSdkInitFailedTitle))
         } message: {
-            TextState(L10n.Root.Initialization.Alert.Error.message(error.detailedMessage))
+            TextState(String(localizable: .rootInitializationAlertErrorMessage(error.detailedMessage)))
         }
     }
     
     public static func rewindFailed(_ error: ZcashError) -> AlertState {
         AlertState {
-            TextState(L10n.Root.Debug.Alert.Rewind.Failed.title)
+            TextState(String(localizable: .rootDebugAlertRewindFailedTitle))
         } message: {
-            TextState(L10n.Root.Debug.Alert.Rewind.Failed.message(error.detailedMessage))
+            TextState(String(localizable: .rootDebugAlertRewindFailedMessage(error.detailedMessage)))
         }
     }
     
     public static func walletStateFailed(_ walletState: InitializationState) -> AlertState {
         AlertState {
-            TextState(L10n.Root.Initialization.Alert.Failed.title)
+            TextState(String(localizable: .rootInitializationAlertFailedTitle))
         } actions: {
             ButtonState(role: .destructive, action: .initialization(.resetZashi)) {
-                TextState(L10n.Settings.deleteZashi)
+                TextState(String(localizable: .settingsDeleteZashi))
             }
             ButtonState(role: .cancel, action: .alert(.dismiss)) {
-                TextState(L10n.General.ok)
+                TextState(String(localizable: .generalOk))
             }
         } message: {
-            TextState(L10n.Root.Initialization.Alert.WalletStateFailed.message(walletState))
+            TextState(String(localizable: .rootInitializationAlertWalletStateFailedMessage(String(describing: walletState))))
         }
     }
     
     public static func wipeFailed(_ osStatus: OSStatus) -> AlertState {
         AlertState {
-            TextState(L10n.Root.Initialization.Alert.WipeFailed.title)
+            TextState(String(localizable: .rootInitializationAlertWipeFailedTitle))
         } message: {
-            TextState("OSStatus: \(osStatus), \(L10n.Root.Initialization.Alert.WipeFailed.message)")
+            TextState("OSStatus: \(osStatus), \(String(localizable: .rootInitializationAlertWipeFailedMessage))")
         }
     }
     
     public static func wipeKeychainFailed(_ errMsg: String) -> AlertState {
         AlertState {
-            TextState(L10n.Root.Initialization.Alert.WipeFailed.title)
+            TextState(String(localizable: .rootInitializationAlertWipeFailedTitle))
         } message: {
             TextState("Keychain failed: \(errMsg)")
         }
@@ -589,99 +592,99 @@ extension AlertState where Action == Root.Action {
     
     public static func wipeRequest() -> AlertState {
         AlertState {
-            TextState(L10n.Root.Initialization.Alert.Wipe.title)
+            TextState(String(localizable: .rootInitializationAlertWipeTitle))
         } actions: {
             ButtonState(role: .destructive, action: .initialization(.resetZashi)) {
-                TextState(L10n.General.yes)
+                TextState(String(localizable: .generalYes))
             }
             ButtonState(role: .cancel, action: .initialization(.resetZashiRequestCanceled)) {
-                TextState(L10n.General.no)
+                TextState(String(localizable: .generalNo))
             }
         } message: {
-            TextState(L10n.Root.Initialization.Alert.Wipe.message)
+            TextState(String(localizable: .rootInitializationAlertWipeMessage))
         }
     }
 
     public static func differentSeed() -> AlertState {
         AlertState {
-            TextState(L10n.General.Alert.warning)
+            TextState(String(localizable: .generalAlertWarning))
         } actions: {
             ButtonState(role: .cancel, action: .alert(.dismiss)) {
-                TextState(L10n.Root.SeedPhrase.DifferentSeed.tryAgain)
+                TextState(String(localizable: .rootSeedPhraseDifferentSeedTryAgain))
             }
             ButtonState(role: .destructive, action: .initialization(.resetZashi)) {
-                TextState(L10n.General.Alert.continue)
+                TextState(String(localizable: .generalAlertContinue))
             }
         } message: {
-            TextState(L10n.Root.SeedPhrase.DifferentSeed.message)
+            TextState(String(localizable: .rootSeedPhraseDifferentSeedMessage))
         }
     }
     
     public static func existingWallet() -> AlertState {
         AlertState {
-            TextState(L10n.General.Alert.warning)
+            TextState(String(localizable: .generalAlertWarning))
         } actions: {
             ButtonState(role: .cancel, action: .initialization(.restoreExistingWallet)) {
-                TextState(L10n.Root.ExistingWallet.restore)
+                TextState(String(localizable: .rootExistingWalletRestore))
             }
             ButtonState(role: .destructive, action: .initialization(.resetZashi)) {
-                TextState(L10n.General.Alert.continue)
+                TextState(String(localizable: .generalAlertContinue))
             }
         } message: {
-            TextState(L10n.Root.ExistingWallet.message)
+            TextState(String(localizable: .rootExistingWalletMessage))
         }
     }
     
     public static func serviceUnavailable() -> AlertState {
         AlertState {
-            TextState(L10n.General.Alert.caution)
+            TextState(String(localizable: .generalAlertCaution))
         } actions: {
             ButtonState(action: .alert(.dismiss)) {
-                TextState(L10n.General.Alert.ignore)
+                TextState(String(localizable: .generalAlertIgnore))
             }
             ButtonState(action: .destination(.serverSwitch)) {
-                TextState(L10n.Root.ServiceUnavailable.switchServer)
+                TextState(String(localizable: .rootServiceUnavailableSwitchServer))
             }
         } message: {
-            TextState(L10n.Root.ServiceUnavailable.message)
+            TextState(String(localizable: .rootServiceUnavailableMessage))
         }
     }
     
     public static func shieldFundsFailure(_ error: ZcashError) -> AlertState {
         AlertState {
-            TextState(L10n.ShieldFunds.Error.title)
+            TextState(String(localizable: .shieldFundsErrorTitle))
         } actions: {
             ButtonState(action: .alert(.dismiss)) {
-                TextState(L10n.General.ok)
+                TextState(String(localizable: .generalOk))
             }
             ButtonState(action: .reportShieldingFailure) {
-                TextState(L10n.Send.report)
+                TextState(String(localizable: .sendReport))
             }
         } message: {
-            TextState(L10n.ShieldFunds.Error.Failure.message(error.detailedMessage))
+            TextState(String(localizable: .shieldFundsErrorFailureMessage(error.detailedMessage)))
         }
     }
     
     public static func shieldFundsGrpc() -> AlertState {
         AlertState {
-            TextState(L10n.ShieldFunds.Error.title)
+            TextState(String(localizable: .shieldFundsErrorTitle))
         } message: {
-            TextState(L10n.ShieldFunds.Error.Gprc.message)
+            TextState(String(localizable: .shieldFundsErrorGprcMessage))
         }
     }
     
     public static func torInitFailedRequest() -> AlertState {
         AlertState {
-            TextState(L10n.TorSetup.Alert.title)
+            TextState(String(localizable: .torSetupAlertTitle))
         } actions: {
             ButtonState(action: .torDisableTapped) {
-                TextState(L10n.TorSetup.Alert.disable)
+                TextState(String(localizable: .torSetupAlertDisable))
             }
             ButtonState(action: .torDontDisableTapped) {
-                TextState(L10n.TorSetup.Alert.dontDisable)
+                TextState(String(localizable: .torSetupAlertDontDisable))
             }
         } message: {
-            TextState(L10n.TorSetup.Alert.msg)
+            TextState(String(localizable: .torSetupAlertMsg))
         }
     }
 }
@@ -689,19 +692,19 @@ extension AlertState where Action == Root.Action {
 extension ConfirmationDialogState where Action == Root.Action.ConfirmationDialog {
     public static func rescanRequest() -> ConfirmationDialogState {
         ConfirmationDialogState {
-            TextState(L10n.Root.Debug.Dialog.Rescan.title)
+            TextState(String(localizable: .rootDebugDialogRescanTitle))
         } actions: {
             ButtonState(role: .destructive, action: .quickRescan) {
-                TextState(L10n.Root.Debug.Dialog.Rescan.Option.quick)
+                TextState(String(localizable: .rootDebugDialogRescanOptionQuick))
             }
             ButtonState(role: .destructive, action: .fullRescan) {
-                TextState(L10n.Root.Debug.Dialog.Rescan.Option.full)
+                TextState(String(localizable: .rootDebugDialogRescanOptionFull))
             }
             ButtonState(role: .cancel) {
-                TextState(L10n.General.cancel)
+                TextState(String(localizable: .generalCancel))
             }
         } message: {
-            TextState(L10n.Root.Debug.Dialog.Rescan.message)
+            TextState(String(localizable: .rootDebugDialogRescanMessage))
         }
     }
 

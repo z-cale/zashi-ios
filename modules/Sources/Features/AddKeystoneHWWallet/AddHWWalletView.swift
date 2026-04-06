@@ -28,11 +28,11 @@ public struct AddKeystoneHWWalletView: View {
                             .frame(width: 193, height: 32)
                             .padding(.top, 16)
 
-                        Text(L10n.Keystone.connect)
+                        Text(localizable: .keystoneConnect)
                             .zFont(.semiBold, size: 24, style: Design.Text.primary)
                             .padding(.top, 24)
                         
-                        Text(L10n.Keystone.AddHWWallet.scan)
+                        Text(localizable: .keystoneAddHWWalletScan)
                             .zFont(size: 14, style: Design.Text.tertiary)
                             .lineSpacing(1.5)
                             .padding(.top, 8)
@@ -41,7 +41,7 @@ public struct AddKeystoneHWWalletView: View {
                         Button {
                             store.send(.viewTutorialTapped)
                         } label: {
-                            Text(L10n.Keystone.AddHWWallet.tutorial)
+                            Text(localizable: .keystoneAddHWWalletTutorial)
                                 .font(.custom(FontFamily.Inter.semiBold.name, size: 14))
                                 .foregroundColor(Design.Utility.HyperBlue._700.color(colorScheme))
                                 .underline()
@@ -49,31 +49,31 @@ public struct AddKeystoneHWWalletView: View {
                         }
                         #endif
 
-                        Text(L10n.Keystone.AddHWWallet.howTo)
+                        Text(localizable: .keystoneAddHWWalletHowTo)
                             .zFont(.semiBold, size: 18, style: Design.Text.primary)
                             .padding(.top, 24)
                         
                         InfoRow(
                             icon: Asset.Assets.Icons.lockUnlocked.image,
-                            title: L10n.Keystone.AddHWWallet.step1
+                            title: String(localizable: .keystoneAddHWWalletStep1)
                         )
                         .padding(.top, 16)
                         
                         InfoRow(
                             icon: Asset.Assets.Icons.dotsMenu.image,
-                            title: L10n.Keystone.AddHWWallet.step2
+                            title: String(localizable: .keystoneAddHWWalletStep2)
                         )
                         .padding(.top, 16)
 
                         InfoRow(
                             icon: Asset.Assets.Icons.connectWallet.image,
-                            title: L10n.Keystone.AddHWWallet.step3
+                            title: String(localizable: .keystoneAddHWWalletStep3)
                         )
                         .padding(.top, 16)
 
                         InfoRow(
                             icon: Asset.Assets.Icons.zashiLogoSqBold.image,
-                            title: L10n.Keystone.AddHWWallet.step4
+                            title: String(localizable: .keystoneAddHWWalletStep4)
                         )
                         .padding(.top, 16)
                     }
@@ -82,9 +82,7 @@ public struct AddKeystoneHWWalletView: View {
                 
                 Spacer()
                 
-                ZashiButton(
-                    L10n.Keystone.AddHWWallet.readyToScan
-                ) {
+                ZashiButton(String(localizable: .keystoneAddHWWalletReadyToScan)) {
                     store.send(.readyToScanTapped)
                 }
                 .padding(.vertical, 24)

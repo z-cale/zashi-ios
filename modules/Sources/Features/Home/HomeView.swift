@@ -41,7 +41,7 @@ public struct HomeView: View {
 
                 HStack {
                     button(
-                        L10n.Tabs.receive,
+                        String(localizable: .tabsReceive),
                         icon: Asset.Assets.Icons.received.image
                     ) {
                         store.send(.receiveScreenRequested)
@@ -50,7 +50,7 @@ public struct HomeView: View {
                     Spacer(minLength: 8)
 
                     button(
-                        L10n.Tabs.send,
+                        String(localizable: .tabsSend),
                         icon: Asset.Assets.Icons.sent.image
                     ) {
                         store.send(.sendTapped)
@@ -59,7 +59,7 @@ public struct HomeView: View {
                     Spacer(minLength: 8)
 
                     button(
-                        L10n.SwapAndPay.pay,
+                        String(localizable: .swapAndPayPay),
                         icon: Asset.Assets.Icons.pay.image
                     ) {
                         store.send(.payWithNearTapped)
@@ -68,7 +68,7 @@ public struct HomeView: View {
                     Spacer(minLength: 8)
 
                     button(
-                        L10n.SwapAndPay.swap,
+                        String(localizable: .swapAndPaySwap),
                         icon: Asset.Assets.Icons.swap.image
                     ) {
                         store.send(.swapWithNearTapped)
@@ -139,8 +139,8 @@ public struct HomeView: View {
                         GeometryReader { geometry in
                             preferences.map {
                                 Tooltip(
-                                    title: L10n.Tooltip.ExchangeRate.title,
-                                    desc: L10n.Tooltip.ExchangeRate.desc
+                                    title: String(localizable: .tooltipExchangeRateTitle),
+                                    desc: String(localizable: .tooltipExchangeRateDesc)
                                 ) {
                                     store.send(.rateTooltipTapped)
                                 }
@@ -177,7 +177,7 @@ public struct HomeView: View {
     @ViewBuilder func transactionsView() -> some View {
         WithPerceptionTracking {
             HStack(spacing: 0) {
-                Text(L10n.General.activity)
+                Text(localizable: .generalActivity)
                     .zFont(.semiBold, size: 18, style: Design.Text.primary)
                 
                 Spacer()
@@ -187,7 +187,7 @@ public struct HomeView: View {
                         store.send(.seeAllTransactionsTapped)
                     } label: {
                         HStack(spacing: 4) {
-                            Text(L10n.TransactionHistory.seeAll)
+                            Text(localizable: .transactionHistorySeeAll)
                                 .zFont(.semiBold, size: 14, style: Design.Btns.Tertiary.fg)
                             
                             Asset.Assets.chevronRight.image
@@ -233,7 +233,7 @@ public struct HomeView: View {
                         .frame(width: 164, height: 164)
                         .padding(.bottom, 20)
 
-                    Text(L10n.TransactionHistory.nothingHere)
+                    Text(localizable: .transactionHistoryNothingHere)
                         .zFont(.semiBold, size: 18, style: Design.Text.primary)
                         .padding(.bottom, 8)
                 }

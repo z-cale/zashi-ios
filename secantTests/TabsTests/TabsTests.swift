@@ -76,8 +76,8 @@ class TabsTests: XCTestCase {
         
         XCTAssertEqual(
             tabsState.selectedTab.title,
-            L10n.Tabs.account,
-            "Name of the account tab should be '\(L10n.Tabs.account)' but received \(tabsState.selectedTab.title)"
+            String(localizable: .tabsAccount),
+            "Name of the account tab should be '\(String(localizable: .tabsAccount))' but received \(tabsState.selectedTab.title)"
         )
     }
     
@@ -87,8 +87,8 @@ class TabsTests: XCTestCase {
         
         XCTAssertEqual(
             tabsState.selectedTab.title,
-            L10n.Tabs.send,
-            "Name of the send tab should be '\(L10n.Tabs.send)' but received \(tabsState.selectedTab.title)"
+            String(localizable: .tabsSend),
+            "Name of the send tab should be '\(String(localizable: .tabsSend))' but received \(tabsState.selectedTab.title)"
         )
     }
     
@@ -98,8 +98,8 @@ class TabsTests: XCTestCase {
         
         XCTAssertEqual(
             tabsState.selectedTab.title,
-            L10n.Tabs.receive,
-            "Name of the receive tab should be '\(L10n.Tabs.receive)' but received \(tabsState.selectedTab.title)"
+            String(localizable: .tabsReceive),
+            "Name of the receive tab should be '\(String(localizable: .tabsReceive))' but received \(tabsState.selectedTab.title)"
         )
     }
     
@@ -109,8 +109,8 @@ class TabsTests: XCTestCase {
         
         XCTAssertEqual(
             tabsState.selectedTab.title,
-            L10n.Tabs.balances,
-            "Name of the balances tab should be '\(L10n.Tabs.balances)' but received \(tabsState.selectedTab.title)"
+            String(localizable: .tabsBalances),
+            "Name of the balances tab should be '\(String(localizable: .tabsBalances))' but received \(tabsState.selectedTab.title)"
         )
     }
     

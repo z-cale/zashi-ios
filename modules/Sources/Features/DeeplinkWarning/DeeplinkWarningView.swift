@@ -28,13 +28,13 @@ public struct DeeplinkWarningView: View {
                     .padding(.bottom, 24)
                     .padding(.leading, 12)
 
-                Text(L10n.DeeplinkWarning.title)
+                Text(localizable: .deeplinkWarningTitle)
                     .zFont(.semiBold, size: 24, style: Design.Text.primary)
                     .minimumScaleFactor(0.5)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                 
-                Text(L10n.DeeplinkWarning.desc)
+                Text(localizable: .deeplinkWarningDesc)
                     .zFont(size: 14, style: Design.Text.primary)
                     .multilineTextAlignment(.center)
                     .screenHorizontalPadding()
@@ -42,7 +42,7 @@ public struct DeeplinkWarningView: View {
 
                 Spacer()
 
-                ZashiButton(L10n.DeeplinkWarning.cta) {
+                ZashiButton(String(localizable: .deeplinkWarningCta)) {
                     store.send(.rescanInZashi)
                 }
                 .padding(.bottom, 24)
@@ -51,7 +51,7 @@ public struct DeeplinkWarningView: View {
         .navigationBarTitleDisplayMode(.inline)
         .screenHorizontalPadding()
         .applyErredScreenBackground()
-        .screenTitle(L10n.DeeplinkWarning.screenTitle.uppercased())
+        .screenTitle(String(localizable: .deeplinkWarningScreenTitle).uppercased())
     }
 }
 

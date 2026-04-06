@@ -44,7 +44,7 @@ public struct RequestPaymentConfirmationView: View {
                     // requested by
                     HStack {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(L10n.Send.RequestPayment.requestedBy)
+                            Text(localizable: .sendRequestPaymentRequestedBy)
                                 .zFont(.medium, size: 14, style: Design.Text.tertiary)
 
                             if let alias = store.alias {
@@ -66,7 +66,7 @@ public struct RequestPaymentConfirmationView: View {
                             if !store.isTransparentAddress {
                                 if store.isAddressExpanded {
                                     ZashiButton(
-                                        L10n.General.hide,
+                                        String(localizable: .generalHide),
                                         type: .tertiary,
                                         infinityWidth: false,
                                         prefixView:
@@ -79,7 +79,7 @@ public struct RequestPaymentConfirmationView: View {
                                     .padding(.trailing, 12)
                                 } else {
                                     ZashiButton(
-                                        L10n.General.show,
+                                        String(localizable: .generalShow),
                                         type: .tertiary,
                                         infinityWidth: false,
                                         prefixView:
@@ -94,7 +94,7 @@ public struct RequestPaymentConfirmationView: View {
                             
                             if store.alias == nil {
                                 ZashiButton(
-                                    L10n.General.save,
+                                    String(localizable: .generalSave),
                                     type: .tertiary,
                                     infinityWidth: false,
                                     prefixView:
@@ -115,7 +115,7 @@ public struct RequestPaymentConfirmationView: View {
                     if store.walletAccounts.count > 1 {
                         HStack {
                             VStack(alignment: .leading, spacing: 6) {
-                                Text(L10n.Accounts.sendingFrom)
+                                Text(localizable: .accountsSendingFrom)
                                     .zFont(.medium, size: 14, style: Design.Text.tertiary)
                                 
                                 if let selectedWalletAccount = store.selectedWalletAccount {
@@ -145,7 +145,7 @@ public struct RequestPaymentConfirmationView: View {
                     
                     if !store.message.isEmpty {
                         VStack(alignment: .leading) {
-                            Text(L10n.Send.RequestPayment.for)
+                            Text(localizable: .sendRequestPaymentFor)
                                 .zFont(.medium, size: 14, style: Design.Text.tertiary)
 
                             HStack {
@@ -166,7 +166,7 @@ public struct RequestPaymentConfirmationView: View {
                     }
                     
                     HStack {
-                        Text(L10n.Send.feeSummary)
+                        Text(localizable: .sendFeeSummary)
                             .zFont(.medium, size: 14, style: Design.Text.tertiary)
                         
                         Spacer()
@@ -184,7 +184,7 @@ public struct RequestPaymentConfirmationView: View {
                     .padding(.bottom, 20)
                     
                     HStack {
-                        Text(L10n.Send.RequestPayment.total)
+                        Text(localizable: .sendRequestPaymentTotal)
                             .zFont(.medium, size: 14, style: Design.Text.tertiary)
                         
                         Spacer()
@@ -207,7 +207,7 @@ public struct RequestPaymentConfirmationView: View {
                 Spacer()
                 
                 if let vendor = store.selectedWalletAccount?.vendor, vendor == .keystone {
-                    ZashiButton(L10n.Keystone.confirm) {
+                    ZashiButton(String(localizable: .keystoneConfirm)) {
                         store.send(.confirmWithKeystoneTapped)
                     }
                     .screenHorizontalPadding()
@@ -215,7 +215,7 @@ public struct RequestPaymentConfirmationView: View {
                 } else {
                     if store.isSending {
                         ZashiButton(
-                            L10n.Send.sending,
+                            String(localizable: .sendSending),
                             accessoryView:
                                 ProgressView()
                                 .progressViewStyle(
@@ -229,7 +229,7 @@ public struct RequestPaymentConfirmationView: View {
                             .padding(.bottom, 24)
                             .disabled(store.isSending)
                     } else {
-                        ZashiButton(L10n.General.send) {
+                        ZashiButton(String(localizable: .generalSend)) {
                             store.send(.sendTapped)
                         }
                         .screenHorizontalPadding()
@@ -239,7 +239,7 @@ public struct RequestPaymentConfirmationView: View {
                 }
             }
             .onAppear { store.send(.onAppear) }
-            .screenTitle(L10n.Send.RequestPayment.title.uppercased())
+            .screenTitle(String(localizable: .sendRequestPaymentTitle).uppercased())
             .zashiBack(store.isSending) {
                 store.send(.goBackTappedFromRequestZec)
             }

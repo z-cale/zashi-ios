@@ -38,7 +38,7 @@ public struct RestoreWalletCoordFlowView: View {
                         .zImage(width: 203, height: 51, color: Asset.Colors.primary.color)
                         .padding(.bottom, 16)
 
-                    Text(L10n.PlainOnboarding.title)
+                    Text(localizable: .plainOnboardingTitle)
                         .zFont(size: 20, style: Design.Text.secondary)
                         .padding(.top, 15)
                         .multilineTextAlignment(.center)
@@ -47,14 +47,14 @@ public struct RestoreWalletCoordFlowView: View {
                     Spacer()
                     
                     ZashiButton(
-                        L10n.PlainOnboarding.Button.restoreWallet,
+                        String(localizable: .plainOnboardingButtonRestoreWallet),
                         type: .tertiary
                     ) {
                         store.send(.importExistingWallet)
                     }
                     .padding(.bottom, 8)
                     
-                    ZashiButton(L10n.PlainOnboarding.Button.createNewWallet) {
+                    ZashiButton(String(localizable: .plainOnboardingButtonCreateNewWallet)) {
                         store.send(.createNewWalletTapped)
                     }
                     .padding(.bottom, 24)
@@ -87,18 +87,18 @@ public struct RestoreWalletCoordFlowView: View {
     
     @ViewBuilder private func helpSheetContent() -> some View {
         VStack(spacing: 0) {
-            Text(L10n.RestoreWallet.Help.title)
+            Text(localizable: .restoreWalletHelpTitle)
                 .zFont(.semiBold, size: 24, style: Design.Text.primary)
                 .padding(.top, 24)
                 .padding(.bottom, 12)
             
-            infoContent(text: L10n.RestoreWallet.Help.phrase)
+            infoContent(text: String(localizable: .restoreWalletHelpPhrase))
                 .padding(.bottom, 12)
             
-            infoContent(text: L10n.RestoreWallet.Help.birthday)
+            infoContent(text: String(localizable: .restoreWalletHelpBirthday))
                 .padding(.bottom, 32)
             
-            ZashiButton(L10n.RestoreInfo.gotIt) {
+            ZashiButton(String(localizable: .restoreInfoGotIt)) {
                 store.send(.helpSheetRequested)
             }
             .padding(.bottom, Design.Spacing.sheetBottomSpace)
@@ -117,12 +117,12 @@ public struct RestoreWalletCoordFlowView: View {
                 .padding(.top, 48)
                 .padding(.leading, 12)
             
-            Text(L10n.TorSettingsSheet.title)
+            Text(localizable: .torSettingsSheetTitle)
                 .zFont(.semiBold, size: 24, style: Design.Text.primary)
                 .padding(.top, 24)
                 .padding(.bottom, 12)
             
-            Text(L10n.TorSettingsSheet.msg)
+            Text(localizable: .torSettingsSheetMsg)
                 .zFont(size: 14, style: Design.Text.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
                 .multilineTextAlignment(.leading)
@@ -131,17 +131,17 @@ public struct RestoreWalletCoordFlowView: View {
             
             DescriptiveToggle(
                 isOn: $store.isTorOn,
-                title: L10n.TorSettingsSheet.title,
-                desc: L10n.TorSettingsSheet.desc
+                title: String(localizable: .torSettingsSheetTitle),
+                desc: String(localizable: .torSettingsSheetDesc)
             )
             .padding(.bottom, 32)
             
-            ZashiButton(L10n.General.cancel, type: .tertiary) {
+            ZashiButton(String(localizable: .generalCancel), type: .tertiary) {
                 store.send(.restoreCancelTapped)
             }
             .padding(.bottom, Design.Spacing._lg)
             
-            ZashiButton(L10n.ImportWallet.Button.restoreWallet) {
+            ZashiButton(String(localizable: .importWalletButtonRestoreWallet)) {
                 store.send(.resolveRestoreRequested)
             }
             .padding(.bottom, Design.Spacing.sheetBottomSpace)
@@ -207,7 +207,7 @@ public struct RecoverySeedPhraseEntryView: View {
             ZStack {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        Text(L10n.RestoreWallet.title)
+                        Text(localizable: .restoreWalletTitle)
                             .zFont(.semiBold, size: 24, style: Design.Text.primary)
                             .padding(.top, 20)
                             .onLongPressGesture {
@@ -216,7 +216,7 @@ public struct RecoverySeedPhraseEntryView: View {
 #endif
                             }
                         
-                        Text(L10n.RestoreWallet.info)
+                        Text(localizable: .restoreWalletInfo)
                             .zFont(size: 14, style: Design.Text.primary)
                             .fixedSize(horizontal: false, vertical: true)
                             .padding(.top, 8)
@@ -283,7 +283,7 @@ public struct RecoverySeedPhraseEntryView: View {
                 VStack {
                     Spacer()
                     
-                    ZashiButton(L10n.General.next) {
+                    ZashiButton(String(localizable: .generalNext)) {
                         store.send(.nextTapped)
                     }
                     .disabled(!store.isValidSeed)
@@ -329,7 +329,7 @@ public struct RecoverySeedPhraseEntryView: View {
                     }
             )
             .zashiBack()
-            .screenTitle(L10n.ImportWallet.Button.restoreWallet)
+            .screenTitle(String(localizable: .importWalletButtonRestoreWallet))
             .overlay(
                 VStack(spacing: 0) {
                     Spacer()
@@ -375,7 +375,7 @@ public struct RecoverySeedPhraseEntryView: View {
                         Button {
                             focusedField = nil
                         } label: {
-                            Text(L10n.General.done.uppercased())
+                            Text(String(localizable: .generalDone).uppercased())
                                 .zFont(.regular, size: 14, style: Design.Text.primary)
                         }
                         .padding(.trailing, 24)

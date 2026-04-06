@@ -121,7 +121,7 @@ public struct Scan {
             case .checkCameraPermission:
                 if !captureDevice.isAuthorized() {
                     state.isCameraEnabled = false
-                    state.info = L10n.Scan.cameraSettings
+                    state.info = String(localizable: .scanCameraSettings)
                     return .run { send in
                         try? await mainQueue.sleep(for: .seconds(1))
                         await send(.checkCameraPermission)
@@ -198,11 +198,11 @@ public struct Scan {
             case .scanFailed(let result):
                 switch result {
                 case .invalidQRCode:
-                    state.info = L10n.Scan.invalidQR
+                    state.info = String(localizable: .scanInvalidQR)
                 case .noQRCodeFound:
-                    state.info = L10n.Scan.invalidImage
+                    state.info = String(localizable: .scanInvalidImage)
                 case .severalQRCodesFound:
-                    state.info = L10n.Scan.severalCodesFound
+                    state.info = String(localizable: .scanSeveralCodesFound)
                 case .keystoneCheckOnly:
                     state.info = ""
                 }

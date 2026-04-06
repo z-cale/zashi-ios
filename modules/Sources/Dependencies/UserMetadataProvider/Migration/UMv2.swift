@@ -94,7 +94,7 @@ extension UserMetadata {
             swapIds: userMetadata.accountMetadata.swaps.swapIds.map {
                 UMSwapId(
                     depositAddress: $0.depositAddress,
-                    provider: L10n.Swap.nearProvider,
+                    provider: String(localizable: .swapNearProvider),
                     totalFees: $0.totalFees,
                     totalUSDFees: $0.totalUSDFees,
                     lastUpdated: $0.lastUpdated,

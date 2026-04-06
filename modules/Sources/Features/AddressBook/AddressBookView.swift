@@ -43,7 +43,7 @@ public struct AddressBookView: View {
                         VStack(spacing: 40) {
                             emptyComposition()
                             
-                            Text(L10n.AddressBook.empty)
+                            Text(localizable: .addressBookEmpty)
                                 .zFont(.semiBold, size: 24, style: Design.Text.primary)
                                 .multilineTextAlignment(.center)
                         }
@@ -64,8 +64,8 @@ public struct AddressBookView: View {
             .screenTitle(
                 store.isInSelectMode
                 && (!store.addressBookContactsToShow.contacts.isEmpty || store.walletAccounts.count > 1 || store.context == .swap)
-                ? L10n.AddressBook.selectRecipient
-                : L10n.AddressBook.title
+                ? String(localizable: .addressBookSelectRecipient)
+                : String(localizable: .addressBookTitle)
             )
             .navigationBarTitleDisplayMode(.inline)
             .applyScreenBackground()
@@ -82,7 +82,7 @@ public struct AddressBookView: View {
                         Asset.Assets.Icons.qr.image
                             .zImage(size: 20, style: Design.Text.primary)
 
-                        Text(L10n.AddressBook.scanAddress)
+                        Text(localizable: .addressBookScanAddress)
                     }
                 }
 
@@ -93,12 +93,12 @@ public struct AddressBookView: View {
                         Asset.Assets.Icons.pencil.image
                             .zImage(size: 20, style: Design.Text.primary)
 
-                        Text(L10n.AddressBook.manualEntry)
+                        Text(localizable: .addressBookManualEntry)
                     }
                 }
             } label: {
                 ZashiButton(
-                    L10n.AddressBook.addNewContact,
+                    String(localizable: .addressBookAddNewContact),
                     prefixView:
                         Asset.Assets.Icons.plus.image
                             .renderingMode(.template)
@@ -128,7 +128,7 @@ public struct AddressBookView: View {
     @ViewBuilder func contactsList() -> some View {
         List {
             if store.walletAccounts.count > 1 && store.isInSelectMode && store.context != .swap {
-                Text(L10n.Accounts.AddressBook.your)
+                Text(localizable: .accountsAddressBookYour)
                     .zFont(.medium, size: 14, style: Design.Text.tertiary)
                     .padding(.top, 24)
                     .padding(.bottom, 16)
@@ -141,7 +141,7 @@ public struct AddressBookView: View {
                             walletAccountView(
                                 icon: walletAccount.vendor.icon(),
                                 title: walletAccount.vendor.name(),
-                                address: walletAccount.unifiedAddress ?? L10n.Receive.Error.cantExtractUnifiedAddress
+                                address: walletAccount.unifiedAddress ?? String(localizable: .receiveErrorCantExtractUnifiedAddress)
                             ) {
                                 store.send(.walletAccountTapped(walletAccount))
                             }
@@ -161,7 +161,7 @@ public struct AddressBookView: View {
                     VStack(spacing: 40) {
                         emptyComposition()
                         
-                        Text(L10n.AddressBook.empty)
+                        Text(localizable: .addressBookEmpty)
                             .zFont(.semiBold, size: 24, style: Design.Text.primary)
                             .multilineTextAlignment(.center)
                     }
@@ -177,7 +177,7 @@ public struct AddressBookView: View {
                     .padding(.top, 24)
                     .screenHorizontalPadding()
                 } else {
-                    Text(L10n.Accounts.AddressBook.contacts)
+                    Text(localizable: .accountsAddressBookContacts)
                         .zFont(.medium, size: 14, style: Design.Text.tertiary)
                         .padding(.top, 32)
                         .padding(.bottom, 16)

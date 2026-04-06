@@ -60,11 +60,11 @@ extension AddressBookContactView {
                         .frame(width: 164, height: 164)
                         .padding(.bottom, 20)
                     
-                    Text(L10n.SwapAndPay.EmptyAssets.title)
+                    Text(localizable: .swapAndPayEmptyAssetsTitle)
                         .zFont(.semiBold, size: 20, style: Design.Text.primary)
                         .padding(.bottom, 8)
                     
-                    Text(L10n.SwapAndPay.EmptyAssets.subtitle)
+                    Text(localizable: .swapAndPayEmptyAssetsSubtitle)
                         .zFont(size: 14, style: Design.Text.tertiary)
                         .padding(.bottom, 20)
                 }
@@ -78,7 +78,7 @@ extension AddressBookContactView {
             VStack(alignment: .leading, spacing: 0) {
                 ZStack {
                     VStack {
-                        Text(L10n.SwapAndPay.addressBookSelectChain.uppercased())
+                        Text(String(localizable: .swapAndPayAddressBookSelectChain).uppercased())
                             .zFont(.semiBold, size: 16, style: Design.Text.primary)
                             .fixedSize()
                     }
@@ -101,7 +101,7 @@ extension AddressBookContactView {
                 
                 ZashiTextField(
                     text: $store.searchTerm,
-                    placeholder: L10n.SwapAndPay.search,
+                    placeholder: String(localizable: .swapAndPaySearch),
                     eraseAction: { store.send(.eraseSearchTermTapped) },
                     accessoryView: !store.searchTerm.isEmpty ? Asset.Assets.Icons.xClose.image
                         .zImage(size: 16, style: Design.Btns.Tertiary.fg) : nil,

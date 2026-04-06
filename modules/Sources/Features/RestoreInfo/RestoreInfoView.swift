@@ -28,32 +28,32 @@ public struct RestoreInfoView: View {
                     .padding(.top, 40)
                     .padding(.bottom, 24)
 
-                Text(L10n.RestoreInfo.title)
+                Text(localizable: .restoreInfoTitle)
                     .zFont(.semiBold, size: 24, style: Design.Text.primary)
                     .padding(.bottom, 8)
 
-                Text(L10n.RestoreInfo.subTitle)
+                Text(localizable: .restoreInfoSubTitle)
                     .zFont(.medium, size: 16, style: Design.Text.primary)
                     .padding(.bottom, 16)
 
-                Text(L10n.RestoreInfo.tips)
+                Text(localizable: .restoreInfoTips)
                     .zFont(size: 14, style: Design.Text.primary)
                     .padding(.bottom, 4)
 
-                bulletpoint(L10n.RestoreInfo.tip1)
-                bulletpoint(L10n.RestoreInfo.tip2)
+                bulletpoint(String(localizable: .restoreInfoTip1))
+                bulletpoint(String(localizable: .restoreInfoTip2))
                     .padding(.bottom, 20)
 
                 Spacer()
 
-                Text("\(Text(L10n.RestoreInfo.note).bold())\(L10n.RestoreInfo.noteInfo)")
+                Text("\(Text(localizable: .restoreInfoNote).bold())\(String(localizable: .restoreInfoNoteInfo))")
                     .zFont(size: 12, style: Design.Text.primary)
                     .padding(.bottom, 24)
 
                 HStack {
                     ZashiToggle(
                         isOn: $store.isAcknowledged,
-                        label: L10n.RestoreInfo.checkbox,
+                        label: String(localizable: .restoreInfoCheckbox),
                         textSize: 16
                     )
                     
@@ -61,7 +61,7 @@ public struct RestoreInfoView: View {
                 }
                 .padding(.leading, 1)
 
-                ZashiButton(L10n.RestoreInfo.gotIt) {
+                ZashiButton(String(localizable: .restoreInfoGotIt)) {
                     store.send(.gotItTapped)
                 }
                 .padding(.vertical, 24)

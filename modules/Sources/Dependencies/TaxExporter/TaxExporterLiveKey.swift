@@ -89,7 +89,8 @@ extension TaxExporterClient: DependencyKey {
             let csvData = csvString.data(using: .utf8) ?? Data()
             
             // Create a temporary file URL
-            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(L10n.TaxExport.fileName($1, prevYear))
+            let component = String(localizable: .taxExportFileName($1, String(prevYear)))
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(component)
 
             do {
                 try csvData.write(to: tempURL)

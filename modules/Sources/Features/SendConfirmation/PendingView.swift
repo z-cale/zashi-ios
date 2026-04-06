@@ -60,7 +60,7 @@ public struct PendingView: View {
 
                 if store.txIdToExpand != nil {
                     ZashiButton(
-                        L10n.Send.viewTransaction,
+                        String(localizable: .sendViewTransaction),
                         type: .tertiary,
                         infinityWidth: false
                     ) {
@@ -72,7 +72,7 @@ public struct PendingView: View {
                 Spacer()
                 
                 ZashiButton(
-                    L10n.General.close,
+                    String(localizable: .generalClose),
                     type: store.type != .regular && store.txIdToExpand != nil ? .ghost : .primary
                 ) {
                     store.send(.closeTapped)
@@ -80,7 +80,7 @@ public struct PendingView: View {
                 .padding(.bottom, store.type != .regular && store.txIdToExpand != nil ? 12 : 24)
 
                 if store.type != .regular && store.txIdToExpand != nil {
-                    ZashiButton(L10n.SwapAndPay.checkStatus) {
+                    ZashiButton(String(localizable: .swapAndPayCheckStatus)) {
                         store.send(.checkStatusTapped)
                     }
                     .padding(.bottom, 24)

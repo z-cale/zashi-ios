@@ -33,8 +33,8 @@ public struct MessageEditorView: View {
     
     public init(
         store: StoreOf<MessageEditor>,
-        title: String = L10n.Send.message,
-        placeholder: String = L10n.Send.memoPlaceholder,
+        title: String = String(localizable: .sendMessage),
+        placeholder: String = String(localizable: .sendMemoPlaceholder),
         isAddUAtoMemoActive: Bool = false
     ) {
         self.store = store
@@ -107,7 +107,7 @@ public struct MessageEditorView: View {
                 if store.featureFlags.addUAtoMemo && isAddUAtoMemoActive && !store.uAddress.isEmpty {
                     ZashiToggle(
                         isOn: $store.isUAaddedToMemo,
-                        label: store.isUAaddedToMemo ? L10n.MessageEditor.removeUA : L10n.MessageEditor.addUA,
+                        label: store.isUAaddedToMemo ? String(localizable: .messageEditorRemoveUA) : String(localizable: .messageEditorAddUA),
                         textColor: Design.Inputs.Filled.label.color(colorScheme)
                     )
                     .padding(.top, 12)

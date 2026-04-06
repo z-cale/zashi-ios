@@ -44,10 +44,10 @@ extension SmartBannerView {
                 .padding(.trailing, 12)
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.SmartBanner.Content.Disconnected.title)
+                Text(localizable: .smartBannerContentDisconnectedTitle)
                     .zFont(.medium, size: 14, color: titleStyle())
                 
-                Text(L10n.SmartBanner.Content.Disconnected.info)
+                Text(localizable: .smartBannerContentDisconnectedInfo)
                     .zFont(.medium, size: 12, color: infoStyle())
             }
             
@@ -62,10 +62,10 @@ extension SmartBannerView {
                 .padding(.trailing, 12)
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.SmartBanner.Content.SyncingError.title)
+                Text(localizable: .smartBannerContentSyncingErrorTitle)
                     .zFont(.medium, size: 14, color: titleStyle())
                 
-                Text(L10n.SmartBanner.Content.SyncingError.info)
+                Text(localizable: .smartBannerContentSyncingErrorInfo)
                     .zFont(.medium, size: 12, color: infoStyle())
             }
             
@@ -80,12 +80,12 @@ extension SmartBannerView {
                 .padding(.trailing, 12)
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.SmartBanner.Content.Restore.title(String(format: "%0.1f%%", store.lastKnownSyncPercentage * 100)))
+                Text(localizable: .smartBannerContentRestoreTitle(String(format: "%0.1f%%", store.lastKnownSyncPercentage * 100)))
                     .zFont(.medium, size: 14, color: titleStyle())
                 
                 Text(store.areFundsSpendable
-                     ? L10n.SmartBanner.Content.Restore.infoSpendable
-                     : L10n.SmartBanner.Content.Restore.info
+                     ? String(localizable: .smartBannerContentRestoreInfoSpendable)
+                     : String(localizable: .smartBannerContentRestoreInfo)
                 )
                 .zFont(.medium, size: 12, color: infoStyle())
             }
@@ -101,10 +101,10 @@ extension SmartBannerView {
                 .padding(.trailing, 12)
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.SmartBanner.Content.Sync.title(String(format: "%0.1f%%", store.lastKnownSyncPercentage * 100)))
+                Text(localizable: .smartBannerContentSyncTitle(String(format: "%0.1f%%", store.lastKnownSyncPercentage * 100)))
                     .zFont(.medium, size: 14, color: titleStyle())
                 
-                Text(L10n.SmartBanner.Content.Sync.info)
+                Text(localizable: .smartBannerContentSyncInfo)
                     .zFont(.medium, size: 12, color: infoStyle())
             }
             
@@ -119,10 +119,10 @@ extension SmartBannerView {
                 .padding(.trailing, 12)
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.SmartBanner.Content.UpdatingBalance.title)
+                Text(localizable: .smartBannerContentUpdatingBalanceTitle)
                     .zFont(.medium, size: 14, color: titleStyle())
                 
-                Text(L10n.SmartBanner.Content.UpdatingBalance.info)
+                Text(localizable: .smartBannerContentUpdatingBalanceInfo)
                     .zFont(.medium, size: 12, color: infoStyle())
             }
             
@@ -137,17 +137,17 @@ extension SmartBannerView {
                 .padding(.trailing, 12)
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.SmartBanner.Content.Backup.title)
+                Text(localizable: .smartBannerContentBackupTitle)
                     .zFont(.medium, size: 14, color: titleStyle())
                 
-                Text(L10n.SmartBanner.Content.Backup.info)
+                Text(localizable: .smartBannerContentBackupInfo)
                     .zFont(.medium, size: 12, color: infoStyle())
             }
             
             Spacer()
             
             ZashiButton(
-                L10n.SmartBanner.Content.Backup.button,
+                String(localizable: .smartBannerContentBackupButton),
                 type: .ghost,
                 infinityWidth: false
             ) {
@@ -164,10 +164,10 @@ extension SmartBannerView {
             
             VStack(alignment: .leading, spacing: 2) {
                 ViewThatFits {
-                    Text(L10n.SmartBanner.Content.Shield.title)
+                    Text(localizable: .smartBannerContentShieldTitle)
                         .zFont(.medium, size: 14, color: titleStyle())
 
-                    Text(L10n.SmartBanner.Content.Shield.titleShorter)
+                    Text(localizable: .smartBannerContentShieldTitleShorter)
                         .zFont(.medium, size: 14, color: titleStyle())
                 }
                 
@@ -178,7 +178,7 @@ extension SmartBannerView {
             Spacer()
             
             ZashiButton(
-                L10n.SmartBanner.Content.Shield.button,
+                String(localizable: .smartBannerContentShieldButton),
                 type: .ghost,
                 infinityWidth: false
             ) {
@@ -199,17 +199,17 @@ extension SmartBannerView {
                 .padding(.trailing, 12)
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.SmartBanner.Content.Tor.title)
+                Text(localizable: .smartBannerContentTorTitle)
                     .zFont(.medium, size: 14, color: titleStyle())
                 
-                Text(L10n.SmartBanner.Content.Tor.info)
+                Text(localizable: .smartBannerContentTorInfo)
                     .zFont(.medium, size: 12, color: infoStyle())
             }
             
             Spacer()
             
             ZashiButton(
-                L10n.SmartBanner.Content.Tor.button,
+                String(localizable: .smartBannerContentTorButton),
                 type: .ghost,
                 infinityWidth: false
             ) {
@@ -225,17 +225,17 @@ extension SmartBannerView {
                 .padding(.trailing, 12)
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.SmartBanner.Content.CurrencyConversion.title)
+                Text(localizable: .smartBannerContentCurrencyConversionTitle)
                     .zFont(.medium, size: 14, color: titleStyle())
                 
-                Text(L10n.SmartBanner.Content.CurrencyConversion.info)
+                Text(localizable: .smartBannerContentCurrencyConversionInfo)
                     .zFont(.medium, size: 12, color: infoStyle())
             }
             
             Spacer()
             
             ZashiButton(
-                L10n.SmartBanner.Content.CurrencyConversion.button,
+                String(localizable: .smartBannerContentCurrencyConversionButton),
                 type: .ghost,
                 infinityWidth: false
             ) {
@@ -251,17 +251,17 @@ extension SmartBannerView {
                 .padding(.trailing, 12)
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.SmartBanner.Content.AutoShielding.title)
+                Text(localizable: .smartBannerContentAutoShieldingTitle)
                     .zFont(.medium, size: 14, color: titleStyle())
                 
-                Text(L10n.SmartBanner.Content.AutoShielding.info)
+                Text(localizable: .smartBannerContentAutoShieldingInfo)
                     .zFont(.medium, size: 12, color: infoStyle())
             }
             
             Spacer()
             
             ZashiButton(
-                L10n.SmartBanner.Content.AutoShielding.button,
+                String(localizable: .smartBannerContentAutoShieldingButton),
                 type: .ghost,
                 infinityWidth: false
             ) {

@@ -49,8 +49,8 @@ public struct SwapAndPayCoordFlowView: View {
                     .zashiTitle {
                         Text(
                             store.isSwapHelpContent
-                            ? L10n.SwapAndPay.swap.uppercased()
-                            : L10n.Crosspay.title.uppercased()
+                            ? String(localizable: .swapAndPaySwap).uppercased()
+                            : String(localizable: .crosspayTitle).uppercased()
                         )
                         .zFont(.semiBold, size: 16, style: Design.Text.primary)
                     }
@@ -123,8 +123,8 @@ public struct SwapAndPayCoordFlowView: View {
             HStack(spacing: 10) {
                 Text(
                     store.isSwapHelpContent
-                    ? L10n.SwapAndPay.Help.swapWith
-                    : L10n.Crosspay.Help.payWith
+                    ? String(localizable: .swapAndPayHelpSwapWith)
+                    : String(localizable: .crosspayHelpPayWith)
                 )
                 .zFont(.semiBold, size: 20, style: Design.Text.primary)
 
@@ -137,21 +137,21 @@ public struct SwapAndPayCoordFlowView: View {
             if store.isSwapHelpContent {
                 infoContent(
                     index: 0,
-                    text: L10n.SwapAndPay.Help.swapDesc,
-                    desc1: L10n.SwapAndPay.Help.swapDesc1,
-                    desc2: L10n.SwapAndPay.Help.swapDesc2
+                    text: String(localizable: .swapAndPayHelpSwapDesc),
+                    desc1: String(localizable: .swapAndPayHelpSwapDesc1),
+                    desc2: String(localizable: .swapAndPayHelpSwapDesc2)
                 )
                 .padding(.bottom, 32)
             } else {
                 infoContent(
                     index: 1,
-                    text: L10n.Crosspay.Help.desc1,
-                    desc1: L10n.Crosspay.Help.desc2
+                    text: String(localizable: .crosspayHelpDesc1),
+                    desc1: String(localizable: .crosspayHelpDesc2)
                 )
                 .padding(.bottom, 32)
             }
             
-            ZashiButton(L10n.General.ok.uppercased()) {
+            ZashiButton(String(localizable: .generalOk).uppercased()) {
                 store.send(.helpSheetRequested)
             }
             .padding(.bottom, Design.Spacing.sheetBottomSpace)

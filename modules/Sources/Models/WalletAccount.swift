@@ -35,9 +35,9 @@ public struct WalletAccount: Equatable, Hashable, Codable, Identifiable {
         public func name() -> String {
             switch self {
             case .keystone:
-                return L10n.Accounts.keystone
+                return String(localizable: .accountsKeystone)
             case .zcash:
-                return L10n.Accounts.zashi
+                return String(localizable: .accountsZashi)
             }
         }
     }
@@ -68,7 +68,7 @@ public struct WalletAccount: Equatable, Hashable, Codable, Identifiable {
 
     public init(_ account: Account) {
         self.id = account.id
-        self.vendor = account.keySource == L10n.Accounts.keystone.lowercased() ? .keystone : .zcash
+        self.vendor = account.keySource == String(localizable: .accountsKeystone).lowercased() ? .keystone : .zcash
         self.seedFingerprint = account.seedFingerprint
         self.zip32AccountIndex = account.hdAccountIndex
         self.account = account

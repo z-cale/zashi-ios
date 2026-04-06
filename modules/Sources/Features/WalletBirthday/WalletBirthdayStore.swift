@@ -93,7 +93,7 @@ public struct WalletBirthday {
                 
             case .copyBirthdayTapped:
                 pasteboard.setString(state.birthday.redacted)
-                state.$toast.withLock { $0 = .top(L10n.General.copiedToTheClipboard) }
+                state.$toast.withLock { $0 = .top(String(localizable: .generalCopiedToTheClipboard)) }
                 return .none
 
             case .updateMonths:

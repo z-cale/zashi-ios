@@ -28,21 +28,21 @@ public struct AdvancedSettingsView: View {
                     Group {
                         ActionRow(
                             icon: Asset.Assets.Icons.key.image,
-                            title: L10n.Settings.recoveryPhrase
+                            title: String(localizable: .settingsRecoveryPhrase)
                         ) {
                             store.send(.operationAccessGranted(.recoveryPhrase))
                         }
                         
                         ActionRow(
                             icon: Asset.Assets.Icons.downloadCloud.image,
-                            title: L10n.Settings.exportPrivateData
+                            title: String(localizable: .settingsExportPrivateData)
                         ) {
                             store.send(.operationAccessCheck(.exportPrivateData))
                         }
 
                         ActionRow(
                             icon: Asset.Assets.Icons.file.image,
-                            title: L10n.TaxExport.taxFile
+                            title: String(localizable: .taxExportTaxFile)
                         ) {
                             store.send(.operationAccessCheck(.exportTaxFile))
                         }
@@ -51,7 +51,7 @@ public struct AdvancedSettingsView: View {
                         if store.isEnoughFreeSpaceMode {
                             ActionRow(
                                 icon: Asset.Assets.Icons.server.image,
-                                title: L10n.Settings.chooseServer
+                                title: String(localizable: .settingsChooseServer)
                             ) {
                                 store.send(.operationAccessCheck(.chooseServer))
                             }
@@ -59,7 +59,7 @@ public struct AdvancedSettingsView: View {
 
                         ActionRow(
                             icon: Asset.Assets.Icons.shieldZap.image,
-                            title: L10n.Settings.private,
+                            title: String(localizable: .settingsPrivate),
                             divider: false
                         ) {
                             store.send(.operationAccessCheck(.torSetup))
@@ -79,7 +79,7 @@ public struct AdvancedSettingsView: View {
                         .zImage(size: 20, style: Design.Text.tertiary)
                         .padding(.trailing, 12)
 
-                    Text(L10n.Settings.deleteZashiWarning)
+                    Text(localizable: .settingsDeleteZashiWarning)
                 }
                 .zFont(size: 12, style: Design.Text.tertiary)
                 .padding(.bottom, 20)
@@ -87,7 +87,7 @@ public struct AdvancedSettingsView: View {
                 Button {
                     store.send(.operationAccessCheck(.resetZashi))
                 } label: {
-                    Text(L10n.Settings.deleteZashi)
+                    Text(localizable: .settingsDeleteZashi)
                         .zFont(.semiBold, size: 16, style: Design.Btns.Destructive1.fg)
                         .frame(height: 24)
                         .frame(maxWidth: .infinity)
@@ -109,7 +109,7 @@ public struct AdvancedSettingsView: View {
         .listStyle(.plain)
         .navigationBarTitleDisplayMode(.inline)
         .zashiBack()
-        .screenTitle(L10n.Settings.advanced)
+        .screenTitle(String(localizable: .settingsAdvanced))
     }
 }
 

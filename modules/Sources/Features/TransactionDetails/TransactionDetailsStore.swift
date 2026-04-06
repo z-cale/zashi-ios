@@ -99,7 +99,7 @@ public struct TransactionDetails {
             }
 
             let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "MMM d, YYYY '\(L10n.Filter.at)' h:mm a"
+            dateFormatter.dateFormat = "MMM d, YYYY '\(String(localizable: .filterAt))' h:mm a"
             let dateStr = dateFormatter.string(from: date)
             
             return IncompleteSwap(
@@ -178,7 +178,7 @@ public struct TransactionDetails {
         }
         
         public var feeStr: String {
-            transaction.fee?.decimalString() ?? L10n.TransactionHistory.defaultFee
+            transaction.fee?.decimalString() ?? String(localizable: .transactionHistoryDefaultFee)
         }
         
         public var memos: [String] {
@@ -199,14 +199,14 @@ public struct TransactionDetails {
             }
             
             switch swapDetails.status {
-            case .pending: return L10n.SwapToZec.swapPending
-            case .refunded: return L10n.SwapToZec.swapRefunded
-            case .success: return L10n.SwapToZec.swapCompleted
-            case .failed: return L10n.SwapToZec.swapFailed
-            case .pendingDeposit: return L10n.SwapToZec.swapPending
-            case .incompleteDeposit: return L10n.SwapToZec.swapIncomplete
-            case .processing: return L10n.SwapToZec.swapProcessing
-            case .expired: return L10n.SwapToZec.swapExpired
+            case .pending: return String(localizable: .swapToZecSwapPending)
+            case .refunded: return String(localizable: .swapToZecSwapRefunded)
+            case .success: return String(localizable: .swapToZecSwapCompleted)
+            case .failed: return String(localizable: .swapToZecSwapFailed)
+            case .pendingDeposit: return String(localizable: .swapToZecSwapPending)
+            case .incompleteDeposit: return String(localizable: .swapToZecSwapIncomplete)
+            case .processing: return String(localizable: .swapToZecSwapProcessing)
+            case .expired: return String(localizable: .swapToZecSwapExpired)
             }
         }
         
@@ -473,18 +473,18 @@ public struct TransactionDetails {
                 
             case .addressTapped:
                 pasteboard.setString(state.transaction.address.redacted)
-                state.$toast.withLock { $0 = .top(L10n.General.copiedToTheClipboard) }
+                state.$toast.withLock { $0 = .top(String(localizable: .generalCopiedToTheClipboard)) }
                 return .none
                 
             case .transactionIdTapped:
                 pasteboard.setString(state.transaction.id.redacted)
-                state.$toast.withLock { $0 = .top(L10n.General.copiedToTheClipboard) }
+                state.$toast.withLock { $0 = .top(String(localizable: .generalCopiedToTheClipboard)) }
                 return .none
                 
             case .swapRecipientTapped:
                 if let recipient = state.swapRecipient {
                     pasteboard.setString(recipient.redacted)
-                    state.$toast.withLock { $0 = .top(L10n.General.copiedToTheClipboard) }
+                    state.$toast.withLock { $0 = .top(String(localizable: .generalCopiedToTheClipboard)) }
                 }
                 return .none
                 
@@ -556,11 +556,11 @@ public struct TransactionDetails {
                 }
                 
             case .reportSwapRequested:
-                var prefixMessage = "\(L10n.ReportSwap.please)\n\n\n"
-                prefixMessage += "\(L10n.ReportSwap.swapDetails)\n"
-                prefixMessage += "\(L10n.ReportSwap.depositAddress) \(state.transaction.address)\n"
-                prefixMessage += L10n.ReportSwap.sourceAsset(state.swapFromAsset?.token ?? "", state.swapFromAsset?.chainName ?? "")
-                prefixMessage += L10n.ReportSwap.targetAsset(state.swapToAsset?.token ?? "", state.swapToAsset?.chainName ?? "")
+                var prefixMessage = "\(String(localizable: .reportSwapPlease))\n\n\n"
+                prefixMessage += "\(String(localizable: .reportSwapSwapDetails))\n"
+                prefixMessage += "\(String(localizable: .reportSwapDepositAddress)) \(state.transaction.address)\n"
+                prefixMessage += String(localizable: .reportSwapSourceAsset(state.swapFromAsset?.token ?? "", state.swapFromAsset?.chainName ?? ""))
+                prefixMessage += String(localizable: .reportSwapTargetAsset(state.swapToAsset?.token ?? "", state.swapToAsset?.chainName ?? ""))
 
                 if state.canSendMail {
                     state.supportData = SupportDataGenerator.generate(prefixMessage)
@@ -569,7 +569,7 @@ public struct TransactionDetails {
                     let sharePrefix =
                     """
                     ===
-                    \(L10n.SendFeedback.Share.notAppleMailInfo) \(SupportDataGenerator.Constants.email)
+                    \(String(localizable: .sendFeedbackShareNotAppleMailInfo)) \(SupportDataGenerator.Constants.email)
                     ===
                     
                     \(prefixMessage)

@@ -35,16 +35,16 @@ public struct ServerSetupView: View {
                                 VStack(spacing: 15) {
                                     progressView()
                                     
-                                    Text(L10n.ServerSetup.performingTest)
+                                    Text(localizable: .serverSetupPerformingTest)
                                         .zFont(.semiBold, size: 20, style: Design.Text.primary)
 
-                                    Text(L10n.ServerSetup.couldTakeTime)
+                                    Text(localizable: .serverSetupCouldTakeTime)
                                         .zFont(size: 14, style: Design.Text.tertiary)
                                 }
                                 .frame(height: 136)
                             } else {
                                 HStack {
-                                    Text(L10n.ServerSetup.fastestServers)
+                                    Text(localizable: .serverSetupFastestServers)
                                         .zFont(.semiBold, size: 18, style: Design.Text.primary)
 
                                     Spacer()
@@ -53,7 +53,7 @@ public struct ServerSetupView: View {
                                         store.send(.refreshServersTapped)
                                     } label: {
                                         HStack(spacing: 4) {
-                                            Text(L10n.ServerSetup.refresh)
+                                            Text(localizable: .serverSetupRefresh)
                                                 .zFont(.semiBold, size: 14, style: Design.Text.primary)
 
                                             if store.isEvaluatingServers {
@@ -76,8 +76,8 @@ public struct ServerSetupView: View {
                             HStack {
                                 Text(
                                     store.topKServers.isEmpty
-                                    ? L10n.ServerSetup.allServers
-                                    : L10n.ServerSetup.otherServers
+                                    ? String(localizable: .serverSetupAllServers)
+                                    : String(localizable: .serverSetupOtherServers)
                                 )
                                 .zFont(.semiBold, size: 18, style: Design.Text.primary)
 
@@ -102,7 +102,7 @@ public struct ServerSetupView: View {
                                 } label: {
                                     if store.isUpdatingServer {
                                         HStack(spacing: 8) {
-                                            Text(L10n.ServerSetup.save)
+                                            Text(localizable: .serverSetupSave)
                                                 .zFont(.semiBold, size: 16,
                                                        style: store.selectedServer == nil
                                                        ? Design.Btns.Primary.fgDisabled
@@ -121,7 +121,7 @@ public struct ServerSetupView: View {
                                         .cornerRadius(10)
                                         .screenHorizontalPadding()
                                     } else {
-                                        Text(L10n.ServerSetup.save)
+                                        Text(localizable: .serverSetupSave)
                                             .zFont(.semiBold, size: 16, 
                                                    style: store.selectedServer == nil
                                                    ? Design.Btns.Primary.fgDisabled
@@ -144,7 +144,7 @@ public struct ServerSetupView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .zashiBack(store.isUpdatingServer, customDismiss: customDismiss)
-                    .screenTitle(L10n.ServerSetup.title)
+                    .screenTitle(String(localizable: .serverSetupTitle))
                     .onAppear { store.send(.onAppear) }
                     .onDisappear { store.send(.onDisappear) }
                     .alert($store.scope(state: \.alert, action: \.alert))
@@ -215,7 +215,7 @@ public struct ServerSetupView: View {
                                         }
                                         
                                         WithPerceptionTracking {
-                                            TextField(L10n.ServerSetup.placeholder, text: $store.customServer)
+                                            TextField(String(localizable: .serverSetupPlaceholder), text: $store.customServer)
                                                 .zFont(.medium, size: 14, style: Design.Text.primary)
                                                 .frame(height: 40)
                                                 .autocapitalization(.none)
@@ -288,11 +288,11 @@ public struct ServerSetupView: View {
     }
 
     private func isCustom(_ server: ZcashSDKEnvironment.Server) -> Bool {
-        store.selectedServer == L10n.ServerSetup.custom && server.value(for: store.network) == L10n.ServerSetup.custom
+        store.selectedServer == String(localizable: .serverSetupCustom) && server.value(for: store.network) == String(localizable: .serverSetupCustom)
     }
 
     private func isCustomButNotSelected(_ server: ZcashSDKEnvironment.Server) -> Bool {
-        store.selectedServer != L10n.ServerSetup.custom && server.value(for: store.network) == L10n.ServerSetup.custom
+        store.selectedServer != String(localizable: .serverSetupCustom) && server.value(for: store.network) == String(localizable: .serverSetupCustom)
     }
 
     private func chevronDown() -> some View {
@@ -301,7 +301,7 @@ public struct ServerSetupView: View {
     }
 
     private func activeBadge() -> some View {
-        Text(L10n.ServerSetup.active)
+        Text(localizable: .serverSetupActive)
             .zFont(.medium, size: 14, style: Design.Utility.SuccessGreen._700)
             .frame(height: 20)
             .padding(.horizontal, 10)

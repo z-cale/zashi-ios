@@ -214,9 +214,9 @@ public struct RestoreWalletCoordFlow {
 extension AlertState where Action == RestoreWalletCoordFlow.Action {
     public static func cantCreateNewWallet(_ error: ZcashError) -> AlertState {
         AlertState {
-            TextState(L10n.Root.Initialization.Alert.Failed.title)
+            TextState(String(localizable: .rootInitializationAlertFailedTitle))
         } message: {
-            TextState(L10n.Root.Initialization.Alert.CantCreateNewWallet.message(error.detailedMessage))
+            TextState(String(localizable: .rootInitializationAlertCantCreateNewWalletMessage(error.detailedMessage)))
         }
     }
 }

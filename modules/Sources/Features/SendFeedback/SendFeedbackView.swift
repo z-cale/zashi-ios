@@ -28,15 +28,15 @@ public struct SendFeedbackView: View {
             ZStack {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        Text(L10n.SendFeedback.title)
+                        Text(localizable: .sendFeedbackTitle)
                             .zFont(.semiBold, size: 24, style: Design.Text.primary)
                             .padding(.top, 40)
                         
-                        Text(L10n.SendFeedback.desc)
+                        Text(localizable: .sendFeedbackDesc)
                             .zFont(size: 14, style: Design.Text.primary)
                             .padding(.top, 8)
                         
-                        Text(L10n.SendFeedback.ratingQuestion)
+                        Text(localizable: .sendFeedbackRatingQuestion)
                             .zFont(.medium, size: 14, style: Design.Text.primary)
                             .padding(.top, 32)
                         
@@ -66,14 +66,14 @@ public struct SendFeedbackView: View {
                         }
                         .padding(.top, 12)
                         
-                        Text(L10n.SendFeedback.howCanWeHelp)
+                        Text(localizable: .sendFeedbackHowCanWeHelp)
                             .zFont(.medium, size: 14, style: Design.Text.primary)
                             .padding(.top, 24)
                         
                         MessageEditorView(
                             store: store.memoStore(),
                             title: "",
-                            placeholder: L10n.SendFeedback.hcwhPlaceholder
+                            placeholder: String(localizable: .sendFeedbackHcwhPlaceholder)
                         )
                         .frame(height: 155)
                         .autocorrectionDisabled()
@@ -98,7 +98,7 @@ public struct SendFeedbackView: View {
                         Spacer()
                         
                         ZashiButton(
-                            L10n.General.share
+                            String(localizable: .generalShare)
                         ) {
                             store.send(.sendTapped)
                         }
@@ -130,7 +130,7 @@ public struct SendFeedbackView: View {
                         Button {
                             isFieldFocused = false
                         } label: {
-                            Text(L10n.General.done.uppercased())
+                            Text(String(localizable: .generalDone).uppercased())
                                 .zFont(.regular, size: 14, style: Design.Text.primary)
                         }
                         .padding(.bottom, 4)
@@ -145,7 +145,7 @@ public struct SendFeedbackView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .applyScreenBackground()
-        .screenTitle(L10n.SendFeedback.screenTitle.uppercased())
+        .screenTitle(String(localizable: .sendFeedbackScreenTitle).uppercased())
     }
     
 }
@@ -155,9 +155,9 @@ extension SendFeedbackView {
         if let message = store.messageToBeShared {
             UIShareDialogView(activityItems: [
                 ShareableMessage(
-                    title: L10n.SendFeedback.Share.title,
+                    title: String(localizable: .sendFeedbackShareTitle),
                     message: message,
-                    desc: L10n.SendFeedback.Share.desc
+                    desc: String(localizable: .sendFeedbackShareDesc)
                 ),
             ]) {
                 store.send(.shareFinished)

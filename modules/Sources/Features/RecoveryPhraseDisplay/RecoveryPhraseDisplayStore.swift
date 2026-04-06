@@ -36,19 +36,19 @@ public struct RecoveryPhraseDisplay {
 
             public func title() -> String {
                 switch self {
-                case .control: return L10n.RecoveryPhraseDisplay.WarningControl.title
-                case .keep: return L10n.RecoveryPhraseDisplay.WarningKeep.title
-                case .store: return L10n.RecoveryPhraseDisplay.WarningStore.title
-                case .height: return L10n.RecoveryPhraseDisplay.WarningHeight.title
+                case .control: return String(localizable: .recoveryPhraseDisplayWarningControlTitle)
+                case .keep: return String(localizable: .recoveryPhraseDisplayWarningKeepTitle)
+                case .store: return String(localizable: .recoveryPhraseDisplayWarningStoreTitle)
+                case .height: return String(localizable: .recoveryPhraseDisplayWarningHeightTitle)
                 }
             }
 
             public func subtitle() -> String {
                 switch self {
-                case .control: return L10n.RecoveryPhraseDisplay.WarningControl.info
-                case .keep: return L10n.RecoveryPhraseDisplay.WarningKeep.info
-                case .store: return L10n.RecoveryPhraseDisplay.WarningStore.info
-                case .height: return L10n.RecoveryPhraseDisplay.WarningHeight.info
+                case .control: return String(localizable: .recoveryPhraseDisplayWarningControlInfo)
+                case .keep: return String(localizable: .recoveryPhraseDisplayWarningKeepInfo)
+                case .store: return String(localizable: .recoveryPhraseDisplayWarningStoreInfo)
+                case .height: return String(localizable: .recoveryPhraseDisplayWarningHeightInfo)
                 }
             }
 
@@ -174,9 +174,9 @@ public struct RecoveryPhraseDisplay {
 extension AlertState where Action == RecoveryPhraseDisplay.Action {
     public static func storedWalletFailure(_ error: ZcashError) -> AlertState {
         AlertState {
-            TextState(L10n.RecoveryPhraseDisplay.Alert.Failed.title)
+            TextState(String(localizable: .recoveryPhraseDisplayAlertFailedTitle))
         } message: {
-            TextState(L10n.RecoveryPhraseDisplay.Alert.Failed.message(error.detailedMessage))
+            TextState(String(localizable: .recoveryPhraseDisplayAlertFailedMessage(error.detailedMessage)))
         }
     }
 }

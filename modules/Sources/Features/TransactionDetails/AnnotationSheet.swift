@@ -14,8 +14,8 @@ extension TransactionDetailsView {
     @ViewBuilder func annotationContent(_ isEditMode: Bool) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(isEditMode
-                 ? L10n.Annotation.edit
-                 : L10n.Annotation.addArticle
+                 ? String(localizable: .annotationEdit)
+                 : String(localizable: .annotationAddArticle)
             )
             .zFont(.semiBold, size: 20, style: Design.Text.primary)
             .padding(.top, 32)
@@ -35,7 +35,7 @@ extension TransactionDetailsView {
                         if store.annotationToInput.isEmpty {
                             HStack {
                                 VStack {
-                                    Text(L10n.Annotation.placeholder)
+                                    Text(localizable: .annotationPlaceholder)
                                         .font(.custom(FontFamily.Inter.regular.name, size: 16))
                                         .zForegroundColor(Design.Inputs.Default.text)
                                         .allowsHitTesting(false)
@@ -52,7 +52,7 @@ extension TransactionDetailsView {
                         }
                     }
 
-                Text(L10n.Annotation.chars(store.annotationToInput.count, TransactionDetails.State.Constants.annotationMaxLength))
+                Text(localizable: .annotationChars(String(store.annotationToInput.count), String(TransactionDetails.State.Constants.annotationMaxLength)))
                     .zFont(size: 14, style: Design.Inputs.Default.hint)
             }
             .padding(.bottom, 32)
@@ -60,20 +60,20 @@ extension TransactionDetailsView {
             if isEditMode {
                 HStack(spacing: 8) {
                     ZashiButton(
-                        L10n.Annotation.delete,
+                        String(localizable: .annotationDelete),
                         type: .destructive1
                     ) {
                         store.send(.deleteNoteTapped)
                     }
 
-                    ZashiButton(L10n.Annotation.save) {
+                    ZashiButton(String(localizable: .annotationSave)) {
                         store.send(.saveNoteTapped)
                     }
                     .disabled(!store.isAnnotationModified)
                 }
                 .padding(.bottom, Design.Spacing.sheetBottomSpace)
             } else {
-                ZashiButton(L10n.Annotation.add) {
+                ZashiButton(String(localizable: .annotationAdd)) {
                     store.send(.addNoteTapped)
                 }
                 .disabled(store.annotationToInput.isEmpty)

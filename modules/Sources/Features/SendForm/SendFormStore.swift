@@ -162,7 +162,7 @@ public struct SendForm {
         
         public var invalidAddressErrorText: String? {
             isInvalidAddressFormat
-            ? L10n.Send.Error.invalidAddress
+            ? String(localizable: .sendErrorInvalidAddress)
             : nil
         }
         
@@ -170,9 +170,9 @@ public struct SendForm {
             zecAmountText.data.isEmpty
             ? nil
             : isInvalidAmountFormat
-            ? L10n.Send.Error.invalidAmount
+            ? String(localizable: .sendErrorInvalidAmount)
             : isInsufficientFunds
-            ? L10n.Send.Error.insufficientFunds
+            ? String(localizable: .sendErrorInsufficientFunds)
             : nil
         }
         
@@ -180,9 +180,9 @@ public struct SendForm {
             currencyText.data.isEmpty
             ? nil
             : isInvalidAmountFormat
-            ? L10n.Send.Error.invalidAmount
+            ? String(localizable: .sendErrorInvalidAmount)
             : isInsufficientFunds
-            ? L10n.Send.Error.insufficientFunds
+            ? String(localizable: .sendErrorInsufficientFunds)
             : nil
         }
         
@@ -535,9 +535,9 @@ public struct SendForm {
 extension AlertState where Action == SendForm.Action {
     public static func sendFailure(_ error: ZcashError) -> AlertState {
         AlertState {
-            TextState(L10n.Send.Alert.Failure.title)
+            TextState(String(localizable: .sendAlertFailureTitle))
         } message: {
-            TextState(L10n.Send.Alert.Failure.message(error.detailedMessage))
+            TextState(String(localizable: .sendAlertFailureMessage(error.detailedMessage)))
         }
     }
 }

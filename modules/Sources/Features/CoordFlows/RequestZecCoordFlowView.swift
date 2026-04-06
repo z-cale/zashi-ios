@@ -51,7 +51,7 @@ public struct RequestZecCoordFlowView: View {
         .padding(.horizontal, 4)
         .applyScreenBackground()
         .zashiBack()
-        .screenTitle(L10n.General.request)
+        .screenTitle(String(localizable: .generalRequest))
     }
 }
 

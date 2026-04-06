@@ -76,7 +76,11 @@ extension SDKSynchronizerClient: TestDependencyKey {
         checkSingleUseTransparentAddresses: unimplemented("\(Self.self).checkSingleUseTransparentAddresses", placeholder: .notFound),
         updateTransparentAddressTransactions: unimplemented("\(Self.self).updateTransparentAddressTransactions", placeholder: .notFound),
         fetchUTXOsByAddress: unimplemented("\(Self.self).fetchUTXOsByAddress", placeholder: .notFound),
-        enhanceTransactionBy: unimplemented("\(Self.self).enhanceTransactionBy")
+        enhanceTransactionBy: unimplemented("\(Self.self).enhanceTransactionBy"),
+        checkWalletSpendability: unimplemented("\(Self.self).checkWalletSpendability", placeholder: SpendabilityResult(earliestHeight: 0, latestHeight: 0, spentNoteIds: [], totalSpentValue: 0)),
+        getPIRPendingSpends: unimplemented("\(Self.self).getPIRPendingSpends", placeholder: PIRPendingSpends(notes: [], totalValue: 0)),
+        fetchNoteWitnesses: unimplemented("\(Self.self).fetchNoteWitnesses", placeholder: WitnessResult(witnessedNoteIds: [], totalWitnessedValue: 0)),
+        getPIRWitnessedNotes: unimplemented("\(Self.self).getPIRWitnessedNotes", placeholder: [])
     )
 }
 
@@ -130,7 +134,11 @@ extension SDKSynchronizerClient {
         checkSingleUseTransparentAddresses: { _ in .notFound },
         updateTransparentAddressTransactions: { _ in .notFound },
         fetchUTXOsByAddress: { _, _ in .notFound },
-        enhanceTransactionBy: { _ in }
+        enhanceTransactionBy: { _ in },
+        checkWalletSpendability: { _, _ in SpendabilityResult(earliestHeight: 0, latestHeight: 0, spentNoteIds: [], totalSpentValue: 0) },
+        getPIRPendingSpends: { PIRPendingSpends(notes: [], totalValue: 0) },
+        fetchNoteWitnesses: { _, _ in WitnessResult(witnessedNoteIds: [], totalWitnessedValue: 0) },
+        getPIRWitnessedNotes: { [] }
     )
 
     public static let mock = Self.mocked()
@@ -254,7 +262,11 @@ extension SDKSynchronizerClient {
         checkSingleUseTransparentAddresses: @escaping (AccountUUID) async throws -> TransparentAddressCheckResult = { _ in .notFound },
         updateTransparentAddressTransactions: @escaping (String) async throws -> TransparentAddressCheckResult = { _ in .notFound },
         fetchUTXOsByAddress: @escaping (String, AccountUUID) async throws -> TransparentAddressCheckResult = { _, _ in .notFound },
-        enhanceTransactionBy: @escaping (String) async throws -> Void = { _ in }
+        enhanceTransactionBy: @escaping (String) async throws -> Void = { _ in },
+        checkWalletSpendability: @escaping (String, SpendabilityProgressHandler?) async throws -> SpendabilityResult = { _, _ in SpendabilityResult(earliestHeight: 0, latestHeight: 0, spentNoteIds: [], totalSpentValue: 0) },
+        getPIRPendingSpends: @escaping () async throws -> PIRPendingSpends = { PIRPendingSpends(notes: [], totalValue: 0) },
+        fetchNoteWitnesses: @escaping (String, SpendabilityProgressHandler?) async throws -> WitnessResult = { _, _ in WitnessResult(witnessedNoteIds: [], totalWitnessedValue: 0) },
+        getPIRWitnessedNotes: @escaping () async throws -> [PIRWitnessedNote] = { [] }
     ) -> SDKSynchronizerClient {
         SDKSynchronizerClient(
             stateStream: stateStream,
@@ -303,7 +315,11 @@ extension SDKSynchronizerClient {
             checkSingleUseTransparentAddresses: checkSingleUseTransparentAddresses,
             updateTransparentAddressTransactions: updateTransparentAddressTransactions,
             fetchUTXOsByAddress: fetchUTXOsByAddress,
-            enhanceTransactionBy: enhanceTransactionBy
+            enhanceTransactionBy: enhanceTransactionBy,
+            checkWalletSpendability: checkWalletSpendability,
+            getPIRPendingSpends: getPIRPendingSpends,
+            fetchNoteWitnesses: fetchNoteWitnesses,
+            getPIRWitnessedNotes: getPIRWitnessedNotes
         )
     }
 }

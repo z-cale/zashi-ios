@@ -50,7 +50,7 @@ public struct SignWithKeystoneView: View {
                                 .padding(.trailing, 12)
                             
                             VStack(alignment: .leading, spacing: 0) {
-                                Text(L10n.Accounts.keystone)
+                                Text(localizable: .accountsKeystone)
                                     .zFont(.semiBold, size: 16, style: Design.Text.primary)
                                 
                                 Text(store.selectedWalletAccount?.unifiedAddress?.zip316 ?? "")
@@ -59,7 +59,7 @@ public struct SignWithKeystoneView: View {
                             
                             Spacer()
                             
-                            Text(L10n.Keystone.SignWith.hardware)
+                            Text(localizable: .keystoneSignWithHardware)
                                 .zFont(.medium, size: 12, style: Design.Utility.HyperBlue._700)
                                 .padding(.vertical, 2)
                                 .padding(.horizontal, 8)
@@ -113,11 +113,11 @@ public struct SignWithKeystoneView: View {
                             .padding(.top, 32)
                         }
 
-                        Text(L10n.Keystone.SignWith.title)
+                        Text(localizable: .keystoneSignWithTitle)
                             .zFont(.medium, size: 16, style: Design.Text.primary)
                             .padding(.top, 32)
                         
-                        Text(L10n.Keystone.SignWith.desc)
+                        Text(localizable: .keystoneSignWithDesc)
                             .zFont(size: 14, style: Design.Text.tertiary)
                             .screenHorizontalPadding()
                             .lineLimit(2)
@@ -140,7 +140,7 @@ public struct SignWithKeystoneView: View {
                 Spacer()
 
                 ZashiButton(
-                    L10n.Keystone.SignWith.reject,
+                    String(localizable: .keystoneSignWithReject),
                     type: .destructive1
                 ) {
                     store.send(.rejectRequested)
@@ -148,7 +148,7 @@ public struct SignWithKeystoneView: View {
                 .padding(.bottom, 8)
 
                 ZashiButton(
-                    L10n.Keystone.SignWith.getSignature
+                    String(localizable: .keystoneSignWithGetSignature)
                 ) {
                     store.send(.getSignatureTapped)
                 }
@@ -169,7 +169,7 @@ public struct SignWithKeystoneView: View {
         .applyScreenBackground()
         .navigationBarBackButtonHidden(true)
         .navigationBarTitleDisplayMode(.inline)
-        .screenTitle(L10n.Keystone.SignWith.signTransaction)
+        .screenTitle(String(localizable: .keystoneSignWithSignTransaction))
         .enlargeQR(isPresented: $store.isQRCodeEnlarged) {
             Group {
                 if let pczt = store.pcztForUI, let encoder = sdkSynchronizer.urEncoderForPCZT(pczt) {

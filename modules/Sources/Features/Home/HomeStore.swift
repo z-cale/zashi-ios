@@ -18,10 +18,9 @@ import SwapAndPay
 
 @Reducer
 public struct Home {
-    private let CancelEventId = UUID()
-
     @ObservableState
     public struct State: Equatable {
+        public var CancelEventId = UUID()
         public var accountSwitchRequest = false
         @Presents public var alert: AlertState<Action>?
         public var appId: String?
@@ -164,7 +163,7 @@ public struct Home {
                                 return nil
                             }
                     }
-                    .cancellable(id: CancelEventId, cancelInFlight: true),
+                    .cancellable(id: state.CancelEventId, cancelInFlight: true),
                     .send(.smartBanner(.onAppear)),
                     .send(.transactionList(.onAppear)),
                     .send(.walletBalances(.onAppear))
@@ -173,7 +172,7 @@ public struct Home {
             case .onDisappear:
                 // __LD2 TESTED
                 return .merge(
-                    .cancel(id: CancelEventId),
+                    .cancel(id: state.CancelEventId),
                     .send(.smartBanner(.onDisappear)),
                     .send(.walletBalances(.onDisappear))
                 )

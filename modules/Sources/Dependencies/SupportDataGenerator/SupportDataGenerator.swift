@@ -21,8 +21,8 @@ public struct SupportData: Equatable {
 public enum SupportDataGenerator {
     public enum Constants {
         public static let email = "support@zodl.com"
-        public static let subject = L10n.Accounts.zashi
-        public static let subjectPPE = L10n.ProposalPartial.mailSubject
+        public static let subject = String(localizable: .accountsZashi)
+        public static let subjectPPE = String(localizable: .proposalPartialMailSubject)
     }
     
     public static func generate(_ prefix: String? = nil) -> SupportData {
@@ -70,7 +70,7 @@ private protocol SupportDataGeneratorItem {
 
 private struct TimeItem: SupportDataGeneratorItem {
     private enum Constants {
-        static let timeKey = L10n.SupportData.TimeItem.time
+        static let timeKey = String(localizable: .supportDataTimeItemTime)
     }
 
     let dateFormatter: DateFormatter
@@ -88,9 +88,9 @@ private struct TimeItem: SupportDataGeneratorItem {
 
 private struct AppVersionItem: SupportDataGeneratorItem {
     private enum Constants {
-        static let bundleIdentifierKey = L10n.SupportData.AppVersionItem.bundleIdentifier
-        static let versionKey = L10n.SupportData.AppVersionItem.version
-        static let unknownVersion = L10n.General.unknown
+        static let bundleIdentifierKey = String(localizable: .supportDataAppVersionItemBundleIdentifier)
+        static let versionKey = String(localizable: .supportDataAppVersionItemVersion)
+        static let unknownVersion = String(localizable: .generalUnknown)
     }
 
     func generate() -> [(String, String)] {
@@ -114,7 +114,7 @@ private struct AppVersionItem: SupportDataGeneratorItem {
 
 private struct SystemVersionItem: SupportDataGeneratorItem {
     private enum Constants {
-        static let systemVersionKey = L10n.SupportData.SystemVersionItem.version
+        static let systemVersionKey = String(localizable: .supportDataSystemVersionItemVersion)
     }
 
     func generate() -> [(String, String)] {
@@ -124,8 +124,8 @@ private struct SystemVersionItem: SupportDataGeneratorItem {
 
 private struct DeviceModelItem: SupportDataGeneratorItem {
     private enum Constants {
-        static let deviceModelKey = L10n.SupportData.DeviceModelItem.device
-        static let unknownDevice = L10n.General.unknown
+        static let deviceModelKey = String(localizable: .supportDataDeviceModelItemDevice)
+        static let unknownDevice = String(localizable: .generalUnknown)
     }
 
     func generate() -> [(String, String)] {
@@ -143,10 +143,10 @@ private struct DeviceModelItem: SupportDataGeneratorItem {
 
 private struct LocaleItem: SupportDataGeneratorItem {
     private enum Constants {
-        static let localeKey = L10n.SupportData.LocaleItem.locale
-        static let groupingSeparatorKey = L10n.SupportData.LocaleItem.groupingSeparator
-        static let decimalSeparatorKey = L10n.SupportData.LocaleItem.decimalSeparator
-        static let unknownSeparator = L10n.General.unknown
+        static let localeKey = String(localizable: .supportDataLocaleItemLocale)
+        static let groupingSeparatorKey = String(localizable: .supportDataLocaleItemGroupingSeparator)
+        static let decimalSeparatorKey = String(localizable: .supportDataLocaleItemDecimalSeparator)
+        static let unknownSeparator = String(localizable: .generalUnknown)
     }
 
     func generate() -> [(String, String)] {
@@ -162,8 +162,8 @@ private struct LocaleItem: SupportDataGeneratorItem {
 
 private struct FreeDiskSpaceItem: SupportDataGeneratorItem {
     private enum Constants {
-        static let freeDiskSpaceKey = L10n.SupportData.FreeDiskSpaceItem.freeDiskSpace
-        static let freeDiskSpaceUnknown = L10n.General.unknown
+        static let freeDiskSpaceKey = String(localizable: .supportDataFreeDiskSpaceItemFreeDiskSpace)
+        static let freeDiskSpaceUnknown = String(localizable: .generalUnknown)
     }
 
     func generate() -> [(String, String)] {
@@ -188,12 +188,12 @@ private struct FreeDiskSpaceItem: SupportDataGeneratorItem {
 
 private struct PermissionsItems: SupportDataGeneratorItem {
     private enum Constants {
-        static let permissionsKey = L10n.SupportData.PermissionItem.permissions
-        static let cameraPermKey = L10n.SupportData.PermissionItem.camera
-        static let faceIDAvailable = L10n.SupportData.PermissionItem.faceID
-        static let touchIDAvailable = L10n.SupportData.PermissionItem.touchID
-        static let yesText = L10n.General.yes
-        static let noText = L10n.General.no
+        static let permissionsKey = String(localizable: .supportDataPermissionItemPermissions)
+        static let cameraPermKey = String(localizable: .supportDataPermissionItemCamera)
+        static let faceIDAvailable = String(localizable: .supportDataPermissionItemFaceID)
+        static let touchIDAvailable = String(localizable: .supportDataPermissionItemTouchID)
+        static let yesText = String(localizable: .generalYes)
+        static let noText = String(localizable: .generalNo)
     }
 
     func generate() -> [(String, String)] {

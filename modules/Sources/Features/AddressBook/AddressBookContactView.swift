@@ -29,8 +29,8 @@ public struct AddressBookContactView: View {
                 ZashiTextField(
                     addressFont: true,
                     text: $store.address,
-                    placeholder: L10n.AddressBook.NewContact.addressPlaceholder,
-                    title: L10n.AddressBook.NewContact.address,
+                    placeholder: String(localizable: .addressBookNewContactAddressPlaceholder),
+                    title: String(localizable: .addressBookNewContactAddress),
                     error: store.invalidAddressErrorText
                 )
                 .padding(.top, 20)
@@ -38,8 +38,8 @@ public struct AddressBookContactView: View {
 
                 ZashiTextField(
                     text: $store.name,
-                    placeholder: L10n.AddressBook.NewContact.namePlaceholder,
-                    title: L10n.AddressBook.NewContact.name,
+                    placeholder: String(localizable: .addressBookNewContactNamePlaceholder),
+                    title: String(localizable: .addressBookNewContactName),
                     error: store.invalidNameErrorText
                 )
                 .padding(.top, 20)
@@ -49,7 +49,7 @@ public struct AddressBookContactView: View {
                 if store.context != .send || store.isEditingContactWithChain {
                     if store.isValidZcashAddress && store.context != .swap {
                         VStack(alignment: .leading, spacing: 0) {
-                            Text(L10n.SwapAndPay.addressBookSelectChain)
+                            Text(localizable: .swapAndPayAddressBookSelectChain)
                                 .zFont(.medium, size: 14, style: Design.Dropdowns.Default.label)
                                 .padding(.bottom, 6)
                             
@@ -81,7 +81,7 @@ public struct AddressBookContactView: View {
                         .padding(.top, 20)
                     } else {
                         VStack(alignment: .leading, spacing: 0) {
-                            Text(L10n.SwapAndPay.addressBookSelectChain)
+                            Text(localizable: .swapAndPayAddressBookSelectChain)
                                 .zFont(.medium, size: 14, style: Design.Dropdowns.Default.label)
                                 .padding(.bottom, 6)
                             
@@ -98,7 +98,7 @@ public struct AddressBookContactView: View {
                                         Text(selectedChain.chainName)
                                             .zFont(size: 16, style: Design.Dropdowns.Default.text)
                                     } else {
-                                        Text(L10n.SwapAndPay.addressBookSelect)
+                                        Text(localizable: .swapAndPayAddressBookSelect)
                                             .zFont(size: 16, style: Design.Dropdowns.Default.text)
                                     }
                                     
@@ -122,14 +122,14 @@ public struct AddressBookContactView: View {
 
                 Spacer()
                 
-                ZashiButton(L10n.General.save) {
+                ZashiButton(String(localizable: .generalSave)) {
                     store.send(.saveButtonTapped)
                 }
                 .disabled(store.isSaveButtonDisabled)
                 .padding(.bottom, store.editId != nil ? 0 : 24)
 
                 if store.editId != nil {
-                    ZashiButton(L10n.General.delete, type: .destructive1) {
+                    ZashiButton(String(localizable: .generalDelete), type: .destructive1) {
                         store.send(.deleteId(store.uniqueId))
                     }
                     .padding(.bottom, 24)
@@ -159,8 +159,8 @@ public struct AddressBookContactView: View {
         .zashiBack()
         .screenTitle(
             store.editId != nil
-            ? L10n.AddressBook.savedAddress
-            : L10n.SwapAndPay.addressBookNewContact
+            ? String(localizable: .addressBookSavedAddress)
+            : String(localizable: .swapAndPayAddressBookNewContact)
         )
     }
 }

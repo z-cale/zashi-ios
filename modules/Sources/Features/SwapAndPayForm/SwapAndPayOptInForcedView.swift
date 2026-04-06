@@ -36,20 +36,20 @@ public struct SwapAndPayOptInForcedView: View {
                         .zImage(size: 20, style: Design.Text.primary)
                         .padding(.trailing, 12)
                     
-                    Text(L10n.SwapAndPay.OptIn.warn)
+                    Text(localizable: .swapAndPayOptInWarn)
                         .zFont(size: 12, style: Design.Text.tertiary)
                 }
                 .padding(.bottom, 20)
                 
                 ZashiButton(
-                    L10n.KeystoneTransactionReject.goBack,
+                    String(localizable: .keystoneTransactionRejectGoBack),
                     type: .ghost
                 ) {
                     store.send(.goBackForcedOptInTapped)
                 }
                 .padding(.bottom, 12)
                 
-                ZashiButton(L10n.General.confirm) {
+                ZashiButton(String(localizable: .generalConfirm)) {
                     store.send(.confirmForcedOptInTapped)
                 }
                 .padding(.bottom, 24)
@@ -85,7 +85,7 @@ public struct SwapAndPayOptInForcedView: View {
             .padding(.vertical, 24)
             
             HStack(spacing: 6) {
-                Text(L10n.SwapAndPay.OptIn.title)
+                Text(localizable: .swapAndPayOptInTitle)
                     .zFont(.semiBold, size: 24, style: Design.Text.primary)
                     .padding(.bottom, 8)
                 
@@ -94,7 +94,7 @@ public struct SwapAndPayOptInForcedView: View {
                     .offset(y: -4)
             }
             
-            Text(L10n.SwapAndPay.OptIn.desc)
+            Text(localizable: .swapAndPayOptInDesc)
                 .zFont(size: 14, style: Design.Text.tertiary)
                 .padding(.bottom, 4)
         }
@@ -112,7 +112,7 @@ public struct SwapAndPayOptInForcedView: View {
                     ZashiToggle(isOn: $store.optionOneChecked)
                         .padding(.trailing, 8)
                     
-                    Text(L10n.SwapAndPay.ForcedOptIn.optionOne)
+                    Text(localizable: .swapAndPayForcedOptInOptionOne)
                         .zFont(.semiBold, size: 14, style: Design.Text.primary)
                         .multilineTextAlignment(.leading)
                     
@@ -135,7 +135,7 @@ public struct SwapAndPayOptInForcedView: View {
                     ZashiToggle(isOn: $store.optionTwoChecked)
                         .padding(.trailing, 8)
                     
-                    Text(L10n.SwapAndPay.ForcedOptIn.optionTwo)
+                    Text(localizable: .swapAndPayForcedOptInOptionTwo)
                         .zFont(.semiBold, size: 14, style: Design.Text.primary)
                         .multilineTextAlignment(.leading)
                     

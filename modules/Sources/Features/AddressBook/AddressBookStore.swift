@@ -91,9 +91,9 @@ public struct AddressBook {
         
         public var invalidAddressErrorText: String? {
             addressAlreadyExists
-            ? L10n.AddressBook.Error.addressExists
+            ? String(localizable: .addressBookErrorAddressExists)
             : context == .swap
-            ? (isValidZcashAddress ? L10n.SwapAndPay.addressBookZcash : nil)
+            ? (isValidZcashAddress ? String(localizable: .swapAndPayAddressBookZcash) : nil)
             : (isValidZcashAddress || address.isEmpty)
             ? nil
             : isEditingContactWithChain
@@ -102,14 +102,14 @@ public struct AddressBook {
             ? nil
             : context == .settings
             ? nil
-            : L10n.AddressBook.Error.invalidAddress
+            : String(localizable: .addressBookErrorInvalidAddress)
         }
 
         public var invalidNameErrorText: String? {
             isNameOverMaxLength
-            ? L10n.AddressBook.Error.nameLength
+            ? String(localizable: .addressBookErrorNameLength)
             : nameAlreadyExists
-            ? L10n.AddressBook.Error.nameExists
+            ? String(localizable: .addressBookErrorNameExists)
             : nil
         }
         
@@ -434,16 +434,16 @@ extension AddressBook {
 extension AlertState where Action == AddressBook.Action {
     public static func confirmDelete() -> AlertState {
         AlertState {
-            TextState(L10n.AddressBook.Alert.title)
+            TextState(String(localizable: .addressBookAlertTitle))
         } actions: {
             ButtonState(role: .destructive, action: .deleteIdConfirmed) {
-                TextState(L10n.General.confirm)
+                TextState(String(localizable: .generalConfirm))
             }
             ButtonState(role: .cancel, action: .alert(.dismiss)) {
-                TextState(L10n.General.cancel)
+                TextState(String(localizable: .generalCancel))
             }
         } message: {
-            TextState(L10n.AddressBook.Alert.message)
+            TextState(String(localizable: .addressBookAlertMessage))
         }
     }
 }

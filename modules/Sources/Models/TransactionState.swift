@@ -52,7 +52,8 @@ public struct TransactionState: Equatable, Identifiable {
     public var totalReceived: Zatoshi?
 
     public var rawID: Data? = nil
-    
+    public var isPIRDetectedSpend = false
+
     // Swaps
     public var swapToZecAmount: String? = nil
     public var swapStatus = UMSwapId.SwapStatus.pending
@@ -116,62 +117,65 @@ public struct TransactionState: Equatable, Identifiable {
     }
     
     public func title(_ detailScreen: Bool = false) -> String {
+        if isPIRDetectedSpend {
+            return String(localizable: .transactionPirDetected)
+        }
         if type == .zcash {
             switch status {
             case .failed:
                 return isShieldingTransaction
-                ? L10n.Transaction.failedShieldedFunds
+                ? String(localizable: .transactionFailedShieldedFunds)
                 : isSentTransaction
-                ? L10n.Transaction.failedSend
-                : L10n.Transaction.failedReceive
+                ? String(localizable: .transactionFailedSend)
+                : String(localizable: .transactionFailedReceive)
             case .paid:
-                return L10n.Transaction.sent
+                return String(localizable: .transactionSent)
             case .received:
-                return L10n.Transaction.received
+                return String(localizable: .transactionReceived)
             case .receiving:
-                return L10n.Transaction.receiving
+                return String(localizable: .transactionReceiving)
             case .sending:
-                return L10n.Transaction.sending
+                return String(localizable: .transactionSending)
             case .shielding:
-                return L10n.Transaction.shieldingFunds
+                return String(localizable: .transactionShieldingFunds)
             case .shielded:
-                return L10n.Transaction.shieldedFunds
+                return String(localizable: .transactionShieldedFunds)
             }
         } else {
             if swapStatus == .pending || (!detailScreen && swapStatus == .incomplete) {
                 switch type {
-                case .swapToZec, .swapFromZec: return L10n.SwapStatus.swapping
-                case .crossPay: return L10n.SwapStatus.paying
+                case .swapToZec, .swapFromZec: return String(localizable: .swapStatusSwapping)
+                case .crossPay: return String(localizable: .swapStatusPaying)
                 default: return ""
                 }
             } else if detailScreen && swapStatus == .incomplete {
                 switch type {
-                case .swapToZec, .swapFromZec: return L10n.SwapStatus.swapIncomplete
-                case .crossPay: return L10n.SwapStatus.paymentIncomplete
+                case .swapToZec, .swapFromZec: return String(localizable: .swapStatusSwapIncomplete)
+                case .crossPay: return String(localizable: .swapStatusPaymentIncomplete)
                 default: return ""
                 }
             } else if swapStatus == .refunded {
                 switch type {
-                case .swapToZec, .swapFromZec: return L10n.SwapStatus.swapRefunded
-                case .crossPay: return L10n.SwapStatus.paymentRefunded
+                case .swapToZec, .swapFromZec: return String(localizable: .swapStatusSwapRefunded)
+                case .crossPay: return String(localizable: .swapStatusPaymentRefunded)
                 default: return ""
                 }
             } else if swapStatus == .failed {
                 switch type {
-                case .swapToZec, .swapFromZec: return L10n.SwapStatus.swapFailed
-                case .crossPay: return L10n.SwapStatus.paymentFailed
+                case .swapToZec, .swapFromZec: return String(localizable: .swapStatusSwapFailed)
+                case .crossPay: return String(localizable: .swapStatusPaymentFailed)
                 default: return ""
                 }
             } else if swapStatus == .expired {
                 switch type {
-                case .swapToZec, .swapFromZec: return L10n.SwapStatus.swapExpired
-                case .crossPay: return L10n.SwapStatus.paymentExpired
+                case .swapToZec, .swapFromZec: return String(localizable: .swapStatusSwapExpired)
+                case .crossPay: return String(localizable: .swapStatusPaymentExpired)
                 default: return ""
                 }
             } else {
                 switch type {
-                case .swapToZec, .swapFromZec: return L10n.SwapStatus.swapped
-                case .crossPay: return L10n.SwapStatus.paid
+                case .swapToZec, .swapFromZec: return String(localizable: .swapStatusSwapped)
+                case .crossPay: return String(localizable: .swapStatusPaid)
                 default: return ""
                 }
             }
@@ -189,7 +193,7 @@ public struct TransactionState: Equatable, Identifiable {
 
         let formatter = DateFormatter()
         let date = Date(timeIntervalSince1970: timestamp)
-        formatter.dateFormat = "MMM d '\(L10n.Filter.at)' h:mm a"
+        formatter.dateFormat = "MMM d '\(String(localizable: .filterAt))' h:mm a"
         return formatter.string(from: date)
     }
     
@@ -198,12 +202,12 @@ public struct TransactionState: Equatable, Identifiable {
 
         let formatter = DateFormatter()
         let date = Date(timeIntervalSince1970: timestamp)
-        formatter.dateFormat = "MMM d, YYYY '\(L10n.Filter.at)' h:mm a"
+        formatter.dateFormat = "MMM d, YYYY '\(String(localizable: .filterAt))' h:mm a"
         return formatter.string(from: date)
     }
 
     public var daysAgo: String {
-        guard let timestamp else { return "" }
+        guard let timestamp, !isPIRDetectedSpend else { return "" }
         
         let transactionDate = Date(timeIntervalSince1970: timestamp)
         
@@ -214,11 +218,11 @@ public struct TransactionState: Equatable, Identifiable {
         
         if let daysAgo = components.day {
             if daysAgo == 0 {
-                return L10n.Filter.today
+                return String(localizable: .filterToday)
             } else if daysAgo == 1 {
-                return L10n.Filter.yesterday
+                return String(localizable: .filterYesterday)
             } else if daysAgo < 31 {
-                return L10n.Filter.daysAgo(daysAgo)
+                return String(localizable: .filterDaysAgo(String(daysAgo)))
             } else {
                 return listDateString ?? ""
             }
@@ -344,6 +348,20 @@ public struct TransactionState: Equatable, Identifiable {
         self.memoCount = 0
         self.isShieldingTransaction = false
         self.isTransparentRecipient = false
+    }
+
+    /// Synthetic placeholder for PIR-detected spends, visible until scanning catches up.
+    public init(pirDetectedSpentValue: Int64) {
+        self.id = "pir-detected-spend"
+        self.status = .paid
+        self.zecAmount = Zatoshi(-pirDetectedSpentValue)
+        self.isPIRDetectedSpend = true
+        self.isSentTransaction = true
+        self.fee = nil
+        self.memoCount = 0
+        self.isShieldingTransaction = false
+        self.isTransparentRecipient = false
+        self.timestamp = Date().timeIntervalSince1970
     }
 
     public func confirmationsWith(_ latestMinedHeight: BlockHeight?) -> BlockHeight {

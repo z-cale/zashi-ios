@@ -60,8 +60,8 @@ public struct SwapAndPayForm: View {
             } label: {
                 HStack(spacing: 0) {
                     Text(store.isSwapToZecExperienceEnabled
-                         ? L10n.SwapToZec.refundAddress
-                         : store.isSwapExperienceEnabled ? L10n.SwapAndPay.address : ""
+                         ? String(localizable: .swapToZecRefundAddress)
+                         : store.isSwapExperienceEnabled ? String(localizable: .swapAndPayAddress) : ""
                     )
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -82,7 +82,7 @@ public struct SwapAndPayForm: View {
             ZashiTextField(
                 addressFont: true,
                 text: $store.address,
-                placeholder: L10n.SwapToZec.address(store.selectedAsset?.chainName ?? ""),
+                placeholder: String(localizable: .swapToZecAddress(store.selectedAsset?.chainName ?? "")),
                 accessoryView:
                     HStack(spacing: 4) {
                         WithPerceptionTracking {
@@ -151,7 +151,7 @@ public struct SwapAndPayForm: View {
     
     @ViewBuilder func slippageView() -> some View {
         HStack(spacing: 0) {
-            Text(L10n.SwapAndPay.slippageTolerance)
+            Text(localizable: .swapAndPaySlippageTolerance)
                 .zFont(.medium, size: 14, style: Design.Text.secondary)
             
             Spacer()
@@ -289,7 +289,7 @@ extension View {
                         Text(asset.token)
                             .zFont(.semiBold, size: 14, style: Design.Text.primary)
                         
-                        Text(L10n.tokenOnChain)
+                        Text(localizable: .tokenOnChain)
                             .zFont(.medium, size: 14, style: Design.Text.tertiary)
 
                         Text(asset.chainName)

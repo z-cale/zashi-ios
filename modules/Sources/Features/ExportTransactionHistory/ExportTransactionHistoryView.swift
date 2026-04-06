@@ -22,11 +22,11 @@ public struct ExportTransactionHistoryView: View {
     public var body: some View {
         WithPerceptionTracking {
             VStack(alignment: .leading, spacing: 0) {
-                Text(L10n.TaxExport.taxFile)
+                Text(localizable: .taxExportTaxFile)
                     .zFont(.semiBold, size: 24, style: Design.Text.primary)
                     .padding(.top, 40)
                 
-                Text(L10n.TaxExport.desc(store.accountName))
+                Text(localizable: .taxExportDesc(store.accountName))
                     .zFont(size: 14, style: Design.Text.primary)
                     .padding(.top, 12)
                 
@@ -34,7 +34,7 @@ public struct ExportTransactionHistoryView: View {
                 
                 if store.isExportingData {
                     ZashiButton(
-                        L10n.TaxExport.download,
+                        String(localizable: .taxExportDownload),
                         accessoryView: ProgressView()
                     ) {
                         store.send(.exportRequested)
@@ -42,7 +42,7 @@ public struct ExportTransactionHistoryView: View {
                     .disabled(true)
                     .padding(.bottom, 24)
                 } else {
-                    ZashiButton(L10n.TaxExport.download) {
+                    ZashiButton(String(localizable: .taxExportDownload)) {
                         store.send(.exportRequested)
                     }
                     .disabled(!store.isExportPossible)
@@ -56,7 +56,7 @@ public struct ExportTransactionHistoryView: View {
         .navigationBarTitleDisplayMode(.inline)
         .screenHorizontalPadding()
         .applyScreenBackground()
-        .screenTitle(L10n.TaxExport.title)
+        .screenTitle(String(localizable: .taxExportTitle))
     }
 }
 
@@ -66,8 +66,8 @@ private extension ExportTransactionHistoryView {
             UIShareDialogView(activityItems:
                 [ShareableURL(
                     url: store.dataURL,
-                    title: L10n.TaxExport.taxFile,
-                    desc: L10n.TaxExport.shareDesc(store.accountName)
+                    title: String(localizable: .taxExportTaxFile),
+                    desc: String(localizable: .taxExportShareDesc(store.accountName))
                 )]
             ) {
                 store.send(.shareFinished)

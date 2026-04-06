@@ -34,7 +34,7 @@ public struct WalletBackupCoordFlowView: View {
                         )
                 )
                 .zashiBack() { store.send(.backToHomeTapped) }
-                .screenTitle(L10n.RecoveryPhraseDisplay.screenTitle.uppercased())
+                .screenTitle(String(localizable: .recoveryPhraseDisplayScreenTitle).uppercased())
             } destination: { store in
                 switch store.case {
                 case let .phrase(store):

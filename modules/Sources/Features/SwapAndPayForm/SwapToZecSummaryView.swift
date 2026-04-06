@@ -35,7 +35,7 @@ public struct SwapToZecSummaryView: View {
                 } label: {
                     VStack(spacing: 8) {
                         HStack(spacing: 12) {
-                            Text(L10n.SwapToZec.deposit)
+                            Text(localizable: .swapToZecDeposit)
                                 .zFont(.medium, size: 16, style: Design.Text.primary)
                             
                             Asset.Assets.copy.image
@@ -87,14 +87,14 @@ public struct SwapToZecSummaryView: View {
                 
                 HStack(spacing: 8) {
                     button(
-                        L10n.Receive.copy,
+                        String(localizable: .receiveCopy),
                         icon: Asset.Assets.copy.image
                     ) {
                         store.send(.copyDepositAddressToPastboard)
                     }
                     
                     button(
-                        L10n.SwapToZec.shareQR,
+                        String(localizable: .swapToZecShareQR),
                         icon: Asset.Assets.Icons.qr.image
                     ) {
                         store.send(.shareQR)
@@ -104,9 +104,9 @@ public struct SwapToZecSummaryView: View {
                 .padding(.bottom, 32)
                 
                 Group {
-                    Text(L10n.SwapToZec.info1)
-                    + Text(L10n.SwapToZec.info2(store.selectedAsset?.token ?? "", store.selectedAsset?.chainName ?? "")).bold()
-                    + Text(L10n.SwapToZec.info3)
+                    Text(localizable: .swapToZecInfo1)
+                    + Text(localizable: .swapToZecInfo2(store.selectedAsset?.token ?? "", store.selectedAsset?.chainName ?? "")).bold()
+                    + Text(localizable: .swapToZecInfo3)
                 }
                 .zFont(size: 14, style: Design.Text.primary)
                 .multilineTextAlignment(.center)
@@ -115,7 +115,7 @@ public struct SwapToZecSummaryView: View {
                 
                 Spacer()
                 
-                ZashiButton(L10n.SwapToZec.sentTheFunds) {
+                ZashiButton(String(localizable: .swapToZecSentTheFunds)) {
                     store.send(.sentTheFundsButtonTapped)
                 }
                 .padding(.bottom, 32)
@@ -143,7 +143,7 @@ public struct SwapToZecSummaryView: View {
                     }
             )
             .zashiBack() { store.send(.depositFundsBackTapped) }
-            .screenTitle(L10n.SwapAndPay.swap.uppercased())
+            .screenTitle(String(localizable: .swapAndPaySwap).uppercased())
             .applyScreenBackground()
             .enlargeQR(isPresented: $store.isQRCodeEnlarged) {
                 qrEnlargedCode(store.quote?.depositAddress ?? "")
@@ -177,25 +177,25 @@ public struct SwapToZecSummaryView: View {
     
     @ViewBuilder func helpSheetContent(_ colorScheme: ColorScheme) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(L10n.DepositFunds.title)
+            Text(localizable: .depositFundsTitle)
                 .zFont(.semiBold, size: 20, style: Design.Text.primary)
                 .padding(.top, 32)
                 .padding(.bottom, 12)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(L10n.DepositFunds.desc)
+            Text(localizable: .depositFundsDesc)
                 .zFont(size: 16, style: Design.Text.tertiary)
                 .padding(.bottom, 18)
                 .fixedSize(horizontal: false, vertical: true)
             
-            bulletpoint(L10n.DepositFunds.bulletPoint1)
+            bulletpoint(String(localizable: .depositFundsBulletPoint1))
                 .padding(.bottom, 24)
-            bulletpoint(L10n.DepositFunds.bulletPoint2)
+            bulletpoint(String(localizable: .depositFundsBulletPoint2))
                 .padding(.bottom, 24)
-            bulletpoint(L10n.DepositFunds.bulletPoint3)
+            bulletpoint(String(localizable: .depositFundsBulletPoint3))
                 .padding(.bottom, 32)
 
-            ZashiButton(L10n.General.ok.uppercased()) {
+            ZashiButton(String(localizable: .generalOk).uppercased()) {
                 store.send(.closeDepositHelpSheetTapped)
             }
             .padding(.bottom, Design.Spacing.sheetBottomSpace)
@@ -227,7 +227,7 @@ public struct SwapToZecSummaryView: View {
     @ViewBuilder public func qrCode(_ qrText: String = "") -> some View {
         Group {
             if let storedImg = store.storedQR {
-                Image(storedImg, scale: 1, label: Text(L10n.qrCodeFor(qrText)))
+                Image(storedImg, scale: 1, label: Text(localizable: .qrCodeFor(qrText)))
                     .resizable()
             } else {
                 ProgressView()
@@ -238,7 +238,7 @@ public struct SwapToZecSummaryView: View {
     @ViewBuilder public func qrEnlargedCode(_ qrText: String = "") -> some View {
         Group {
             if let storedImg = store.storedEnlargedQR {
-                Image(storedImg, scale: 1, label: Text(L10n.qrCodeFor(qrText)))
+                Image(storedImg, scale: 1, label: Text(localizable: .qrCodeFor(qrText)))
                     .resizable()
             } else {
                 ProgressView()
@@ -257,9 +257,9 @@ public struct SwapToZecSummaryView: View {
             UIShareDialogView(activityItems: [
                 ShareableImage(
                     image: UIImage(cgImage: cgImg),
-                    title: L10n.SwapToZec.Share.title,
-                    reason: L10n.SwapToZec.Share.msg(store.swapToZecAmountInQuotePreciseCopy, store.shareAssetName)
-                ), L10n.SwapToZec.Share.msg(store.swapToZecAmountInQuotePreciseCopy, store.shareAssetName)
+                    title: String(localizable: .swapToZecShareTitle),
+                    reason: String(localizable: .swapToZecShareMsg(store.swapToZecAmountInQuotePreciseCopy, store.shareAssetName))
+                ), String(localizable: .swapToZecShareMsg(store.swapToZecAmountInQuotePreciseCopy, store.shareAssetName))
             ]) {
                 store.send(.shareFinished)
             }

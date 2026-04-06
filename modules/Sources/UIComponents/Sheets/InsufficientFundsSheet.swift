@@ -27,19 +27,19 @@ public struct InsufficientFundsSheetModifier: ViewModifier {
                         .padding(.top, 48)
                         .padding(.leading, 12)
 
-                    Text(L10n.Sheet.InsufficientBalance.title)
+                    Text(localizable: .sheetInsufficientBalanceTitle)
                         .zFont(.semiBold, size: 24, style: Design.Text.primary)
                         .padding(.top, 24)
                         .padding(.bottom, 12)
                     
-                    Text(L10n.Sheet.InsufficientBalance.msg)
+                    Text(localizable: .sheetInsufficientBalanceMsg)
                         .zFont(size: 14, style: Design.Text.tertiary)
                         .fixedSize(horizontal: false, vertical: true)
                         .multilineTextAlignment(.leading)
                         .lineSpacing(2)
                         .padding(.bottom, 32)
 
-                    ZashiButton(L10n.General.ok.uppercased()) {
+                    ZashiButton(String(localizable: .generalOk).uppercased()) {
                         isPresented = false
                     }
                     .padding(.bottom, Design.Spacing.sheetBottomSpace)

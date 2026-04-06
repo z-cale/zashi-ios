@@ -22,19 +22,19 @@ public struct SyncStatusSnapshot: Equatable {
     public static func snapshotFor(state: SyncStatus) -> SyncStatusSnapshot {
         switch state {
         case .upToDate:
-            return SyncStatusSnapshot(state, L10n.Sync.Message.uptodate)
+            return SyncStatusSnapshot(state, String(localizable: .syncMessageUptodate))
             
         case .unprepared:
-            return SyncStatusSnapshot(state, L10n.Sync.Message.unprepared)
+            return SyncStatusSnapshot(state, String(localizable: .syncMessageUnprepared))
             
         case .error(let error):
-            return SyncStatusSnapshot(state, L10n.Sync.Message.error(error.toZcashError().detailedMessage))
+            return SyncStatusSnapshot(state, String(localizable: .syncMessageError(error.toZcashError().detailedMessage)))
 
         case .stopped:
-            return SyncStatusSnapshot(state, L10n.Sync.Message.stopped)
+            return SyncStatusSnapshot(state, String(localizable: .syncMessageStopped))
 
         case let .syncing(syncProgress, _):
-            return SyncStatusSnapshot(state, L10n.Sync.Message.sync(String(format: "%0.1f", syncProgress * 100)))
+            return SyncStatusSnapshot(state, String(localizable: .syncMessageSync(String(format: "%0.1f", syncProgress * 100))))
         }
     }
 }
