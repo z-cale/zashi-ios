@@ -1,18 +1,27 @@
 import Foundation
 
 public struct SpendabilityPIRConfig: Sendable {
-    /// Base URL of the spendability PIR server.
+    /// Base URL of the nullifier PIR server (spend-checking).
     public let serverUrl: String
+    /// Base URL of the witness PIR server (note commitment witnesses).
+    public let witnessServerUrl: String
 
-    public init(serverUrl: String) {
+    public init(serverUrl: String, witnessServerUrl: String) {
         self.serverUrl = serverUrl
+        self.witnessServerUrl = witnessServerUrl
     }
 
-    /// Default config. Debug builds connect to a local spend-server;
-    /// distribution builds use the production endpoint.
+    /// Default config. Debug builds connect to local servers;
+    /// distribution builds use the production endpoints.
     #if SECANT_DISTRIB
-    public static let `default` = SpendabilityPIRConfig(serverUrl: "https://pir.zashi.app")
+    public static let `default` = SpendabilityPIRConfig(
+        serverUrl: "https://pir.zashi.app",
+        witnessServerUrl: "https://pir.zashi.app/witness"
+    )
     #else
-    public static let `default` = SpendabilityPIRConfig(serverUrl: "http://localhost:8080")
+    public static let `default` = SpendabilityPIRConfig(
+        serverUrl: "http://localhost:8080",
+        witnessServerUrl: "http://localhost:8080/witness"
+    )
     #endif
 }

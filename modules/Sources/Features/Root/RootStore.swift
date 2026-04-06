@@ -77,6 +77,7 @@ public struct Root {
         public var CancelFlexaId = UUID()
         public var shieldingProcessorCancelId = UUID()
         public var PIRCheckCancelId = UUID()
+        public var WitnessPIRCheckCancelId = UUID()
 
         @Shared(.inMemory(.addressBookContacts)) public var addressBookContacts: AddressBookContacts = .empty
         @Presents public var alert: AlertState<Action>?
@@ -118,6 +119,7 @@ public struct Root {
         public var walletConfig: WalletConfig
         @Shared(.inMemory(.walletStatus)) public var walletStatus: WalletStatus = .none
         @Shared(.inMemory(.pirSpendabilityResult)) public var pirSpendabilityResult: SpendabilityResult? = nil
+        @Shared(.inMemory(.pirWitnessResult)) public var pirWitnessResult: WitnessResult? = nil
         public var wasRestoringWhenDisconnected = false
         public var welcomeState: Welcome.State
         @Shared(.inMemory(.zashiWalletAccount)) public var zashiWalletAccount: WalletAccount? = nil

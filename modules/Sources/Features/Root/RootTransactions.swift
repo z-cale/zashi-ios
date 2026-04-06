@@ -50,13 +50,16 @@ extension Root {
                 return .none
                 
             case .foundTransactions, .syncReachedUpToDate:
+                var effects: [Effect<Root.Action>] = [
+                    .send(.fetchTransactionsForTheSelectedAccount)
+                ]
                 if state.walletConfig.isEnabled(.pirSpendability) {
-                    return .merge(
-                        .send(.fetchTransactionsForTheSelectedAccount),
-                        .send(.initialization(.checkSpendabilityPIR))
-                    )
+                    effects.append(.send(.initialization(.checkSpendabilityPIR)))
                 }
-                return .send(.fetchTransactionsForTheSelectedAccount)
+                if state.walletConfig.isEnabled(.pirWitness) {
+                    effects.append(.send(.initialization(.checkWitnessPIR)))
+                }
+                return .merge(effects)
                 
             case .minedTransaction:
                 return .send(.fetchTransactionsForTheSelectedAccount)

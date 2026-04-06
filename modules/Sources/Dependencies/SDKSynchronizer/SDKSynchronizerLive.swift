@@ -335,6 +335,15 @@ extension SDKSynchronizerClient: DependencyKey {
             },
             getPIRPendingSpends: {
                 try await synchronizer.getPIRPendingSpends()
+            },
+            fetchNoteWitnesses: { pirServerUrl, progress in
+                try await synchronizer.fetchNoteWitnesses(
+                    pirServerUrl: pirServerUrl,
+                    progress: progress
+                )
+            },
+            getPIRWitnessedNotes: {
+                try await synchronizer.getPIRWitnessedNotes()
             }
         )
     }

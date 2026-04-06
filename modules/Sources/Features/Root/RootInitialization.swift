@@ -31,6 +31,8 @@ extension Root {
         case checkWalletConfig
         case checkSpendabilityPIR
         case checkSpendabilityPIRResult(SpendabilityResult?)
+        case checkWitnessPIR
+        case checkWitnessPIRResult(WitnessResult?)
         case initializeSDK(WalletInitMode)
         case initialSetups
         case initializationFailed(ZcashError)
@@ -207,17 +209,18 @@ extension Root {
                 .cancellable(id: state.CancelStateId, cancelInFlight: true)
                 if state.bgTask != nil {
                     return stateStreamEffect
-                } else if state.walletConfig.isEnabled(.pirSpendability) {
-                    return .merge(
-                        stateStreamEffect,
-                        .send(.home(.smartBanner(.evaluatePriority1))),
-                        .send(.initialization(.checkSpendabilityPIR))
-                    )
                 } else {
-                    return .merge(
+                    var effects: [Effect<Root.Action>] = [
                         stateStreamEffect,
                         .send(.home(.smartBanner(.evaluatePriority1)))
-                    )
+                    ]
+                    if state.walletConfig.isEnabled(.pirSpendability) {
+                        effects.append(.send(.initialization(.checkSpendabilityPIR)))
+                    }
+                    if state.walletConfig.isEnabled(.pirWitness) {
+                        effects.append(.send(.initialization(.checkWitnessPIR)))
+                    }
+                    return .merge(effects)
                 }
 
             case .initialization(.checkSpendabilityPIR):
@@ -238,6 +241,29 @@ extension Root {
 
             case .initialization(.checkSpendabilityPIRResult(let result)):
                 state.$pirSpendabilityResult.withLock { $0 = result }
+                return .merge(
+                    .send(.fetchTransactionsForTheSelectedAccount),
+                    .send(.home(.walletBalances(.updateBalances)))
+                )
+
+            case .initialization(.checkWitnessPIR):
+                guard state.walletConfig.isEnabled(.pirWitness) else {
+                    return .none
+                }
+                let witnessUrl = SpendabilityPIRConfig.default.witnessServerUrl
+                return .run { send in
+                    do {
+                        let result = try await sdkSynchronizer.fetchNoteWitnesses(witnessUrl, nil)
+                        await send(.initialization(.checkWitnessPIRResult(result)))
+                    } catch {
+                        LoggerProxy.event("PIR witness fetch failed: \(error)")
+                        await send(.initialization(.checkWitnessPIRResult(nil)))
+                    }
+                }
+                .cancellable(id: state.WitnessPIRCheckCancelId, cancelInFlight: true)
+
+            case .initialization(.checkWitnessPIRResult(let result)):
+                state.$pirWitnessResult.withLock { $0 = result }
                 return .merge(
                     .send(.fetchTransactionsForTheSelectedAccount),
                     .send(.home(.walletBalances(.updateBalances)))

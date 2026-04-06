@@ -146,7 +146,7 @@ extension Root {
                 return .none
 
             case .home(.transactionList(.transactionTapped(let txId))):
-if let index = state.transactions.index(id: txId),
+                if let index = state.transactions.index(id: txId),
                    state.transactions[index].isPIRDetectedSpend {
                     return .none
                 }
