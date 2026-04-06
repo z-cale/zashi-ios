@@ -75,6 +75,7 @@ public struct Root {
         public var WalletConfigCancelId = UUID()
         public var DidFinishLaunchingId = UUID()
         public var CancelFlexaId = UUID()
+        public var serverBenchmarkCancelId = UUID()
         public var shieldingProcessorCancelId = UUID()
 
         @Shared(.inMemory(.addressBookContacts)) public var addressBookContacts: AddressBookContacts = .empty
@@ -230,6 +231,7 @@ public struct Root {
         case walletBackupCoordFlow(WalletBackupCoordFlow.Action)
         case torSetup(TorSetup.Action)
         case backToHomeFromServerSwitchTapped
+        case benchmarkSyncEndpoint
 
         // Transactions
         case observeTransactions
@@ -444,11 +446,56 @@ public struct Root {
                     .cancel(id: state.CancelBatteryStateId),
                     .cancel(id: state.SynchronizerCancelId),
                     .cancel(id: state.WalletConfigCancelId),
-                    .cancel(id: state.DidFinishLaunchingId)
+                    .cancel(id: state.DidFinishLaunchingId),
+                    .cancel(id: state.serverBenchmarkCancelId)
                 )
 
             case .onboarding(.newWalletSuccessfulyCreated):
                 return .send(.initialization(.initializeSDK(.newWallet)))
+
+            case .benchmarkSyncEndpoint:
+                return .run { _ in
+                    guard let config = userStoredPreferences.selectedServers(),
+                          config.servers.count > 1 else { return }
+
+                    let streamingTimeout = ZcashSDKEnvironment.ZcashSDKConstants.streamingCallTimeoutInMillis
+                    let endpoints = config.servers.map {
+                        $0.endpoint(streamingCallTimeoutInMillis: streamingTimeout)
+                    }
+
+                    let network = zcashSDKEnvironment.network.networkType
+                    let bestServers = await sdkSynchronizer.evaluateBestOf(
+                        endpoints,   // candidates
+                        300.0,       // connectionTimeoutMs
+                        5.0,         // evaluationTimeoutSec (lightweight: 1 block, 5s cap)
+                        1,           // blocksToDownload
+                        1,           // topK
+                        network
+                    )
+
+                    guard let best = bestServers.first else { return }
+
+                    let currentEndpoint = zcashSDKEnvironment.endpoint()
+                    if best.host != currentEndpoint.host || best.port != currentEndpoint.port {
+                        do {
+                            try await sdkSynchronizer.switchToEndpoint(best)
+                            let isCustom = !ZcashSDKEnvironment.isKnownEndpoint(
+                                host: best.host,
+                                port: best.port,
+                                network: network
+                            )
+                            let serverConfig = UserPreferencesStorage.ServerConfig(
+                                host: best.host,
+                                port: best.port,
+                                isCustom: isCustom
+                            )
+                            try? userStoredPreferences.setServer(serverConfig)
+                        } catch {
+                            LoggerProxy.error("[Benchmark] Failed to switch endpoint: \(error)")
+                        }
+                    }
+                }
+                .cancellable(id: state.serverBenchmarkCancelId, cancelInFlight: true)
 
             default: return .none
             }

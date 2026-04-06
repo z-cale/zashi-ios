@@ -30,55 +30,58 @@ public struct ServerSetup {
 
     @ObservableState
     public struct State: Equatable {
-        var activeServer: String
         @Presents var alert: AlertState<Action>?
         var customServer: String
         var isEvaluatingServers = false
         var isUpdatingServer = false
-        var initialServer: String
+        var activeSyncServer: String = ""
+        var initialCustomServer: String = ""
+        var initialSelectedServers: Set<String> = []
         var network: NetworkType = .mainnet
-        var selectedServer: String?
+        var selectedServers: Set<String> = []
         var servers: [ZcashSDKEnvironment.Server]
         var topKServers: [ZcashSDKEnvironment.Server]
-        
+
+        public var hasChanges: Bool {
+            let customLabel = String(localizable: .serverSetupCustom)
+            let customServerChanged = selectedServers.contains(customLabel) && customServer != initialCustomServer
+            return selectedServers != initialSelectedServers || customServerChanged
+        }
+
         public init(
-            activeServer: String = "",
             customServer: String = "",
             isEvaluatingServers: Bool = false,
             isUpdatingServer: Bool = false,
-            initialServer: String = "",
             network: NetworkType = .mainnet,
-            selectedServer: String? = nil,
+            selectedServers: Set<String> = [],
             servers: [ZcashSDKEnvironment.Server] = [],
             topKServers: [ZcashSDKEnvironment.Server] = []
         ) {
-            self.activeServer = activeServer
             self.customServer = customServer
+            self.isEvaluatingServers = isEvaluatingServers
             self.isUpdatingServer = isUpdatingServer
-            self.initialServer = initialServer
             self.network = network
-            self.selectedServer = selectedServer
+            self.selectedServers = selectedServers
             self.servers = servers
             self.topKServers = topKServers
         }
     }
-    
+
     public enum Action: Equatable, BindableAction {
         case alert(PresentationAction<Action>)
         case binding(BindingAction<State>)
         case evaluatedServers([LightWalletEndpoint])
         case evaluateServers
         case onAppear
-        case onDisappear
         case refreshServersTapped
+        case serverToggled(String)
         case setServerTapped
-        case someServerTapped(ZcashSDKEnvironment.Server)
         case switchFailed(ZcashError)
-        case switchSucceeded
+        case switchSucceeded(String)
     }
-    
+
     public init() {}
-    
+
     @Dependency(\.mainQueue) var mainQueue
     @Dependency(\.sdkSynchronizer) var sdkSynchronizer
     @Dependency(\.zcashSDKEnvironment) var zcashSDKEnvironment
@@ -86,13 +89,14 @@ public struct ServerSetup {
 
     public var body: some ReducerOf<Self> {
         BindingReducer()
-        
+
         Reduce { state, action in
             switch action {
             case .onAppear:
-                // __LD TESTED
                 state.network = zcashSDKEnvironment.network.networkType
-                
+                let syncConfig = zcashSDKEnvironment.serverConfig()
+                state.activeSyncServer = syncConfig.serverString()
+
                 if !state.topKServers.isEmpty {
                     let allServers = ZcashSDKEnvironment.servers(for: state.network)
                     state.servers = allServers.filter {
@@ -102,22 +106,30 @@ public struct ServerSetup {
                     state.servers = ZcashSDKEnvironment.servers(for: state.network)
                 }
 
-                let serverConfig = zcashSDKEnvironment.serverConfig()
-                
-                if serverConfig.isCustom {
-                    state.initialServer = String(localizable: .serverSetupCustom)
-                    state.customServer = serverConfig.serverString()
-                } else {
-                    state.initialServer = serverConfig.serverString()
+                // Load saved selected servers, filtering out stale entries that no longer
+                // appear in the current server list (e.g. old custom servers stored without isCustom)
+                let validServerValues = Set(
+                    (state.topKServers + state.servers).map { $0.value(for: state.network) }
+                )
+                if let config = userStoredPreferences.selectedServers() {
+                    var selected = Set<String>()
+                    for server in config.servers {
+                        if server.isCustom {
+                            state.customServer = server.serverString()
+                            selected.insert(String(localizable: .serverSetupCustom))
+                        } else {
+                            let serverStr = server.serverString()
+                            if validServerValues.contains(serverStr) {
+                                selected.insert(serverStr)
+                            }
+                        }
+                    }
+                    state.selectedServers = selected
                 }
-                
-                state.activeServer = state.initialServer
-                return state.topKServers.isEmpty ? .send(.evaluateServers) : .none
 
-            case .onDisappear:
-                // __LD2 TESTing
-                state.selectedServer = nil
-                return .none
+                state.initialSelectedServers = state.selectedServers
+                state.initialCustomServer = state.customServer
+                return state.topKServers.isEmpty ? .send(.evaluateServers) : .none
 
             case .alert(.dismiss):
                 state.alert = nil
@@ -128,22 +140,23 @@ public struct ServerSetup {
 
             case .binding:
                 return .none
-            
+
             case .evaluateServers:
                 state.isEvaluatingServers = true
+                let network = state.network
                 return .run { send in
                     let kBestServers = await sdkSynchronizer.evaluateBestOf(
-                        ZcashSDKEnvironment.endpoints(),
-                        300.0,
-                        60.0,
-                        100,
-                        3,
-                        .mainnet
+                        ZcashSDKEnvironment.endpoints(for: network), // candidates
+                        300.0,  // connectionTimeoutMs
+                        60.0,   // evaluationTimeoutSec
+                        100,    // blocksToDownload
+                        3,      // topK
+                        network
                     )
-                    
+
                     await send(.evaluatedServers(kBestServers))
                 }
-                
+
             case .evaluatedServers(let bestServers):
                 state.isEvaluatingServers = false
                 state.topKServers = bestServers.map {
@@ -157,79 +170,125 @@ public struct ServerSetup {
                 state.servers = allServers.filter {
                     !state.topKServers.contains($0)
                 }
+
                 return .none
-                
+
             case .refreshServersTapped:
                 return .send(.evaluateServers)
 
+            case .serverToggled(let serverString):
+                if state.selectedServers.contains(serverString) {
+                    // Prevent deselecting the last server
+                    guard state.selectedServers.count > 1 else { return .none }
+                    state.selectedServers.remove(serverString)
+                } else {
+                    state.selectedServers.insert(serverString)
+                }
+                return .none
+
             case .setServerTapped:
-                guard state.initialServer != state.selectedServer || state.selectedServer == String(localizable: .serverSetupCustom) else {
+                guard state.hasChanges && !state.selectedServers.isEmpty else {
                     return .none
                 }
-                
+
                 state.isUpdatingServer = true
-                
-                // custom server needs to be stored first
-                var input = state.selectedServer ?? state.activeServer
-                if input == String(localizable: .serverSetupCustom) {
-                    input = state.customServer
+
+                // Persist selected servers
+                do {
+                    try self.persistSelectedServers(state: state)
+                } catch {
+                    state.isUpdatingServer = false
+                    return .send(.switchFailed(ZcashError.unknown(error)))
                 }
-                
-                return .run { [input] send in
-                    do {
-                        let endpoint = UserPreferencesStorage.ServerConfig.endpoint(
-                            for: input,
+
+                // Build endpoints from selected servers
+                let selectedEndpoints = state.selectedServers.compactMap { serverString -> LightWalletEndpoint? in
+                    if serverString == String(localizable: .serverSetupCustom) {
+                        return UserPreferencesStorage.ServerConfig.endpoint(
+                            for: state.customServer,
                             streamingCallTimeoutInMillis: streamingCallTimeoutInMillis
                         )
-                        guard let endpoint else {
-                            throw ZcashError.synchronizerServerSwitch
+                    }
+                    return UserPreferencesStorage.ServerConfig.endpoint(
+                        for: serverString,
+                        streamingCallTimeoutInMillis: streamingCallTimeoutInMillis
+                    )
+                }
+
+                guard !selectedEndpoints.isEmpty else {
+                    return .send(.switchFailed(ZcashError.synchronizerServerSwitch))
+                }
+
+                let network = state.network
+
+                // Benchmark selected endpoints to find the best for sync
+                return .run { [selectedEndpoints] send in
+                    do {
+                        let bestServers = await sdkSynchronizer.evaluateBestOf(
+                            selectedEndpoints, // candidates
+                            300.0,  // connectionTimeoutMs
+                            60.0,   // evaluationTimeoutSec
+                            100,    // blocksToDownload
+                            1,      // topK (best single server for sync)
+                            network
+                        )
+
+                        let best = bestServers.first ?? selectedEndpoints[0]
+
+                        // Switch sync endpoint to the best server
+                        let currentEndpoint = zcashSDKEnvironment.endpoint()
+                        if best.host != currentEndpoint.host || best.port != currentEndpoint.port {
+                            try await sdkSynchronizer.switchToEndpoint(best)
                         }
-                        try await sdkSynchronizer.switchToEndpoint(endpoint)
+
+                        // Persist the best server as the sync endpoint
+                        let isCustom = !ZcashSDKEnvironment.isKnownEndpoint(
+                            host: best.host,
+                            port: best.port,
+                            network: network
+                        )
+                        let serverConfig = UserPreferencesStorage.ServerConfig(
+                            host: best.host,
+                            port: best.port,
+                            isCustom: isCustom
+                        )
+                        try? userStoredPreferences.setServer(serverConfig)
+
+                        let bestServerString = "\(best.host):\(best.port)"
                         try await mainQueue.sleep(for: .seconds(1))
-                        await send(.switchSucceeded)
+                        await send(.switchSucceeded(bestServerString))
                     } catch {
                         await send(.switchFailed(error.toZcashError()))
                     }
                 }
-                
-            case .someServerTapped(let newChange):
-                state.selectedServer = newChange.value(for: state.network)
-                return .none
 
             case .switchFailed(let error):
                 state.isUpdatingServer = false
                 state.alert = AlertState.endpoindSwitchFailed(error)
                 return .none
-                
-            case .switchSucceeded:
+
+            case .switchSucceeded(let bestServer):
                 state.isUpdatingServer = false
-                state.initialServer = state.selectedServer ?? state.activeServer
-                state.activeServer = state.initialServer
-                var input = state.selectedServer ?? state.activeServer
-                var isCustom = false
-                state.selectedServer = nil
-
-                if input == String(localizable: .serverSetupCustom) {
-                    input = state.customServer
-                    isCustom = true
-                }
-
-                if let serverConfig = UserPreferencesStorage.ServerConfig.config(
-                    for: input,
-                    isCustom: isCustom,
-                    streamingCallTimeoutInMillis: streamingCallTimeoutInMillis
-                ) {
-                    do {
-                        try userStoredPreferences.setServer(serverConfig)
-                    } catch UserPreferencesStorage.UserPreferencesStorageError.serverConfig {
-                        return .send(.switchFailed(ZcashError.unknown(UserPreferencesStorage.UserPreferencesStorageError.serverConfig)))
-                    } catch {
-                        return .send(.switchFailed(ZcashError.unknown(error)))
-                    }
-                }
+                state.initialSelectedServers = state.selectedServers
+                state.initialCustomServer = state.customServer
+                state.activeSyncServer = bestServer
                 return .none
             }
         }
+    }
+}
+
+extension ServerSetup {
+    func persistSelectedServers(state: State) throws {
+        let configs = state.selectedServers.compactMap { serverString -> UserPreferencesStorage.ServerConfig? in
+            let input = serverString == String(localizable: .serverSetupCustom) ? state.customServer : serverString
+            return UserPreferencesStorage.ServerConfig.config(
+                for: input,
+                isCustom: serverString == String(localizable: .serverSetupCustom),
+                streamingCallTimeoutInMillis: streamingCallTimeoutInMillis
+            )
+        }
+        try userStoredPreferences.setSelectedServers(.init(servers: configs))
     }
 }
 

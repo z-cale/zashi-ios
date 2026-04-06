@@ -63,7 +63,7 @@ extension ZcashSDKEnvironment {
         if network == .mainnet {
             servers.append(.custom)
             
-            let mainnetServers = ZcashSDKEnvironment.endpoints(skipDefault: true).map {
+            let mainnetServers = ZcashSDKEnvironment.endpoints(for: network, skipDefault: true).map {
                 Server.hardcoded("\($0.host):\($0.port)")
             }
             
@@ -87,7 +87,11 @@ extension ZcashSDKEnvironment {
         )
     }
     
-    public static func endpoints(skipDefault: Bool = false) -> [LightWalletEndpoint] {
+    public static func endpoints(for network: NetworkType, skipDefault: Bool = false) -> [LightWalletEndpoint] {
+        if network == .testnet {
+            return skipDefault ? [] : [defaultEndpoint(for: network)]
+        }
+
         var result: [LightWalletEndpoint] = []
         
         if !skipDefault {
@@ -108,6 +112,14 @@ extension ZcashSDKEnvironment {
         )
         
         return result
+    }
+
+    public static func endpoints(skipDefault: Bool = false) -> [LightWalletEndpoint] {
+        endpoints(for: .mainnet, skipDefault: skipDefault)
+    }
+
+    public static func isKnownEndpoint(host: String, port: Int, network: NetworkType) -> Bool {
+        endpoints(for: network).contains { $0.host == host && $0.port == port }
     }
 }
 

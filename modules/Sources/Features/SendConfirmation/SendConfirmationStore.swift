@@ -25,6 +25,7 @@ import MessageUI
 import SupportDataGenerator
 import KeystoneHandler
 import TransactionDetails
+import UserPreferencesStorage
 import AddressBook
 
 @Reducer
@@ -204,6 +205,7 @@ public struct SendConfirmation {
     @Dependency(\.mainQueue) var mainQueue
     @Dependency(\.mnemonic) var mnemonic
     @Dependency(\.sdkSynchronizer) var sdkSynchronizer
+    @Dependency(\.userStoredPreferences) var userStoredPreferences
     @Dependency(\.walletStorage) var walletStorage
     @Dependency(\.zcashSDKEnvironment) var zcashSDKEnvironment
 
@@ -305,25 +307,45 @@ public struct SendConfirmation {
                         let network = zcashSDKEnvironment.network.networkType
                         let spendingKey = try derivationTool.deriveSpendingKey(seedBytes, zip32AccountIndex, network)
 
-                        let result = try await sdkSynchronizer.createProposedTransactions(proposal, spendingKey)
+                        // Step 1: Create transactions locally (no network call)
+                        let transactions = try await sdkSynchronizer.createProposedTransactionsWithoutSubmitting(proposal, spendingKey)
 
-                        switch result {
-                        case .grpcFailure(let txIds):
-                            await send(.updateTxIdToExpand(txIds.last))
-                            let isTxIdPresentInTheDB = try await sdkSynchronizer.txIdExists(txIds.last)
-                            await send(.sendFailed("sdkSynchronizer.createProposedTransactions-grpcFailure".toZcashError(), isTxIdPresentInTheDB))
-                        case let .failure(txIds, code, description):
-                            await send(.updateFailedData(code, description, ""))
-                            await send(.updateTxIdToExpand(txIds.last))
-                            let isTxIdPresentInTheDB = try await sdkSynchronizer.txIdExists(txIds.last)
-                            await send(.sendFailed("sdkSynchronizer.createProposedTransactions-failure \(code) \(description)".toZcashError(), isTxIdPresentInTheDB))
-                        case let .partial(txIds: txIds, statuses: statuses):
-                            await send(.updateTxIdToExpand(txIds.last))
-                            await send(.sendPartial(txIds, statuses))
-                        case .success(let txIds):
-                            await send(.updateTxIdToExpand(txIds.last))
-                            await send(.sendDone)
+                        guard !transactions.isEmpty else {
+                            await send(.sendFailed("No transactions created from proposal".toZcashError(), false))
+                            return
                         }
+
+                        let txId = transactions.last?.rawID.toHexStringTxId()
+                        await send(.updateTxIdToExpand(txId))
+
+                        // Step 2: Submit each transaction to ALL selected endpoints in parallel
+                        let allEndpoints = self.allSelectedEndpoints()
+                        LoggerProxy.event("[MultiSubmit] Submitting \(transactions.count) transaction(s) to \(allEndpoints.count) server(s).")
+
+                        for (index, tx) in transactions.enumerated() {
+                            guard let rawTx = tx.raw else {
+                                await send(.sendFailed(
+                                    "Transaction \(index) created but raw bytes unavailable".toZcashError(),
+                                    true
+                                ))
+                                return
+                            }
+
+                            let accepted = await self.submitToAllEndpoints(rawTx: rawTx, endpoints: allEndpoints)
+
+                            if let winner = accepted {
+                                LoggerProxy.event("[MultiSubmit] Transaction \(index) accepted by \(winner).")
+                            } else {
+                                LoggerProxy.error("[MultiSubmit] Transaction \(index) rejected by all \(allEndpoints.count) server(s).")
+                                await send(.sendFailed(
+                                    "Transaction \(index + 1) of \(transactions.count) failed on all servers".toZcashError(),
+                                    true
+                                ))
+                                return
+                            }
+                        }
+
+                        await send(.sendDone)
                     } catch {
                         await send(.sendFailed(error.toZcashError(), false))
                     }
@@ -603,6 +625,91 @@ public struct SendConfirmation {
                 state.proposal = nil
                 state.redactedPcztForSigner = nil
                 return .none
+            }
+        }
+    }
+}
+
+extension SendConfirmation {
+    /// Returns all endpoints the user has selected for transaction submission.
+    func allSelectedEndpoints() -> [LightWalletEndpoint] {
+        let streamingTimeout = ZcashSDKEnvironment.ZcashSDKConstants.streamingCallTimeoutInMillis
+        if let config = userStoredPreferences.selectedServers(), !config.servers.isEmpty {
+            return config.servers.map { $0.endpoint(streamingCallTimeoutInMillis: streamingTimeout) }
+        }
+        return [zcashSDKEnvironment.endpoint()]
+    }
+
+    private enum SubmitResult {
+        case server(String?)
+        case graceExpired
+    }
+
+    /// Submits raw transaction bytes to all endpoints in parallel.
+    /// Returns the first server that accepted as soon as it responds (caller proceeds immediately).
+    /// Remaining servers get a 5-second grace period to also receive the transaction before cancellation.
+    /// Returns nil immediately if all servers reject. 30-second global timeout as a safety net.
+    func submitToAllEndpoints(rawTx: Data, endpoints: [LightWalletEndpoint]) async -> String? {
+        guard !endpoints.isEmpty else { return nil }
+
+        let sdkSync = sdkSynchronizer
+        let serverCount = endpoints.count
+
+        return await withCheckedContinuation { continuation in
+            Task {
+                var hasResumed = false
+
+                await withTaskGroup(of: SubmitResult.self) { group in
+                    for endpoint in endpoints {
+                        let server = "\(endpoint.host):\(endpoint.port)"
+                        group.addTask {
+                            do {
+                                try await sdkSync.submitTransaction(rawTx, endpoint)
+                                LoggerProxy.event("[MultiSubmit] \(server) SUCCESS.")
+                                return .server(server)
+                            } catch {
+                                LoggerProxy.warn("[MultiSubmit] \(server) FAILED: \(error)")
+                                return .server(nil)
+                            }
+                        }
+                    }
+
+                    group.addTask {
+                        try? await Task.sleep(for: .seconds(30))
+                        LoggerProxy.error("[MultiSubmit] Timed out waiting for any server to respond.")
+                        return .server(nil)
+                    }
+
+                    var failedCount = 0
+                    for await result in group {
+                        switch result {
+                        case .server(let winner?):
+                            if !hasResumed {
+                                hasResumed = true
+                                continuation.resume(returning: winner)
+                                group.addTask {
+                                    try? await Task.sleep(for: .seconds(5))
+                                    return .graceExpired
+                                }
+                            }
+                        case .server(nil):
+                            failedCount += 1
+                            if !hasResumed && failedCount >= serverCount {
+                                hasResumed = true
+                                group.cancelAll()
+                                continuation.resume(returning: nil)
+                                return
+                            }
+                        case .graceExpired:
+                            group.cancelAll()
+                            return
+                        }
+                    }
+
+                    if !hasResumed {
+                        continuation.resume(returning: nil)
+                    }
+                }
             }
         }
     }

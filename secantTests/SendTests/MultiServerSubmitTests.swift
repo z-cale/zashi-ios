@@ -1,0 +1,323 @@
+//
+//  MultiServerSubmitTests.swift
+//  secantTests
+//
+//  Created by Adam Tucker on 2026-04-05.
+//
+
+import XCTest
+import AudioServices
+import ComposableArchitecture
+import ZcashLightClientKit
+import Models
+import UserPreferencesStorage
+import SendConfirmation
+@testable import ZcashSDKEnvironment
+@testable import ZcashLightClientKit
+@testable import secant_testnet
+
+@MainActor
+class MultiServerSubmitTests: XCTestCase {
+    private let testAccountUUID = AccountUUID(id: [UInt8](repeating: 0, count: 16))
+
+    private var testWalletAccount: WalletAccount {
+        WalletAccount(
+            Account(
+                id: testAccountUUID,
+                name: "Test",
+                keySource: nil,
+                seedFingerprint: nil,
+                hdAccountIndex: Zip32AccountIndex(0),
+                ufvk: nil
+            )
+        )
+    }
+
+    /// Verifies that when a proposal produces multiple transactions,
+    /// every transaction is submitted to the servers — not just the first.
+    /// Regression test: a previous implementation only submitted `transactions.first?.raw`,
+    /// silently dropping all subsequent transactions.
+    func testAllTransactionsAreSubmitted() async throws {
+        let tx1Raw = Data([0x01, 0x02, 0x03])
+        let tx2Raw = Data([0x04, 0x05, 0x06])
+
+        let tx1 = ZcashTransaction.Overview(
+            accountUUID: testAccountUUID,
+            blockTime: nil,
+            expiryHeight: nil,
+            fee: nil,
+            index: nil,
+            isShielding: false,
+            hasChange: false,
+            memoCount: 0,
+            minedHeight: nil,
+            raw: tx1Raw,
+            rawID: Data([0xAA]),
+            receivedNoteCount: 0,
+            sentNoteCount: 1,
+            value: Zatoshi(-100_000),
+            isExpiredUmined: nil,
+            totalSpent: nil,
+            totalReceived: nil
+        )
+
+        let tx2 = ZcashTransaction.Overview(
+            accountUUID: testAccountUUID,
+            blockTime: nil,
+            expiryHeight: nil,
+            fee: nil,
+            index: nil,
+            isShielding: false,
+            hasChange: false,
+            memoCount: 0,
+            minedHeight: nil,
+            raw: tx2Raw,
+            rawID: Data([0xBB]),
+            receivedNoteCount: 0,
+            sentNoteCount: 1,
+            value: Zatoshi(-100_000),
+            isExpiredUmined: nil,
+            totalSpent: nil,
+            totalReceived: nil
+        )
+
+        // Track which raw bytes were submitted
+        let submittedRawTxs = LockIsolated<[Data]>([])
+
+        var initialState = SendConfirmation.State(
+            address: "ztestaddr",
+            amount: Zatoshi(100_000),
+            feeRequired: Zatoshi(10_000),
+            message: "",
+            proposal: .testOnlyFakeProposal(totalFee: 10_000)
+        )
+        initialState.$selectedWalletAccount.withLock { $0 = testWalletAccount }
+
+        let store = TestStore(initialState: initialState) {
+            SendConfirmation()
+        }
+
+        store.exhaustivity = .off
+
+        store.dependencies.audioServices = AudioServicesClient(systemSoundVibrate: { })
+        store.dependencies.derivationTool = .liveValue
+        store.dependencies.mainQueue = .immediate
+        store.dependencies.mnemonic = .liveValue
+        store.dependencies.walletStorage.exportWallet = { .placeholder }
+        let testNetwork = ZcashNetworkBuilder.network(for: .mainnet)
+        store.dependencies.zcashSDKEnvironment = ZcashSDKEnvironment(
+            latestCheckpoint: BlockHeight(0),
+            endpoint: { LightWalletEndpoint(address: "test.server", port: 443) },
+            exchangeRateIPRateLimit: 120,
+            exchangeRateStaleLimit: 900,
+            memoCharLimit: 512,
+            mnemonicWordsMaxCount: 24,
+            network: testNetwork,
+            requiredTransactionConfirmations: 10,
+            sdkVersion: "test",
+            serverConfig: { .init(host: "test.server", port: 443, isCustom: false) },
+            servers: [],
+            shieldingThreshold: Zatoshi(100_000),
+            tokenName: "ZEC"
+        )
+
+        store.dependencies.sdkSynchronizer.createProposedTransactionsWithoutSubmitting = { _, _ in
+            [tx1, tx2]
+        }
+
+        store.dependencies.sdkSynchronizer.submitTransaction = { rawTx, _ in
+            submittedRawTxs.withValue { $0.append(rawTx) }
+        }
+
+        store.dependencies.userStoredPreferences.selectedServers = {
+            .init(servers: [.init(host: "test.server", port: 443, isCustom: false)])
+        }
+
+        await store.send(.sendTriggered)
+        await store.finish()
+
+        submittedRawTxs.withValue { txs in
+            XCTAssertEqual(txs.count, 2, "Both transactions must be submitted, not just the first")
+            XCTAssertEqual(txs[0], tx1Raw, "First transaction raw bytes should match")
+            XCTAssertEqual(txs[1], tx2Raw, "Second transaction raw bytes should match")
+        }
+    }
+
+    /// When all servers reject a transaction, the send should report failure.
+    /// Verifies that sendDone is never called by confirming submitTransaction
+    /// throws for all servers and the send result is not success.
+    func testAllServersReject_neverCallsSendDone() async throws {
+        let txRaw = Data([0x01, 0x02, 0x03])
+
+        let tx = ZcashTransaction.Overview(
+            accountUUID: testAccountUUID,
+            blockTime: nil,
+            expiryHeight: nil,
+            fee: nil,
+            index: nil,
+            isShielding: false,
+            hasChange: false,
+            memoCount: 0,
+            minedHeight: nil,
+            raw: txRaw,
+            rawID: Data([0xAA]),
+            receivedNoteCount: 0,
+            sentNoteCount: 1,
+            value: Zatoshi(-100_000),
+            isExpiredUmined: nil,
+            totalSpent: nil,
+            totalReceived: nil
+        )
+
+        let submitCallCount = LockIsolated<Int>(0)
+
+        var initialState = SendConfirmation.State(
+            address: "ztestaddr",
+            amount: Zatoshi(100_000),
+            feeRequired: Zatoshi(10_000),
+            message: "",
+            proposal: .testOnlyFakeProposal(totalFee: 10_000)
+        )
+        initialState.$selectedWalletAccount.withLock { $0 = testWalletAccount }
+
+        let store = TestStore(initialState: initialState) {
+            SendConfirmation()
+        }
+
+        store.exhaustivity = .off
+
+        store.dependencies.audioServices = AudioServicesClient(systemSoundVibrate: { })
+        store.dependencies.derivationTool = .liveValue
+        store.dependencies.mainQueue = .immediate
+        store.dependencies.mnemonic = .liveValue
+        store.dependencies.walletStorage.exportWallet = { .placeholder }
+        let testNetwork = ZcashNetworkBuilder.network(for: .mainnet)
+        store.dependencies.zcashSDKEnvironment = ZcashSDKEnvironment(
+            latestCheckpoint: BlockHeight(0),
+            endpoint: { LightWalletEndpoint(address: "test.server", port: 443) },
+            exchangeRateIPRateLimit: 120,
+            exchangeRateStaleLimit: 900,
+            memoCharLimit: 512,
+            mnemonicWordsMaxCount: 24,
+            network: testNetwork,
+            requiredTransactionConfirmations: 10,
+            sdkVersion: "test",
+            serverConfig: { .init(host: "test.server", port: 443, isCustom: false) },
+            servers: [],
+            shieldingThreshold: Zatoshi(100_000),
+            tokenName: "ZEC"
+        )
+
+        store.dependencies.sdkSynchronizer.createProposedTransactionsWithoutSubmitting = { _, _ in
+            [tx]
+        }
+
+        // All servers reject
+        store.dependencies.sdkSynchronizer.submitTransaction = { _, _ in
+            submitCallCount.withValue { $0 += 1 }
+            throw ZcashError.synchronizerServerSwitch
+        }
+
+        store.dependencies.userStoredPreferences.selectedServers = {
+            .init(servers: [
+                .init(host: "server1", port: 443, isCustom: false),
+                .init(host: "server2", port: 443, isCustom: false)
+            ])
+        }
+
+        await store.send(.sendTriggered)
+        await store.finish()
+
+        submitCallCount.withValue { count in
+            XCTAssertEqual(count, 2, "Should have attempted submission to both servers")
+        }
+
+        XCTAssertNotEqual(store.state.result, .success, "Send should not succeed when all servers reject")
+        XCTAssertNotNil(store.state.result, "Send result must be set after all effects complete")
+    }
+
+    /// When at least one server accepts the transaction, the send should succeed
+    /// even if other servers reject it.
+    func testFirstSuccessWins_whileOthersFail() async throws {
+        let txRaw = Data([0x01, 0x02, 0x03])
+
+        let tx = ZcashTransaction.Overview(
+            accountUUID: testAccountUUID,
+            blockTime: nil,
+            expiryHeight: nil,
+            fee: nil,
+            index: nil,
+            isShielding: false,
+            hasChange: false,
+            memoCount: 0,
+            minedHeight: nil,
+            raw: txRaw,
+            rawID: Data([0xAA]),
+            receivedNoteCount: 0,
+            sentNoteCount: 1,
+            value: Zatoshi(-100_000),
+            isExpiredUmined: nil,
+            totalSpent: nil,
+            totalReceived: nil
+        )
+
+        var initialState = SendConfirmation.State(
+            address: "ztestaddr",
+            amount: Zatoshi(100_000),
+            feeRequired: Zatoshi(10_000),
+            message: "",
+            proposal: .testOnlyFakeProposal(totalFee: 10_000)
+        )
+        initialState.$selectedWalletAccount.withLock { $0 = testWalletAccount }
+
+        let store = TestStore(initialState: initialState) {
+            SendConfirmation()
+        }
+
+        store.exhaustivity = .off
+
+        store.dependencies.audioServices = AudioServicesClient(systemSoundVibrate: { })
+        store.dependencies.derivationTool = .liveValue
+        store.dependencies.mainQueue = .immediate
+        store.dependencies.mnemonic = .liveValue
+        store.dependencies.walletStorage.exportWallet = { .placeholder }
+        let testNetwork = ZcashNetworkBuilder.network(for: .mainnet)
+        store.dependencies.zcashSDKEnvironment = ZcashSDKEnvironment(
+            latestCheckpoint: BlockHeight(0),
+            endpoint: { LightWalletEndpoint(address: "good.server", port: 443) },
+            exchangeRateIPRateLimit: 120,
+            exchangeRateStaleLimit: 900,
+            memoCharLimit: 512,
+            mnemonicWordsMaxCount: 24,
+            network: testNetwork,
+            requiredTransactionConfirmations: 10,
+            sdkVersion: "test",
+            serverConfig: { .init(host: "good.server", port: 443, isCustom: false) },
+            servers: [],
+            shieldingThreshold: Zatoshi(100_000),
+            tokenName: "ZEC"
+        )
+
+        store.dependencies.sdkSynchronizer.createProposedTransactionsWithoutSubmitting = { _, _ in
+            [tx]
+        }
+
+        store.dependencies.sdkSynchronizer.submitTransaction = { _, endpoint in
+            if endpoint.host == "bad.server" {
+                throw ZcashError.synchronizerServerSwitch
+            }
+        }
+
+        store.dependencies.userStoredPreferences.selectedServers = {
+            .init(servers: [
+                .init(host: "good.server", port: 443, isCustom: false),
+                .init(host: "bad.server", port: 443, isCustom: false)
+            ])
+        }
+
+        await store.send(.sendTriggered)
+        await store.finish()
+
+        XCTAssertEqual(store.state.result, .success, "Send should succeed when at least one server accepts")
+    }
+}
