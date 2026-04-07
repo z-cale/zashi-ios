@@ -1548,12 +1548,18 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = "secant/secant-mainnet-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.2;
+				OTHER_LDFLAGS = (
+					"-Xlinker",
+					"-undefined",
+					"-Xlinker",
+					dynamic_lookup,
+				);
 				OTHER_SWIFT_FLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = "co.valargroup.secant-mainnet";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1578,12 +1584,18 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = "secant/secant-mainnet-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.2;
+				OTHER_LDFLAGS = (
+					"-Xlinker",
+					"-undefined",
+					"-Xlinker",
+					dynamic_lookup,
+				);
 				OTHER_SWIFT_FLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = "co.valargroup.secant-mainnet";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1730,7 +1742,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = "secant/secant-testnet-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1759,7 +1771,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = "secant/secant-testnet-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -2111,7 +2123,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = "secant/secant-testnet-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -2141,12 +2153,18 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = "secant/secant-mainnet-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.2;
+				OTHER_LDFLAGS = (
+					"-Xlinker",
+					"-undefined",
+					"-Xlinker",
+					dynamic_lookup,
+				);
 				OTHER_SWIFT_FLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = "co.valargroup.secant-mainnet";
 				PRODUCT_NAME = "$(TARGET_NAME)";

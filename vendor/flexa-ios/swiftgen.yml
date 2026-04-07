@@ -1,0 +1,32 @@
+strings:
+  - inputs: FlexaCore/Sources/Resources/en.lproj/Localizable.strings
+    outputs:
+      - templateName: structured-swift5
+        output: FlexaCore/Sources/Commons/CoreStrings+Generated.swift
+        params:
+            bundle: Bundle.coreBundle.stringsBundle
+            enumName: CoreStrings
+  - inputs: FlexaScan/Sources/Resources/en.lproj/Localizable.strings
+    outputs:
+      - templateName: structured-swift5
+        output: FlexaScan/Sources/Commons/ScanStrings+Generated.swift
+        params:
+            bundle: Bundle.scanBundle.stringsBundle
+            enumName: ScanStrings
+  - inputs: FlexaSpend/Sources/Resources/en.lproj/Localizable.strings
+    outputs:
+      - templateName: structured-swift5
+        output: FlexaSpend/Sources/Commons/Strings+Generated.swift
+xcassets:
+  - inputs: FlexaSpend/Sources/Resources/SpendColors.xcassets
+    outputs:
+      - templateName: swift5
+        output: FlexaSpend/Sources/Commons/Colors.swift
+        params:
+          bundle: Bundle.spendBundle.colorsBundle
+  - inputs: FlexaScan/Sources/Resources/ScanAssets.xcassets
+    outputs:
+      - templateName: swift5
+        output: FlexaScan/Sources/Commons/ScanAssets+Generated.swift
+        params:
+          bundle: Bundle.scanBundle.assetsBundle

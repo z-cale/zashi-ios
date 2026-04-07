@@ -1,0 +1,65 @@
+// Common
+"common.done" = "Done";
+"common.ok" = "Ok";
+"common.cancel" = "Cancel";
+"common.flexa" = "flexa";
+"common.loading" = "Loading";
+"common.updating" = "Updating";
+"common.signing" = "Signing...";
+"common.sending" = "Sending...";
+
+// Errors
+"errors.restricted_region.message" = "Flexa is running on a restricted region and spends are disabled. Please check Flexa.canSpend";
+
+// Primary view
+"payment.pay_with_flexa.title" = "Pay with Flexa";
+"payment.using_ticker.subtitle" = "Using %@";
+"payment.error_login_to_authorize" = "Login to authorize the transaction.";
+
+// No Assets View.
+// The description has different parameters, and different messages for each amount, that is why we are not using pluralization here
+"no_assets.title" = "Nothing to Spend";
+"no_assets.description.zero_assets" = "There are no assets in your wallet";
+"no_assets.description.one_invalid_asset" = "Flexa doesn’t currently support %@.";
+"no_assets.description.two_invalid_assets" = "Flexa doesn’t currently support %@ or %@.";
+"no_assets.description.other_invalid_assets" = "Flexa doesn’t currently support %@, %@, or any of the other assets in your wallet.";
+"no_assets.add_asset_button.label" = "Add Assets";
+
+// Notifications/messages
+"payment.message.title" = "You’re approaching your weekly spending limit.";
+"payment.message.description" = "Upgrade your Flexa ID for unlimited spending.";
+"payment.message.button" = "Learn More";
+
+// Payment Card
+"payment.description" = "%@ avaliable";
+
+// Legacy flexcode tray
+"legacy_flexcode_tray.title" = "Get a one-time code";
+"legacy_flexcode_tray.edit_button.title" = "Edit";
+
+// Merchant sorter
+"merchant_sorter.title" = "Edit Pins";
+"merchant_sorter.description" = "Using Flexa at these brands requires an extra tap. To access your favorite brands more quickly, pin them to the beginning of the list.";
+"merchant_sorter.sections.pinned.header.title" = "Pinned";
+"merchant_sorter.sections.pinned.footer.title" = "There are not pinned merchants. You can select some from the list below.";
+"merchant_sorter.sections.other_brands.header.title" = "Other brands";
+"merchant_sorter.sections.other_brands.footer.title" = "Looks like you already pinned all the merchants!";
+
+// Legacy flexcode
+"legacy_flexcode.alerts.scan_help.title" = "Tips for Using Flexcodes at %@";
+
+// Exchange Rate
+"payment.asset.exchange_rate.avaliable" = "%@ avaliable";
+"payment.asset.exchange_rate.no_network_fee" = "No network fees";
+"payment.asset.exchange_rate.value" = "1 %@ = %@";
+"payment.asset.exchange_rate.amount" = "%@ %@";
+
+// Payment Primary View
+"payment.balance.title" = "%@ Balance";
+"payment.currency_avaliable.title" = "%@ Available";
+
+// Transaction Details
+"payment.transaction_details.footer" = "Flexa automatically selects the best exchange rate and network fee for your payments. [Learn more...](https://flexa.co)";
+
+// Payment Card
+"payment.done" = "Done";

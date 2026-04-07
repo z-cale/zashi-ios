@@ -1,0 +1,359 @@
+//
+//  AuthMainView.swift
+//  FlexaCore
+//
+//  Created by Rodrigo Ordeix on 5/3/24.
+//  Copyright © 2024 Flexa. All rights reserved.
+//
+
+import SwiftUI
+import Factory
+import FlexaUICore
+
+struct AuthMainView: View {
+    private typealias Strings = CoreStrings.Auth.Main
+
+    private let bottomViewId = UUID()
+
+    @Environment(\.colorScheme) var colorScheme
+    @Environment(\.dismiss) private var dismiss
+    @FocusState private var isEmailFieldFocused: Bool
+
+    @StateObject var viewModel: ViewModel
+    @State var bottomViewBottomPadding: CGFloat = .bottomViewBottomPaddingDefault
+    @State private var showingPrivacyAlert: Bool = false
+    @State private var showMenu: Bool = false
+    @EnvironmentObject var linkData: UniversalLinkData
+
+    init(allowToDisablePayWithFlexa: Bool) {
+        _viewModel = StateObject(
+            wrappedValue: Container
+                .shared
+                .authMainViewModel(allowToDisablePayWithFlexa)
+            )
+    }
+
+    var body: some View {
+        NavigationView {
+            GeometryReader { proxy in
+                ZStack(alignment: .top) {
+                    ScrollViewReader { scrollViewProxy in
+                        ScrollView(.vertical) {
+                            VStack(spacing: .mainSpacing) {
+                                headerView
+                                VStack(spacing: .mainSpacing) {
+                                    titleView
+                                    bulletsView
+                                    Spacer()
+                                    bottomView
+                                        .padding(.bottom, bottomViewBottomPadding)
+                                        .id(bottomViewId)
+                                }.padding(.horizontal, .defaultPadding)
+                            }.frame(minHeight: proxy.size.height)
+                        }.onChange(of: isEmailFieldFocused) { isFocused in
+                            handleFocusChange(isFocused, scrollViewProxy: scrollViewProxy)
+                        }
+                    }
+                    if !Flexa.supportsGlass {
+                        closeButton
+                    }
+                }.onTapGesture {
+                    isEmailFieldFocused = false
+                }
+                .toolbar {
+                    if Flexa.supportsGlass {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            closeButtonMenu
+                        }
+                    }
+                }
+            }.background(.thinMaterial)
+                .tint(nil)
+                .ignoresSafeArea(.all, edges: .top)
+        }
+        .navigationViewStyle(.stack)
+        .environment(\.dismissAll, dismiss)
+        .environment(\.colorScheme, Container.shared.flexaClient().theme.interfaceStyle.colorSheme ?? colorScheme)
+        .tint(.flexaTintColor)
+        .alertTintColor(.flexaTintColor)
+        .flexaAuthNavigationbar()
+        .flexaHandleUniversalLink()
+        .flexaPrivacyAlert(isPresented: $showingPrivacyAlert)
+    }
+
+    private var closeButton: some View {
+        HStack(alignment: .top) {
+            Spacer()
+            closeButtonMenu
+        }.frame(maxWidth: .infinity)
+    }
+
+    private var closeButtonMenu: some View {
+        menu {
+            FlexaRoundedButton(.close)
+        } menuContent: {
+            Button {
+                viewModel.userClosedAuth()
+                dismiss()
+            } label: {
+                Label(CoreStrings.Global.close, systemImage: "xmark")
+            }
+            Button(role: .destructive) {
+                viewModel.disablePayWithFlexa()
+                dismiss()
+            } label: {
+                Label(Strings.Menu.dontShowAgain, systemImage: "eye.slash")
+
+            }
+        }
+    }
+
+    private var headerView: some View {
+        VStack(alignment: .center) {
+            Image(uiImage: Bundle.applicationIcon ?? UIImage())
+                .resizable()
+                .frame(width: .appIconSize, height: .appIconSize)
+                .clipShape(RoundedRectangle(cornerRadius: .appIconCornerRadius))
+                .padding(.top, .appIconTopPadding)
+                .shadow(
+                    color: .black.opacity(.appIconShadowOpacity),
+                    radius: .appIconShadowRadius,
+                    x: .appIconShadowX,
+                    y: .appIconShadowY
+                )
+        }
+    }
+
+    private var titleView: some View {
+        VStack(spacing: .sectionSpacing) {
+            Text(Strings.Header.title(viewModel.applicationName))
+                .font(.headline.bold())
+                .foregroundColor(.primary)
+                .opacity(.textOpacity)
+                .multilineTextAlignment(.center)
+            Text(Strings.Header.subtitle)
+                .font(.system(size: .headerSubtitleFontSize, weight: .bold))
+                .foregroundColor(.primary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var instantPaymentImage: some View {
+        Image(systemName: "bolt.shield.fill")
+            .renderingMode(.template)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .foregroundStyle(Color.flexaTintColor)
+            .frame(width: .bulletInstantPaymentIconSize, height: .bulletInstantPaymentIconSize)
+            .padding(0)
+            .padding(.leading, .bulletPrivateIconWidth - .bulletInstantPaymentIconSize)
+    }
+
+    private var privacyImage: some View {
+        Image(systemName: "key.fill")
+            .renderingMode(.template)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .foregroundStyle(Color.flexaTintColor)
+            .rotationEffect(.degrees(90))
+            .frame(width: .bulletPrivateIconWidth, height: .bulletPrivateIconHeight)
+            .padding(.horizontal, 0)
+            .padding(.top, -4)
+    }
+
+    private var bulletsView: some View {
+        VStack(alignment: .center, spacing: .bulletSpacing) {
+            bulletView(
+                title: Strings.Sections.Spend.title,
+                description: Strings.Sections.Spend.description,
+                image: instantPaymentImage
+            )
+            bulletView(
+                title: Strings.Sections.Privacy.title,
+                description: Strings.Sections.Privacy.description,
+                image: privacyImage,
+                linkText: Strings.Links.About.title,
+                linkAction: {
+                    linkData.url = FlexaLink.privacy.url
+                }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var navigationLink: some View {
+        NavigationLink(
+            destination: VerifyEmailView(viewModel: VerifyEmailView.ViewModel(emailAddress: viewModel.emailAddress)),
+            isActive: $viewModel.shouldGoVerifyEmail) {
+        }
+        NavigationLink(
+            destination: PersonalInformationView(
+                viewModel: PersonalInformationView.ViewModel(
+                    emailAddress: viewModel.emailAddress
+                )
+            ),
+            isActive: $viewModel.shouldGoPersonalInfo) {
+        }
+    }
+
+    @ViewBuilder
+    private var bottomView: some View {
+        VStack(spacing: .bottomViewSpacing) {
+            ZStack {
+                TextField(Strings.Textfields.Email.placeholder, text: $viewModel.emailAddress)
+                    .flexaFormTextField()
+                    .clearButton(text: $viewModel.emailAddress)
+                    .focused($isEmailFieldFocused)
+                    .keyboardType(.emailAddress)
+                    .textContentType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled(true)
+                    .multilineTextAlignment(.center)
+                    .onSubmit {
+                        viewModel.verifyEmailAddress()
+                    }
+                if viewModel.emailAddress.isEmpty {
+                    HStack {
+                        Spacer()
+                        Button {
+                            showingPrivacyAlert = true
+                        } label: {
+                            Image(systemName: "info.circle")
+                                .resizable()
+                                .renderingMode(.template)
+                        }
+                        .frame(width: .infoButtonSize, height: .infoButtonSize)
+                        .foregroundStyle(Color.flexaTintColor)
+                        .padding()
+                    }
+                }
+            }
+
+            Button {
+                viewModel.verifyEmailAddress()
+            } label: {
+                if viewModel.isLoading {
+                    ProgressView()
+                        .tint(.white)
+                        .flexaButton()
+                } else {
+                    Text(Strings.Buttons.Next.title)
+                        .flexaButton()
+                }
+            }.disabled(!viewModel.isContinueButtonEnabled)
+            navigationLink
+        }
+    }
+
+    private func bulletView(
+        title: String,
+        description: String,
+        image: some View,
+        linkText: String? = nil,
+        linkAction: (() -> Void)? = nil) -> some View {
+        HStack(alignment: .top, spacing: .bulletIconPadding) {
+            image
+                .padding(.top, .bulletIconTopPadding)
+            VStack(alignment: .leading, spacing: .bulletContentVerticalSpacing) {
+                Text(title)
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .lineLimit(nil)
+                    .foregroundColor(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(description)
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .foregroundColor(.primary.opacity(.textOpacity))
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let linkText, let linkAction {
+                    linkButton(title: linkText, perform: linkAction)
+                }
+            }.frame(maxWidth: .infinity)
+        }.padding(.horizontal, .bulletsHorizontalPadding)
+    }
+
+    private func linkButton(title: String, perform action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+        } label: {
+            Text(title)
+                .font(.subheadline)
+                .foregroundColor(Color.flexaTintColor)
+        }.padding(.top, .linkButtonTopPadding)
+    }
+
+    @ViewBuilder
+    private func menu<Label: View, Content: View>(
+        @ViewBuilder label: @escaping () -> Label,
+        @ViewBuilder menuContent: @escaping () -> Content
+    ) -> some View {
+        if viewModel.showMenuOnClose {
+            Menu {
+                menuContent()
+            } label: {
+                label()
+            }
+            .padding()
+        } else {
+            Menu {
+                menuContent()
+            } label: {
+                label()
+            } primaryAction: {
+                viewModel.userClosedAuth()
+                dismiss()
+            }
+            .padding()
+        }
+    }
+
+    private func handleFocusChange(_ isFocused: Bool, scrollViewProxy: ScrollViewProxy) {
+        guard isFocused else {
+            bottomViewBottomPadding = .bottomViewBottomPaddingDefault
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            withAnimation {
+                bottomViewBottomPadding = .bottomViewBottomPaddingOnFocus
+                scrollViewProxy.scrollTo(bottomViewId, anchor: .bottom)
+            }
+        }
+    }
+}
+
+extension CGFloat {
+    static let mainSpacing: CGFloat = 30
+    static let defaultPadding: CGFloat = 26
+    static let sectionSpacing: CGFloat = 5
+    static let headerSubtitleFontSize: CGFloat = 42
+    static let linkButtonTopPadding: CGFloat = 6
+    static let infoButtonSize: CGFloat = 22
+
+    static let appIconSize: CGFloat = 84
+    static let appIconTopPadding: CGFloat = 100
+    static let appIconCornerRadius: CGFloat = 14
+    static let appIconShadowRadius: CGFloat = 18
+    static let appIconShadowX: CGFloat = 0
+    static let appIconShadowY: CGFloat = 12
+
+    static let bulletInstantPaymentIconSize: CGFloat = 36
+    static let bulletPrivateIconHeight: CGFloat = 45
+    static let bulletPrivateIconWidth: CGFloat = 45
+    static let bulletIconPadding: CGFloat = 16
+    static let bulletIconTopPadding: CGFloat = 16
+    static let bulletSpacing: CGFloat = 24
+    static let bulletContentVerticalSpacing: CGFloat = 4
+    static let bulletsHorizontalPadding: CGFloat = 20
+
+    static let bottomViewSpacing: CGFloat = 12
+    static let bottomViewBottomPaddingOnFocus: CGFloat = 20
+    static let bottomViewBottomPaddingDefault: CGFloat = 44
+}
+
+extension Double {
+    static let textOpacity: Double = 0.4
+    static let appIconShadowOpacity: Double = 0.20
+}

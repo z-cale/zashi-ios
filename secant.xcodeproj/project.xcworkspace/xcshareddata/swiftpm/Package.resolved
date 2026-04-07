@@ -37,15 +37,6 @@
       }
     },
     {
-      "identity" : "bigdecimal",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/mgriebling/BigDecimal.git",
-      "state" : {
-        "revision" : "c4e8348c7fbc90f29225d5f8681ce33a16ab33a2",
-        "version" : "2.2.3"
-      }
-    },
-    {
       "identity" : "bigint",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/mgriebling/BigInt.git",
@@ -79,15 +70,6 @@
       "state" : {
         "revision" : "587995f7d5cc667951d635fbf6b4252324ba0439",
         "version" : "2.3.2"
-      }
-    },
-    {
-      "identity" : "flexa-ios",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/flexa/flexa-ios.git",
-      "state" : {
-        "revision" : "5f1d72dc82ee86c4749d7bb158c86599d4035c22",
-        "version" : "1.1.4"
       }
     },
     {
@@ -484,15 +466,6 @@
       "state" : {
         "revision" : "798053ba8a2d80560b5e3f4899a8b35ac0c348bb",
         "version" : "1.0.1"
-      }
-    },
-    {
-      "identity" : "zcash-swift-wallet-sdk",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/valargroup/zcash-swift-wallet-sdk.git",
-      "state" : {
-        "branch" : "shielded-vote",
-        "revision" : "ead02fd32b44b570ba12e54c5023d624eb8348dc"
       }
     }
   ],
