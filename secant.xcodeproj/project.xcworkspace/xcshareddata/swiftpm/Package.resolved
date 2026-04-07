@@ -37,6 +37,15 @@
       }
     },
     {
+      "identity" : "bigdecimal",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/valargroup/BigDecimal.git",
+      "state" : {
+        "branch" : "fix/uncomment-platforms",
+        "revision" : "a55498c0b9df07f0812e9e700a2a2905b31f9dc9"
+      }
+    },
+    {
       "identity" : "bigint",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/mgriebling/BigInt.git",
@@ -397,15 +406,6 @@
       }
     },
     {
-      "identity" : "swiftgenplugin",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/SwiftGen/SwiftGenPlugin",
-      "state" : {
-        "revision" : "879b85a470cacd70c19e22eb7e11a3aed66f4068",
-        "version" : "6.6.2"
-      }
-    },
-    {
       "identity" : "swiftsortedcollections",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/wolfmcnally/SwiftSortedCollections",
@@ -428,8 +428,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/mgriebling/UInt128.git",
       "state" : {
-        "revision" : "59dac4f14d657fd60bacfdfb7398d38b450af74f",
-        "version" : "3.1.5"
+        "revision" : "f32052e906fd125936fef2d16e3ad284d50d68ed",
+        "version" : "3.2.0"
       }
     },
     {
@@ -466,6 +466,15 @@
       "state" : {
         "revision" : "798053ba8a2d80560b5e3f4899a8b35ac0c348bb",
         "version" : "1.0.1"
+      }
+    },
+    {
+      "identity" : "zcash-swift-wallet-sdk",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/valargroup/zcash-swift-wallet-sdk.git",
+      "state" : {
+        "branch" : "denver-demo",
+        "revision" : "0a96a6dcc0ff97c500c3012f7bd699f71f8f5e8b"
       }
     }
   ],
