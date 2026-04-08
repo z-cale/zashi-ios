@@ -156,13 +156,20 @@ class PIRSpendabilityTests: XCTestCase {
         await store.receive(.fetchTransactionsForTheSelectedAccount)
     }
 
-    // MARK: - fetchedTransactions with PIR placeholder
+    // MARK: - fetchedTransactions with PIR activity entries
 
-    func testFetchedTransactions_WithPIRPendingSpends_IncludesPlaceholder() async throws {
-        let pirPending = PIRPendingSpends(
-            notes: [PIRPendingNote(noteId: 42, value: 25_000)],
-            totalValue: 25_000
-        )
+    func testFetchedTransactions_WithPIRActivityEntries_IncludesEntry() async throws {
+        let pirActivity = [
+            PIRActivityEntry(
+                txHash: String(repeating: "aa", count: 32),
+                netValue: 25_000,
+                grossValue: 100_000,
+                changeValue: 75_000,
+                fee: 10_000,
+                height: 3_200_000,
+                blockTime: 1_700_000_000
+            )
+        ]
 
         let store = TestStore(
             initialState: stateWithPirEnabled()
@@ -173,15 +180,14 @@ class PIRSpendabilityTests: XCTestCase {
 
         store.dependencies.sdkSynchronizer = .noOp
 
-        await store.send(.fetchedTransactions([], pirPending)) { state in
-            XCTAssertTrue(state.transactions.contains(where: { $0.isPIRDetectedSpend }))
-
-            let pirTx = state.transactions.first(where: { $0.isPIRDetectedSpend })
-            XCTAssertEqual(pirTx?.zecAmount, Zatoshi(-25_000))
+        await store.send(.fetchedTransactions([], pirActivity)) { state in
+            XCTAssertEqual(state.transactions.count, 1)
+            XCTAssertEqual(state.transactions.first?.zecAmount, Zatoshi(-25_000))
+            XCTAssertEqual(state.transactions.first?.status, .paid)
         }
     }
 
-    func testFetchedTransactions_WithoutPIRPendingSpends_NoPlaceholder() async throws {
+    func testFetchedTransactions_WithoutPIRActivityEntries_NoEntry() async throws {
         let store = TestStore(
             initialState: .initial
         ) {
@@ -192,13 +198,11 @@ class PIRSpendabilityTests: XCTestCase {
         store.dependencies.sdkSynchronizer = .noOp
 
         await store.send(.fetchedTransactions([], nil)) { state in
-            XCTAssertFalse(state.transactions.contains(where: { $0.isPIRDetectedSpend }))
+            XCTAssertTrue(state.transactions.isEmpty)
         }
     }
 
-    func testFetchedTransactions_WithEmptyPIRNotes_NoPlaceholder() async throws {
-        let pirPending = PIRPendingSpends(notes: [], totalValue: 0)
-
+    func testFetchedTransactions_WithEmptyPIRActivityEntries_NoEntry() async throws {
         let store = TestStore(
             initialState: .initial
         ) {
@@ -208,8 +212,8 @@ class PIRSpendabilityTests: XCTestCase {
 
         store.dependencies.sdkSynchronizer = .noOp
 
-        await store.send(.fetchedTransactions([], pirPending)) { state in
-            XCTAssertFalse(state.transactions.contains(where: { $0.isPIRDetectedSpend }))
+        await store.send(.fetchedTransactions([], [])) { state in
+            XCTAssertTrue(state.transactions.isEmpty)
         }
     }
 }

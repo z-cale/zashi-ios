@@ -240,7 +240,7 @@ public struct Root {
         case foundTransactions([ZcashTransaction.Overview])
         case minedTransaction(ZcashTransaction.Overview)
         case fetchTransactionsForTheSelectedAccount
-        case fetchedTransactions(IdentifiedArrayOf<TransactionState>, PIRPendingSpends?)
+        case fetchedTransactions(IdentifiedArrayOf<TransactionState>, [PIRActivityEntry]?)
         case noChangeInTransactions
         case syncReachedUpToDate
         

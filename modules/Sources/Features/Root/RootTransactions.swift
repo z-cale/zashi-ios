@@ -71,19 +71,19 @@ extension Root {
                 let pirEnabled = state.walletConfig.isEnabled(.pirSpendability)
                 return .run { send in
                     async let txTask = sdkSynchronizer.getAllTransactions(accountUUID)
-                    let pirPending: PIRPendingSpends?
+                    let pirActivity: [PIRActivityEntry]?
                     if pirEnabled {
-                        pirPending = try? await sdkSynchronizer.getPIRPendingSpends()
+                        pirActivity = try? await sdkSynchronizer.getPIRActivityEntries()
                     } else {
-                        pirPending = nil
+                        pirActivity = nil
                     }
 
                     if let transactions = try? await txTask {
-                        await send(.fetchedTransactions(transactions, pirPending))
+                        await send(.fetchedTransactions(transactions, pirActivity))
                     }
                 }
                 
-            case .fetchedTransactions(var transactions, let pirPendingSpends):
+            case .fetchedTransactions(var transactions, let pirActivityEntries):
                 let mempoolHeight = sdkSynchronizer.latestState().latestBlockHeight + 1
 
                 // Resolve Swaps
@@ -119,14 +119,18 @@ extension Root {
                     )
                 }
 
-                // PIR placeholder -- DB-backed, auto-reconciles with scanning
+                // PIR-derived transaction entries — real "Sent" rows that seamlessly
+                // transition to scanner-confirmed entries via matching rawID (tx hash).
                 if state.walletConfig.isEnabled(.pirSpendability),
-                   let pirPending = pirPendingSpends, !pirPending.notes.isEmpty {
-                    mixedTransactions.append(
-                        TransactionState(
-                            pirDetectedSpentValue: Int64(pirPending.totalValue)
+                   let pirEntries = pirActivityEntries {
+                    let existingIDs = Set(mixedTransactions.map(\.id))
+                    for entry in pirEntries {
+                        let entryID = entry.rawID.toHexStringTxId()
+                        if existingIDs.contains(entryID) { continue }
+                        mixedTransactions.append(
+                            TransactionState(pirActivityEntry: entry)
                         )
-                    )
+                    }
                 }
 
                 // Sort all transactions

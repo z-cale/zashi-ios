@@ -23,8 +23,8 @@ public enum FeatureFlag: String, CaseIterable, Codable {
         case .onboardingFlow: return false
         case .testBackupPhraseFlow: return false
         case .showFiatConversion: return false
-        case .pirSpendability: return false
-        case .pirWitness: return false
+        case .pirSpendability: return true
+        case .pirWitness: return true
         }
     }
 }

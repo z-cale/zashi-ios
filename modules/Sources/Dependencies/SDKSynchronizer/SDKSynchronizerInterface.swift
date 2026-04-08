@@ -102,7 +102,7 @@ public struct SDKSynchronizerClient {
     public var enhanceTransactionBy: (String) async throws -> Void
 
     public var checkWalletSpendability: @Sendable (String, SpendabilityProgressHandler?) async throws -> SpendabilityResult
-    public var getPIRPendingSpends: @Sendable () async throws -> PIRPendingSpends
+    public var getPIRActivityEntries: @Sendable () async throws -> [PIRActivityEntry]
 
     public var fetchNoteWitnesses: @Sendable (String, SpendabilityProgressHandler?) async throws -> WitnessResult
     public var getPIRWitnessedNotes: @Sendable () async throws -> [PIRWitnessedNote]

@@ -90,11 +90,6 @@ public struct TransactionRowView: View {
                             .font(.custom(FontFamily.Inter.regular.name, size: 13))
                             .foregroundColor(Asset.Colors.shade47.color)
 
-                        if transaction.isPIRDetectedSpend {
-                            Text(String(localizable: .transactionPirDetectedSubtitle))
-                                .font(.custom(FontFamily.Inter.regular.name, size: 11))
-                                .foregroundColor(Asset.Colors.shade47.color)
-                        }
                     }
 
                     Spacer()
@@ -123,7 +118,7 @@ public struct TransactionRowView: View {
                 }
             } else {
                 if transaction.isSpending {
-                    if transaction.isPending || transaction.isPIRDetectedSpend {
+                    if transaction.isPending {
                         ProgressView()
                             .scaleEffect(0.7)
                             .frame(width: 14, height: 14)

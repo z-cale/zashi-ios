@@ -52,7 +52,6 @@ public struct TransactionState: Equatable, Identifiable {
     public var totalReceived: Zatoshi?
 
     public var rawID: Data? = nil
-    public var isPIRDetectedSpend = false
 
     // Swaps
     public var swapToZecAmount: String? = nil
@@ -117,9 +116,6 @@ public struct TransactionState: Equatable, Identifiable {
     }
     
     public func title(_ detailScreen: Bool = false) -> String {
-        if isPIRDetectedSpend {
-            return String(localizable: .transactionPirDetected)
-        }
         if type == .zcash {
             switch status {
             case .failed:
@@ -207,7 +203,7 @@ public struct TransactionState: Equatable, Identifiable {
     }
 
     public var daysAgo: String {
-        guard let timestamp, !isPIRDetectedSpend else { return "" }
+        guard let timestamp else { return "" }
         
         let transactionDate = Date(timeIntervalSince1970: timestamp)
         
@@ -350,18 +346,19 @@ public struct TransactionState: Equatable, Identifiable {
         self.isTransparentRecipient = false
     }
 
-    /// Synthetic placeholder for PIR-detected spends, visible until scanning catches up.
-    public init(pirDetectedSpentValue: Int64) {
-        self.id = "pir-detected-spend"
+    /// Creates a standard "Sent" transaction entry from PIR-derived activity data.
+    /// Uses the tx hash as the ID so it deduplicates with scanner-confirmed entries.
+    public init(pirActivityEntry entry: PIRActivityEntry) {
+        self.id = entry.rawID.toHexStringTxId()
         self.status = .paid
-        self.zecAmount = Zatoshi(-pirDetectedSpentValue)
-        self.isPIRDetectedSpend = true
+        self.zecAmount = Zatoshi(-Int64(entry.netValue))
         self.isSentTransaction = true
-        self.fee = nil
+        self.fee = entry.fee.map { Zatoshi(Int64($0)) }
+        self.minedHeight = BlockHeight(entry.height)
         self.memoCount = 0
         self.isShieldingTransaction = false
         self.isTransparentRecipient = false
-        self.timestamp = Date().timeIntervalSince1970
+        self.timestamp = TimeInterval(entry.blockTime)
     }
 
     public func confirmationsWith(_ latestMinedHeight: BlockHeight?) -> BlockHeight {

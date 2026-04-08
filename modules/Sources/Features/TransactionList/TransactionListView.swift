@@ -68,7 +68,6 @@ public struct TransactionListView: View {
                             }
                         }
                     }
-                    .disabled(transaction.isPIRDetectedSpend)
                     .listRowInsets(EdgeInsets())
                 }
             }
