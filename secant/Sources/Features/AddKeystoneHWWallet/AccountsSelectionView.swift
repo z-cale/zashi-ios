@@ -69,7 +69,7 @@ struct AccountsSelectionView: View {
                         .padding(.trailing, 8)
                     
                     VStack(alignment: .leading, spacing: 0) {
-                        Text(localizable: .keystoneWallet)
+                        Text(store.keystoneName)
                             .zFont(.semiBold, size: 14, style: Design.Text.primary)
                         
                         Text(store.keystoneAddress.zip316)
