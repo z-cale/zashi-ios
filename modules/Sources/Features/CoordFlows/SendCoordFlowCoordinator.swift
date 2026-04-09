@@ -117,6 +117,30 @@ extension SendCoordFlow {
                 }
                 return .none
 
+            case .path(.element(id: _, action: .confirmWithKeystone(.keystoneFirmwareUpdateRequired))):
+                // The signed PCZT came back with a firmware version below the
+                // wallet's minimum (or no stamp at all). Pop anything that was
+                // pushed on top of the confirmWithKeystone element (the just-
+                // added .sending view, and the .scan view below it) so the
+                // user sees the update screen instead of the stuck Sending
+                // spinner, then push the KeystoneFirmwareUpdateView.
+                for (id, element) in zip(state.path.ids, state.path) {
+                    if case .confirmWithKeystone(let sendConfirmationState) = element {
+                        while let lastId = state.path.ids.last, lastId != id {
+                            state.path.removeLast()
+                        }
+                        state.path.append(.keystoneFirmwareUpdate(sendConfirmationState))
+                        break
+                    }
+                }
+                return .none
+
+            case .path(.element(id: _, action: .keystoneFirmwareUpdate(.dismissKeystoneFirmwareUpdate))):
+                // User tapped Close on the update screen — pop back to the
+                // confirmWithKeystone element so they can cancel or retry.
+                let _ = state.path.popLast()
+                return .none
+
             case .path(.element(id: _, action: .confirmWithKeystone(.updateResult(let result)))):
                 for element in state.path {
                     if case .confirmWithKeystone(let sendConfirmationState) = element {

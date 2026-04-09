@@ -31,6 +31,12 @@ import AddressBook
 public struct SendConfirmation {
     enum Constants {
         static let delay = 1.0
+        /// Minimum Keystone firmware version Zashi requires for Keystone-signed
+        /// transactions. Bump this to force the "Update your Keystone" flow
+        /// during QA. Defaults to the firmware-side demo version (12.4.0).
+        /// Set to a real version (e.g. 12.5.0) to activate the firmware
+        /// version check. At (0, 0, 0) the check is skipped entirely.
+        static let minimumKeystoneFirmware = KeystoneFirmwareVersion(major: 0, minor: 0, build: 0)
     }
     
     @ObservableState
@@ -65,6 +71,14 @@ public struct SendConfirmation {
         public var feeRequired: Zatoshi
         public var isAddressExpanded = false
         public var isKeystoneCodeFound = false
+        /// Last firmware version we read from a signed PCZT's
+        /// `global.proprietary["keystone:fw_version"]` stamp. `nil` means the
+        /// device either hasn't been scanned yet or is legacy firmware that
+        /// doesn't report a version.
+        public var detectedKeystoneFirmware: KeystoneFirmwareVersion?
+        /// Minimum Keystone firmware Zashi requires to broadcast the
+        /// transaction. Surfaced on the "Update your Keystone" screen.
+        public var requiredKeystoneFirmware: KeystoneFirmwareVersion = Constants.minimumKeystoneFirmware
         public var isQRCodeEnlarged = false
         public var isSending = false
         public var isShielding = false
@@ -183,6 +197,14 @@ public struct SendConfirmation {
         case backFromPCZTFailureTapped
         case createTransactionFromPCZT
         case foundPCZT(Pczt)
+        /// Emitted when the firmware version stamp on an inbound signed PCZT
+        /// is below `Constants.minimumKeystoneFirmware` (or absent → legacy).
+        /// The coordinator turns this into a navigation push to the
+        /// `KeystoneFirmwareUpdateView` screen.
+        case keystoneFirmwareUpdateRequired(detected: KeystoneFirmwareVersion?)
+        /// User tapped "Close" on the "Update your Keystone" screen. Clears
+        /// the scanned PCZT so the user can retry after updating.
+        case dismissKeystoneFirmwareUpdate
         case pcztResolved(Pczt)
         case pcztSendFailed(ZcashError?)
         case pcztWithProofsResolved(Pczt)
@@ -216,7 +238,12 @@ public struct SendConfirmation {
             switch action {
             case .onAppear:
                 // __LD TESTED
-                state.pcztForUI = nil
+                // Only clear the QR when there's no existing redacted PCZT.
+                // On re-appear (e.g. returning from the firmware-update screen)
+                // we want to keep showing the request QR so the user can retry.
+                if state.redactedPcztForSigner == nil {
+                    state.pcztForUI = nil
+                }
                 state.rejectSendRequest = false
                 state.txIdToExpand = nil
                 state.randomSuccessIconIndex = Int.random(in: 1...2)
@@ -445,11 +472,48 @@ public struct SendConfirmation {
                 if !state.isKeystoneCodeFound {
                     state.isKeystoneCodeFound = true
                     state.pcztWithSigs = pcztWithSigs
-                    return .run { send in
-                        try? await mainQueue.sleep(for: .seconds(Constants.delay))
-                        await send(.createTransactionFromPCZT)
+
+                    // Keystone firmware version gate. Skipped when the minimum
+                    // is (0, 0, 0) — set Constants.minimumKeystoneFirmware to
+                    // a real version to activate.
+                    let required = state.requiredKeystoneFirmware
+                    if required == KeystoneFirmwareVersion(major: 0, minor: 0, build: 0) {
+                        return .run { send in
+                            try? await mainQueue.sleep(for: .seconds(Constants.delay))
+                            await send(.createTransactionFromPCZT)
+                        }
+                    }
+
+                    let detected = pcztWithSigs.readKeystoneFwVersion()
+                    state.detectedKeystoneFirmware = detected
+                    switch KeystoneFirmwarePolicy.evaluate(
+                        detected: detected,
+                        required: required
+                    ) {
+                    case .ok:
+                        return .run { send in
+                            try? await mainQueue.sleep(for: .seconds(Constants.delay))
+                            await send(.createTransactionFromPCZT)
+                        }
+                    case .updateRequired, .legacy:
+                        return .send(.keystoneFirmwareUpdateRequired(detected: detected))
                     }
                 }
+                return .none
+
+            case .keystoneFirmwareUpdateRequired:
+                // The coordinator catches this action and pushes the
+                // KeystoneFirmwareUpdateView path element. Nothing to do on
+                // the reducer side beyond that; we intentionally keep
+                // `detectedKeystoneFirmware` populated so the view can read
+                // it for the copy.
+                return .none
+
+            case .dismissKeystoneFirmwareUpdate:
+                state.isKeystoneCodeFound = false
+                state.pcztWithSigs = nil
+                state.detectedKeystoneFirmware = nil
+                keystoneHandler.resetQRDecoder()
                 return .none
 
             case .resolvePCZT:

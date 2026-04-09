@@ -73,6 +73,18 @@ extension SignWithKeystoneCoordFlow {
                 }
                 return .none
                 
+            case .sendConfirmation(.keystoneFirmwareUpdateRequired):
+                // Firmware stamp missing or below the wallet's minimum. Push
+                // the "Update your Keystone to continue" screen.
+                state.path.append(.keystoneFirmwareUpdate(state.sendConfirmationState))
+                return .none
+
+            case .path(.element(id: _, action: .keystoneFirmwareUpdate(.dismissKeystoneFirmwareUpdate))):
+                // User dismissed the update-required screen. Pop back to the
+                // previous step so they can retry after updating.
+                let _ = state.path.popLast()
+                return .send(.sendConfirmation(.dismissKeystoneFirmwareUpdate))
+
             case .sendConfirmation(.pcztSendFailed(let error)):
                 if state.path.ids.isEmpty {
                     state.path.append(.preSendingFailure(state.sendConfirmationState))

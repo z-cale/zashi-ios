@@ -118,6 +118,22 @@ extension SwapAndPayCoordFlow {
                 }
                 return .none
 
+            case .path(.element(id: _, action: .confirmWithKeystone(.keystoneFirmwareUpdateRequired))):
+                for (id, element) in zip(state.path.ids, state.path) {
+                    if case .confirmWithKeystone(let sendConfirmationState) = element {
+                        while let lastId = state.path.ids.last, lastId != id {
+                            state.path.removeLast()
+                        }
+                        state.path.append(.keystoneFirmwareUpdate(sendConfirmationState))
+                        break
+                    }
+                }
+                return .none
+
+            case .path(.element(id: _, action: .keystoneFirmwareUpdate(.dismissKeystoneFirmwareUpdate))):
+                let _ = state.path.popLast()
+                return .none
+
             case .path(.element(id: _, action: .confirmWithKeystone(.updateResult(let result)))):
                 for (_, element) in zip(state.path.ids, state.path) {
                     if case .confirmWithKeystone(let sendConfirmationState) = element {

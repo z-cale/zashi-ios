@@ -85,6 +85,8 @@ public struct SwapAndPayCoordFlowView: View {
                         AddressBookContactView(store: store)
                     case let .confirmWithKeystone(store):
                         SignWithKeystoneView(store: store, tokenName: tokenName)
+                    case let .keystoneFirmwareUpdate(store):
+                        KeystoneFirmwareUpdateView(store: store)
                     case let .crossPayConfirmation(store):
                         CrossPayConfirmationView(store: store, tokenName: tokenName)
                     case let .preSendingFailure(store):

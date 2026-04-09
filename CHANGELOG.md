@@ -6,6 +6,9 @@ directly impact users rather than highlighting other crucial architectural updat
 
 ## [Unreleased]
 
+### Added
+- Keystone firmware version check on signed PCZTs. Zodl now reads the firmware version stamp from signed PCZT responses and blocks broadcast if the device firmware is too old or unrecognized.
+
 ## 3.3.0 build 2 (2026-04-07)
 
 ### Added

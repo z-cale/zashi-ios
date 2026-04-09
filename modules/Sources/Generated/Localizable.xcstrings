@@ -3448,6 +3448,62 @@
         }
       }
     },
+    "keystone.firmwareUpdate.bodyLegacy" : {
+      "comment" : "MARK: Keystone firmware update required",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your Keystone does not report its firmware version. Please update to the latest version to continue."
+          }
+        }
+      }
+    },
+    "keystone.firmwareUpdate.bodyOutdated" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This action requires Keystone firmware %@ or newer. Your device is on %@."
+          }
+        }
+      }
+    },
+    "keystone.firmwareUpdate.dismissButton" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        }
+      }
+    },
+    "keystone.firmwareUpdate.howToUpdate" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open the Keystone companion app on your phone to update your device."
+          }
+        }
+      }
+    },
+    "keystone.firmwareUpdate.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update your Keystone to continue"
+          }
+        }
+      }
+    },
     "keystone.scanInfo" : {
       "extractionState" : "manual",
       "localizations" : {

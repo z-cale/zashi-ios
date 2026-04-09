@@ -22,6 +22,7 @@ import TransactionDetails
 public struct SignWithKeystoneCoordFlow {
     @Reducer
     public enum Path {
+        case keystoneFirmwareUpdate(SendConfirmation)
         case preSendingFailure(SendConfirmation)
         case scan(Scan)
         case sending(SendConfirmation)
