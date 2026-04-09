@@ -10,8 +10,6 @@ import ComposableArchitecture
 import ZcashLightClientKit
 import ZcashPaymentURI
 
-// Path
-
 extension ScanCoordFlow {
     func coordinatorReduce() -> Reduce<ScanCoordFlow.State, ScanCoordFlow.Action> {
         Reduce { state, action in

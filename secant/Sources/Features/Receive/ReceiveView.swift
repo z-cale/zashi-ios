@@ -9,8 +9,6 @@ import SwiftUI
 import ComposableArchitecture
 import ZcashLightClientKit
 
-// Path
-
 struct ReceiveView: View {
     @Environment(\.colorScheme) var colorScheme
 

@@ -7,8 +7,6 @@
 
 import ComposableArchitecture
 
-// Path
-
 extension TransactionsCoordFlow {
     func coordinatorReduce() -> Reduce<TransactionsCoordFlow.State, TransactionsCoordFlow.Action> {
         Reduce { state, action in

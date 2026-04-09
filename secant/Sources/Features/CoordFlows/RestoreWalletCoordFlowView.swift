@@ -8,8 +8,6 @@
 import SwiftUI
 import ComposableArchitecture
 
-// Path
-
 struct RestoreWalletCoordFlowView: View {
     @Environment(\.colorScheme) var colorScheme
 

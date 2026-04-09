@@ -4,8 +4,6 @@ import Foundation
 import BackgroundTasks
 import Flexa
 
-// Path
-
 @Reducer
 struct Root {
     enum ResetZashiConstants {
@@ -90,7 +88,6 @@ struct Root {
         var autoUpdateSwapCandidates: IdentifiedArrayOf<TransactionState> = []
         @Shared(.inMemory(.swapAssets)) var swapAssets: IdentifiedArrayOf<SwapAsset> = []
 
-        // Path
         var addKeystoneHWWalletCoordFlowState = AddKeystoneHWWalletCoordFlow.State.initial
         var currencyConversionSetupState = CurrencyConversionSetup.State.initial
         var receiveState = Receive.State.initial
@@ -177,7 +174,6 @@ struct Root {
         case walletConfigLoaded(WalletConfig)
         case welcome(Welcome.Action)
 
-        // Path
         case addKeystoneHWWalletCoordFlow(AddKeystoneHWWalletCoordFlow.Action)
         case currencyConversionSetup(CurrencyConversionSetup.Action)
         case receive(Receive.Action)

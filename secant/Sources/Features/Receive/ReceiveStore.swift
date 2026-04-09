@@ -10,8 +10,6 @@ import SwiftUI
 import ComposableArchitecture
 import ZcashLightClientKit
 
-// Path
-
 @Reducer
 struct Receive {
     @Reducer
@@ -38,7 +36,6 @@ struct Receive {
         @Shared(.inMemory(.selectedWalletAccount)) var selectedWalletAccount: WalletAccount? = nil
         @Shared(.inMemory(.toast)) var toast: Toast.Edge? = nil
 
-        // Path
         var requestZecState = RequestZec.State.initial
         
         var unifiedAddress: String {

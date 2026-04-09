@@ -8,8 +8,6 @@
 import SwiftUI
 import ComposableArchitecture
 
-// Path
-
 struct RequestZecCoordFlowView: View {
     @Environment(\.colorScheme) var colorScheme
 

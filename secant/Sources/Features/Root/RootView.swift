@@ -3,8 +3,6 @@ import StoreKit
 import ComposableArchitecture
 import ZcashLightClientKit
 
-// Path
-
 struct RootView: View {
     @Environment(\.scenePhase) var scenePhase
     @Environment(\.colorScheme) var colorScheme

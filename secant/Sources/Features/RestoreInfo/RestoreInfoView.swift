@@ -30,28 +30,48 @@ struct RestoreInfoView: View {
                     .zFont(.semiBold, size: 24, style: Design.Text.primary)
                     .padding(.bottom, 8)
 
-                Text(localizable: .restoreInfoSubTitle)
+                Text(localizable: store.isKeystoneFlow ? .restoreKSInfoSubTitle : .restoreInfoSubTitle)
                     .zFont(.medium, size: 16, style: Design.Text.primary)
                     .padding(.bottom, 16)
 
                 Text(localizable: .restoreInfoTips)
                     .zFont(size: 14, style: Design.Text.primary)
-                    .padding(.bottom, 4)
+                    .padding(.bottom, 16)
 
                 bulletpoint(String(localizable: .restoreInfoTip1))
                 bulletpoint(String(localizable: .restoreInfoTip2))
-                    .padding(.bottom, 20)
+                    .padding(.bottom, Design.Spacing._lg)
 
+                if store.isKeystoneFlow {
+                    if let attrText = try? AttributedString(
+                        markdown: String(localizable: .restoreKSWarn),
+                        including: \.zashiApp
+                    ) {
+                        ZashiText(withAttributedString: attrText, colorScheme: colorScheme, textColor: Design.Utility.WarningYellow._900.color(colorScheme))
+                            .zFont(size: 14, style: Design.Utility.WarningYellow._900)
+                            .padding(.vertical, Design.Spacing._xl)
+                            .padding(.horizontal, Design.Spacing._2xl)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .background {
+                                RoundedRectangle(cornerRadius: Design.Radius._3xl)
+                                    .fill(Design.Utility.WarningYellow._50.color(colorScheme))
+
+                            }
+                    }
+                }
+                
                 Spacer()
 
-                Text("\(Text(localizable: .restoreInfoNote).bold())\(String(localizable: .restoreInfoNoteInfo))")
-                    .zFont(size: 12, style: Design.Text.primary)
-                    .padding(.bottom, 24)
+                if !store.isKeystoneFlow {
+                    Text("\(Text(localizable: .restoreInfoNote).bold())\(String(localizable: .restoreInfoNoteInfo))")
+                        .zFont(size: 12, style: Design.Text.primary)
+                        .padding(.bottom, 24)
+                }
 
                 HStack {
                     ZashiToggle(
                         isOn: $store.isAcknowledged,
-                        label: String(localizable: .restoreInfoCheckbox),
+                        label: String(localizable: store.isKeystoneFlow ? .restoreKSCheckbox : .restoreInfoCheckbox),
                         textSize: 16
                     )
                     
@@ -59,7 +79,7 @@ struct RestoreInfoView: View {
                 }
                 .padding(.leading, 1)
 
-                ZashiButton(String(localizable: .restoreInfoGotIt)) {
+                ZashiButton(store.isKeystoneFlow ? String(localizable: .generalOk).uppercased() : String(localizable: .restoreInfoGotIt)) {
                     store.send(.gotItTapped)
                 }
                 .padding(.vertical, 24)

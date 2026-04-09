@@ -7,8 +7,6 @@
 
 import ComposableArchitecture
 
-// Path
-
 extension RestoreWalletCoordFlow {
     func coordinatorReduce() -> Reduce<RestoreWalletCoordFlow.State, RestoreWalletCoordFlow.Action> {
         Reduce { state, action in

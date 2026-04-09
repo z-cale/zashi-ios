@@ -12,6 +12,7 @@ struct RestoreInfo {
     @ObservableState
     struct State: Equatable {
         var isAcknowledged = true
+        var isKeystoneFlow = false
     }
     
     enum Action: BindableAction, Equatable {

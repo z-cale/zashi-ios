@@ -8,8 +8,6 @@
 import SwiftUI
 import ComposableArchitecture
 
-// Path
-
 struct AddKeystoneHWWalletCoordFlowView: View {
     @Environment(\.colorScheme) var colorScheme
 
@@ -46,6 +44,8 @@ struct AddKeystoneHWWalletCoordFlowView: View {
                     KeystoneConnectedView(store: store)
                 case let .keystoneDeviceReady(store):
                     KeystoneDeviceReadyView(store: store)
+                case let .restoreInfo(store):
+                    RestoreInfoView(store: store)
                 case let .scan(store):
                     ScanView(store: store)
                 case let .walletBirthday(store):
@@ -68,15 +68,14 @@ struct AddKeystoneHWWalletCoordFlowView: View {
                 Asset.Assets.infoCircle.image
                     .zImage(size: 20, style: Design.Text.primary)
 
-                // TODO: Loc
-//                if let attrText = try? AttributedString(
-//                    markdown: String(localizable: .addKeystoneWalletHelpBirthday),
-//                    including: \.zashiApp
-//                ) {
-//                    ZashiText(withAttributedString: attrText, colorScheme: colorScheme)
-//                        .zFont(size: 14, style: Design.Text.tertiary)
-//                        .fixedSize(horizontal: false, vertical: true)
-//                }
+                if let attrText = try? AttributedString(
+                    markdown: String(localizable: .addKeystoneWalletHelpBirthday),
+                    including: \.zashiApp
+                ) {
+                    ZashiText(withAttributedString: attrText, colorScheme: colorScheme)
+                        .zFont(size: 14, style: Design.Text.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             .padding(.bottom, 32)
             

@@ -9,8 +9,6 @@ import SwiftUI
 import ComposableArchitecture
 import ZcashLightClientKit
 
-// Path
-
 @Reducer
 struct AddKeystoneHWWalletCoordFlow {
     @Reducer
@@ -20,6 +18,7 @@ struct AddKeystoneHWWalletCoordFlow {
         case estimatedBirthday(WalletBirthday)
         case keystoneConnected(AddKeystoneHWWallet)
         case keystoneDeviceReady(AddKeystoneHWWallet)
+        case restoreInfo(RestoreInfo)
         case scan(Scan)
         case walletBirthday(WalletBirthday)
     }

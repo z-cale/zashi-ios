@@ -11,8 +11,6 @@ import ZcashLightClientKit
 
 import MnemonicSwift
 
-// Path
-
 @Reducer
 struct RestoreWalletCoordFlow {
     @Reducer

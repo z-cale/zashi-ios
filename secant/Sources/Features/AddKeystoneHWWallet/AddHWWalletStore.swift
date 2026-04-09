@@ -40,6 +40,17 @@ struct AddKeystoneHWWallet {
             return ""
         }
         
+        var keystoneName: String {
+            @Dependency(\.derivationTool) var derivationTool
+            @Dependency(\.zcashSDKEnvironment) var zcashSDKEnvironment
+            
+            if let zcashAccount = zcashAccounts?.accounts.first {
+                return zcashAccount.name ?? String(localizable: .keystoneWallet)
+            }
+            
+            return String(localizable: .keystoneWallet)
+        }
+        
         var successIlustration: Image {
             switch randomSuccessIconIndex {
             case 1: return Asset.Assets.Illustrations.success1.image

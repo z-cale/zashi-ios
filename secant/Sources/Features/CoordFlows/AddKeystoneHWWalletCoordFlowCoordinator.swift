@@ -7,8 +7,6 @@
 
 import ComposableArchitecture
 
-// Path
-
 extension AddKeystoneHWWalletCoordFlow {
     func coordinatorReduce() -> Reduce<AddKeystoneHWWalletCoordFlow.State, AddKeystoneHWWalletCoordFlow.Action> {
         Reduce { state, action in
@@ -85,11 +83,9 @@ extension AddKeystoneHWWalletCoordFlow {
                         state.birthday = estimatedBirthdayState.estimatedHeight
                     }
                 }
-                for id in state.path.ids {
-                    if case .keystoneDeviceReady = state.path[id: id] {
-                        return .send(.path(.element(id: id, action: .keystoneDeviceReady(.unlockTapped(state.birthday)))))
-                    }
-                }
+                var restoreInfoState = RestoreInfo.State.initial
+                restoreInfoState.isKeystoneFlow = true
+                state.path.append(.restoreInfo(restoreInfoState))
                 return .none
 
                 // MARK: - Wallet Birthday (manual entry follow-up)
@@ -100,6 +96,14 @@ extension AddKeystoneHWWalletCoordFlow {
                         state.birthday = walletBirthdayState.estimatedHeight
                     }
                 }
+                var restoreInfoState = RestoreInfo.State.initial
+                restoreInfoState.isKeystoneFlow = true
+                state.path.append(.restoreInfo(restoreInfoState))
+                return .none
+
+                // MARK: - RestoreInfo
+                
+            case .path(.element(id: _, action: .restoreInfo(.gotItTapped))):
                 for id in state.path.ids {
                     if case .keystoneDeviceReady = state.path[id: id] {
                         return .send(.path(.element(id: id, action: .keystoneDeviceReady(.unlockTapped(state.birthday)))))

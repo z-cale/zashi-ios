@@ -282,6 +282,28 @@
         }
       }
     },
+    "addHWWalletBirthdayInfo" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entering your Wallet Birthday Height ensures we can display all your funds and transaction history correctly."
+          }
+        }
+      }
+    },
+    "addKeystoneWalletHelpBirthday" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "^[The Wallet Birthday Height](style: 'boldPrimary') is the block height (block # in the blockchain) at which your wallet was created. It is important to provide the correct height because that determines the range of blocks we will scan to display your transaction history and wallet balance. If you have recovered a seed from a different hardware device, make sure to enter the block height of your original hardware device."
+          }
+        }
+      }
+    },
     "addressBook.addNewContact" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3244,12 +3266,12 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keystone Connected"
+            "value" : "Connected!"
           }
         },
         "es" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Keystone Conectado"
           }
         }
@@ -3261,12 +3283,12 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Your Keystone hardware wallet has been successfully connected. You can now sign transactions wirelessly."
+            "value" : "Your Keystone hardware wallet has been successfully connected."
           }
         },
         "es" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Tu billetera de hardware Keystone se ha conectado correctamente. Ahora puedes firmar transacciones de forma inalámbrica."
           }
         }
@@ -3346,13 +3368,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enter block height manually"
+            "value" : "Enter block height"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ingresar altura de bloque manualmente"
+            "value" : "Ingresar altura de bloque"
           }
         }
       }
@@ -5507,6 +5529,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "¡Mantén Zodl abierto!"
+          }
+        }
+      }
+    },
+    "restoreKSCheckbox" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep screen on while syncing"
+          }
+        }
+      }
+    },
+    "restoreKSDesc" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zodl is scanning the blockchain to retrieve your transactions. Older wallets can take hours to complete syncing. Follow these steps to prevent interruption:"
+          }
+        }
+      }
+    },
+    "restoreKSInfoSubTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your wallet is being synced."
+          }
+        }
+      }
+    },
+    "restoreKSWarn" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "^[Warning:](style: 'boldPrimary') Your Zodl funds cannot be spent until your Keystone wallet is synced."
           }
         }
       }

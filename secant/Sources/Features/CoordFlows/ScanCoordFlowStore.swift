@@ -10,8 +10,6 @@ import ComposableArchitecture
 import ZcashLightClientKit
 import ZcashPaymentURI
 
-// Path
-
 @Reducer
 struct ScanCoordFlow {
     @Reducer

@@ -47,6 +47,17 @@ extension Root {
 
                 // MARK: - Add Keystone HW Wallet Coord Flow
 
+            case .addKeystoneHWWalletCoordFlow(.path(.element(id: _, action: .restoreInfo(.gotItTapped)))):
+                var leavesScreenOpen = false
+                for element in state.addKeystoneHWWalletCoordFlowState.path {
+                    if case .restoreInfo(let restoreInfoState) = element {
+                        leavesScreenOpen = restoreInfoState.isAcknowledged
+                    }
+                }
+                userDefaults.setValue(leavesScreenOpen, Constants.udLeavesScreenOpen)
+                autolockHandler.value(leavesScreenOpen)
+                return .none
+
             case .addKeystoneHWWalletCoordFlow(.path(.element(id: _, action: .accountHWWalletSelection(.forgetThisDeviceTapped)))),
                 .addKeystoneHWWalletCoordFlow(.path(.element(id: _, action: .keystoneDeviceReady(.forgetThisDeviceTapped)))):
                 state.path = nil

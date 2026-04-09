@@ -72,14 +72,15 @@ extension SDKSynchronizerClient: DependencyKey {
             stop: { synchronizer.stop() },
             isSyncing: { synchronizer.latestState.syncStatus.isSyncing },
             isInitialized: { synchronizer.latestState.syncStatus != SyncStatus.unprepared },
-            importAccount: { ufvk, seedFingerprint, zip32AccountIndex, purpose, name, keySource, _ in
+            importAccount: { ufvk, seedFingerprint, zip32AccountIndex, purpose, name, keySource, birthday in
                 try await synchronizer.importAccount(
                     ufvk: ufvk,
                     seedFingerprint: seedFingerprint,
                     zip32AccountIndex: zip32AccountIndex,
                     purpose: purpose,
                     name: name,
-                    keySource: keySource
+                    keySource: keySource,
+                    birthday: birthday
                 )
             },
             deleteAccount: { accountUUID in

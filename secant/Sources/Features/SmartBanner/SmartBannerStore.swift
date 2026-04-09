@@ -344,7 +344,7 @@ struct SmartBanner {
                 if let account = state.selectedWalletAccount, let accountBalance = latestState.data.accountsBalances[account.id] {
                     state.spendableBalance = accountBalance.saplingBalance.spendableValue + accountBalance.orchardBalance.spendableValue
                 }
-                
+
                 if snapshot.syncStatus != state.synchronizerStatusSnapshot.syncStatus {
                     state.synchronizerStatusSnapshot = snapshot
                     

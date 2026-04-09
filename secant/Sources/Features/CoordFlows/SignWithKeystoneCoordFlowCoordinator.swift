@@ -7,8 +7,6 @@
 
 import ComposableArchitecture
 
-// Path
-
 extension SignWithKeystoneCoordFlow {
     func coordinatorReduce() -> Reduce<SignWithKeystoneCoordFlow.State, SignWithKeystoneCoordFlow.Action> {
         Reduce { state, action in

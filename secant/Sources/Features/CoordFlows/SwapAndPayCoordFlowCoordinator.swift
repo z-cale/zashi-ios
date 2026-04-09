@@ -8,8 +8,6 @@
 import Foundation
 import ComposableArchitecture
 
-// Path
-
 extension SwapAndPayCoordFlow {
     func coordinatorReduce() -> Reduce< SwapAndPayCoordFlow.State,  SwapAndPayCoordFlow.Action> {
         Reduce { state, action in

@@ -9,8 +9,6 @@ import SwiftUI
 import ComposableArchitecture
 import ZcashLightClientKit
 
-// Path
-
 @Reducer
 struct WalletBackupCoordFlow {
     @Reducer

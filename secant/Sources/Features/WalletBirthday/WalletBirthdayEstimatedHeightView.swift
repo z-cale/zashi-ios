@@ -54,10 +54,9 @@ struct WalletBirthdayEstimatedHeightView: View {
 
                 Spacer()
 
-                if store.isKeystoneFlow {
-                    // TODO: Loc
+                if !store.isKeystoneFlow {
                     ZashiButton(
-                        "L10n.Keystone.AddHWWallet.enterManually",
+                        String(localizable: .keystoneAddHWWalletEnterManually),
                         type: .ghost
                     ) {
                         store.send(.enterManuallyTapped)
@@ -65,10 +64,7 @@ struct WalletBirthdayEstimatedHeightView: View {
                     .padding(.bottom, 12)
                 }
 
-                    // TODO: Loc
-//                ZashiButton(String(localizable: .importWalletButtonRestoreWallet))
-                ZashiButton(store.isKeystoneFlow ? "L10n.Keystone.AddHWWallet.connect" : "L10n.ImportWallet.Button.restoreWallet") {
-//                ZashiButton(store.isKeystoneFlow ? String(localizable: .keystoneAddHWWalletConnect) : String(localizable: .importWalletButtonRestoreWallet)) {
+                ZashiButton(store.isKeystoneFlow ? String(localizable: .keystoneAddHWWalletConnect) : String(localizable: .importWalletButtonRestoreWallet)) {
                     store.send(.restoreTapped)
                 }
                 .padding(.bottom, 24)
@@ -89,22 +85,6 @@ struct WalletBirthdayEstimatedHeightView: View {
             .applyScreenBackground()
             .screenTitle(store.isKeystoneFlow ? "" : String(localizable: .importWalletButtonRestoreWallet))
         }
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarItems(
-            trailing:
-                Button {
-                    store.send(.helpSheetRequested)
-                } label: {
-                    Asset.Assets.Icons.help.image
-                        .zImage(size: 24, style: Design.Text.primary)
-                        .padding(Design.Spacing.navBarButtonPadding)
-                }
-        )
-        .screenHorizontalPadding()
-        .applyScreenBackground()
-        // TODO: Loc
-//        .screenTitle(String(localizable: .importWalletButtonRestoreWallet))
-        .screenTitle(store.isKeystoneFlow ? "L10n.Keystone.connect" : "L10n.ImportWallet.Button.restoreWallet")
     }
 }
 

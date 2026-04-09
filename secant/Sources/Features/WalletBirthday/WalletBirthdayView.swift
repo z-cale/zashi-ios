@@ -33,12 +33,10 @@ struct WalletBirthdayView: View {
                     .padding(.top, 40)
                     .padding(.bottom, 8)
 
-                // TODO: loc
                 Text(
                     localizable:
                         store.isKeystoneFlow
-//                    ? .addHWWalletBirthdayInfo
-                    ? .restoreWalletBirthdayInfo
+                    ? .addHWWalletBirthdayInfo
                     : .restoreWalletBirthdayInfo
                 )
                 .zFont(size: 14, style: Design.Text.primary)
@@ -69,54 +67,53 @@ struct WalletBirthdayView: View {
                     }
                     .padding(.bottom, 12)
                 }
-                    // TODO: Loc
-//                    ZashiButton(String(localizable: .importWalletButtonRestoreWallet)) {
-                ZashiButton(store.isKeystoneFlow ? "L10n.Keystone.AddHWWallet.connect" : "L10n.ImportWallet.Button.restoreWallet") {
-//                ZashiButton(store.isKeystoneFlow ? String(localizable: .keystoneAddHWWalletConnect) : String(localizable: .importWalletButtonRestoreWallet)) {
-                  store.send(.restoreTapped)
+
+                ZashiButton(
+                    store.isKeystoneFlow
+                    ? String(localizable: .keystoneAddHWWalletConnect)
+                    : String(localizable: .importWalletButtonRestoreWallet)
+                ) {
+                    store.send(.restoreTapped)
                 }
                 .disabled(!store.isValidBirthday)
                 .padding(.bottom, keyboardVisible ? 48 : 24)
             }
             .zashiBack()
-        }
-        .onAppear { isBirthdayFocused = true }
-        .navigationBarTitleDisplayMode(.inline)
-        .trackKeyboardVisibility($keyboardVisible)
-        .navigationBarItems(
-            trailing:
-                Button {
-                    store.send(.helpSheetRequested)
-                } label: {
-                    Asset.Assets.Icons.help.image
-                        .zImage(size: 24, style: Design.Text.primary)
-                        .padding(Design.Spacing.navBarButtonPadding)
-                }
-        )
-        .screenHorizontalPadding()
-        .applyScreenBackground()
-        // TODO: Loc
-//        .screenTitle(String(localizable: .importWalletButtonRestoreWallet))
-        .screenTitle(store.isKeystoneFlow ? "L10n.Keystone.connect" : "L10n.ImportWallet.Button.restoreWallet")
-//        .screenTitle(store.isKeystoneFlow ? "" : String(localizable: .importWalletButtonRestoreWallet))
-        .overlay {
-            if keyboardVisible {
-                VStack(spacing: 0) {
-                    Spacer()
-                    
-                    Asset.Colors.primary.color
-                        .frame(height: 1)
-                        .opacity(0.1)
-                    
-                    HStack(alignment: .center) {
+            .onAppear { isBirthdayFocused = true }
+            .navigationBarTitleDisplayMode(.inline)
+            .trackKeyboardVisibility($keyboardVisible)
+            .navigationBarItems(
+                trailing:
+                    Button {
+                        store.send(.helpSheetRequested)
+                    } label: {
+                        Asset.Assets.Icons.help.image
+                            .zImage(size: 24, style: Design.Text.primary)
+                            .padding(Design.Spacing.navBarButtonPadding)
+                    }
+            )
+            .screenHorizontalPadding()
+            .applyScreenBackground()
+            .screenTitle(store.isKeystoneFlow ? "" : String(localizable: .importWalletButtonRestoreWallet))
+            .overlay {
+                if keyboardVisible {
+                    VStack(spacing: 0) {
                         Spacer()
                         
-                        Button {
-                            isBirthdayFocused = false
-                        } label: {
-                            Text(localizable: .generalDone)
-//                            Text(String(localizable: .generalDone).uppercased())
-                                .zFont(.regular, size: 14, style: Design.Text.primary)
+                        Asset.Colors.primary.color
+                            .frame(height: 1)
+                            .opacity(0.1)
+                        
+                        HStack(alignment: .center) {
+                            Spacer()
+                            
+                            Button {
+                                isBirthdayFocused = false
+                            } label: {
+                                Text(String(localizable: .generalDone).uppercased())
+                                    .zFont(.regular, size: 14, style: Design.Text.primary)
+                            }
+                            .padding(.bottom, 4)
                         }
                         .applyScreenBackground()
                         .padding(.horizontal, 20)
