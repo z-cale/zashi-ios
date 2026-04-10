@@ -15,6 +15,11 @@ import Root
 import BackgroundTasks
 import UserNotifications
 
+#if DEBUG
+import WalletStorage
+import SecItem
+#endif
+
 // swiftlint:disable indentation_width
 final class AppDelegate: NSObject, UIApplicationDelegate {
     private let bcgTaskId = "co.electriccoin.power_wifi_sync"
@@ -38,6 +43,17 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         // Short-circuit if running unit tests to avoid side-effects from the app running.
         guard !_XCTIsTesting else { return true }
         walletLogger = OSLogger(logLevel: .debug, category: LoggerConstants.walletLogs)
+
+        // ⚠️ TEST HARNESS — REMOVE BEFORE FINAL MERGE ⚠️
+        // Auto-restore: wipe wallet, import seed from env, let normal init start sync.
+        // Set AUTO_RESTORE_SEED (and optionally AUTO_RESTORE_BIRTHDAY) in the Xcode
+        // scheme's Run > Arguments > Environment Variables.
+        if let seedPhrase = ProcessInfo.processInfo.environment["AUTO_RESTORE_SEED"] {
+            print("[AUTO-RESTORE] seed found in environment, triggering auto-restore")
+            autoRestore(seedPhrase: seedPhrase)
+        } else {
+            print("[AUTO-RESTORE] AUTO_RESTORE_SEED not set, skipping")
+        }
 #endif
         handleBackgroundTask()
 
@@ -188,3 +204,39 @@ extension AppDelegate {
         }
     }
 }
+
+// MARK: - ⚠️ TEST HARNESS — REMOVE BEFORE FINAL MERGE ⚠️
+
+#if DEBUG
+extension AppDelegate {
+    /// Wipe all wallet data (keychain + DB files), import the given seed, and let the
+    /// normal TCA init flow discover the `filesMissing` state → `restoreWallet` → sync.
+    private func autoRestore(seedPhrase: String) {
+        let storage = WalletStorage(secItem: .live)
+
+        // 1. Clear keychain entries
+        try? storage.resetZashi()
+
+        // 2. Delete all SDK database files from Documents
+        if let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first,
+           let contents = try? FileManager.default.contentsOfDirectory(
+               at: documentsURL, includingPropertiesForKeys: nil
+           ) {
+            for url in contents {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+
+        // 3. Import the seed phrase into keychain
+        let birthday = ProcessInfo.processInfo.environment["AUTO_RESTORE_BIRTHDAY"]
+            .flatMap(BlockHeight.init)
+        do {
+            try storage.importWallet(bip39: seedPhrase, birthday: birthday)
+            try storage.markUserPassedPhraseBackupTest(true)
+            print("[AUTO-RESTORE] wallet reset, seed imported (birthday: \(birthday.map(String.init) ?? "latest"))")
+        } catch {
+            print("[AUTO-RESTORE] failed: \(error)")
+        }
+    }
+}
+#endif

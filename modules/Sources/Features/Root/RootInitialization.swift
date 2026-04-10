@@ -214,7 +214,9 @@ extension Root {
                         stateStreamEffect,
                         .send(.home(.smartBanner(.evaluatePriority1)))
                     ]
+                    LoggerProxy.event("[PIR-DEBUG] registerForSynchronizersUpdate: isRestoring=\(state.isRestoringWallet), pir=\(state.walletConfig.isEnabled(.pirSpendability)), isPIRAllowed=\(state.isPIRAllowed)")
                     if state.isPIRAllowed && state.walletConfig.isEnabled(.pirSpendability) {
+                        LoggerProxy.event("[PIR-DEBUG] will dispatch checkSpendabilityPIR")
                         effects.append(.send(.initialization(.checkSpendabilityPIR)))
                     }
                     return .merge(effects)
@@ -222,14 +224,18 @@ extension Root {
 
             case .initialization(.checkSpendabilityPIR):
                 guard state.isPIRAllowed && state.walletConfig.isEnabled(.pirSpendability) else {
+                    LoggerProxy.event("[PIR-DEBUG] checkSpendabilityPIR: skipped — feature flag disabled or HW wallet")
                     return .none
                 }
                 let pirUrl = SpendabilityPIRConfig.default.serverUrl
+                LoggerProxy.event("[PIR-DEBUG] checkSpendabilityPIR: starting with url=\(pirUrl)")
                 return .run { send in
                     do {
                         let result = try await sdkSynchronizer.checkWalletSpendability(pirUrl, nil)
+                        LoggerProxy.event("[PIR-DEBUG] checkSpendabilityPIR: success, anySpent=\(result.anySpent), spentNoteIds=\(result.spentNoteIds), totalSpentValue=\(result.totalSpentValue), heights=\(result.earliestHeight)...\(result.latestHeight)")
                         await send(.initialization(.checkSpendabilityPIRResult(result)))
                     } catch {
+                        LoggerProxy.event("[PIR-DEBUG] checkSpendabilityPIR: FAILED — \(error)")
                         await send(.initialization(.checkSpendabilityPIRResult(nil)))
                     }
                 }
@@ -242,6 +248,7 @@ extension Root {
                     .send(.home(.walletBalances(.updateBalances)))
                 ]
                 let anySpent = result?.anySpent ?? false
+                LoggerProxy.event("[PIR-DEBUG] checkSpendabilityPIRResult: anySpent=\(anySpent), willProceedToWitness=\(!anySpent)")
                 if !anySpent {
                     effects.append(.send(.initialization(.checkWitnessPIR)))
                 }
@@ -249,20 +256,25 @@ extension Root {
 
             case .initialization(.checkWitnessPIR):
                 guard state.isPIRAllowed && state.walletConfig.isEnabled(.pirSpendability) else {
+                    LoggerProxy.event("[PIR-DEBUG] checkWitnessPIR: skipped — feature flag disabled or HW wallet")
                     return .none
                 }
                 let witnessUrl = SpendabilityPIRConfig.default.witnessServerUrl
+                LoggerProxy.event("[PIR-DEBUG] checkWitnessPIR: starting with url=\(witnessUrl)")
                 return .run { send in
                     do {
                         let result = try await sdkSynchronizer.fetchNoteWitnesses(witnessUrl, nil)
+                        LoggerProxy.event("[PIR-DEBUG] checkWitnessPIR: success, witnessedNoteIds=\(result.witnessedNoteIds), totalWitnessedValue=\(result.totalWitnessedValue)")
                         await send(.initialization(.checkWitnessPIRResult(result)))
                     } catch {
+                        LoggerProxy.event("[PIR-DEBUG] checkWitnessPIR: FAILED — \(error)")
                         await send(.initialization(.checkWitnessPIRResult(nil)))
                     }
                 }
                 .cancellable(id: state.WitnessPIRCheckCancelId, cancelInFlight: true)
 
             case .initialization(.checkWitnessPIRResult(let result)):
+                LoggerProxy.event("[PIR-DEBUG] checkWitnessPIRResult: witnessedNoteIds=\(result?.witnessedNoteIds ?? []), totalWitnessedValue=\(result?.totalWitnessedValue ?? 0)")
                 state.$pirWitnessResult.withLock { $0 = result }
                 return .merge(
                     .send(.fetchTransactionsForTheSelectedAccount),
