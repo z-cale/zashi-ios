@@ -491,6 +491,7 @@ extension Root {
                 state.isRestoringWallet = false
                 userDefaults.remove(Constants.udIsRestoringWallet)
                 userDefaults.remove(Constants.udLeavesScreenOpen)
+                userDefaults.remove(.hasSeenHowToVote)
                 flexaHandler.signOut()
                 userStoredPreferences.removeAll()
                 try? readTransactionsStorage.resetZashi()

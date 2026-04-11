@@ -176,6 +176,9 @@ extension Settings {
                 var votingState = Voting.State()
                 votingState.isKeystoneUser = state.isKeystoneAccount
                 votingState.walletId = account.id.id.map { String(format: "%02x", $0) }.joined()
+                if votingState.hasSeenHowToVote {
+                    votingState.screenStack = [.loading]
+                }
                 state.path.append(.voting(votingState))
                 return .none
 

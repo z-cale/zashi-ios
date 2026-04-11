@@ -268,6 +268,8 @@ public struct Voting { // swiftlint:disable:this type_body_length
         public var selectedWalletAccount: WalletAccount?
         @Shared(.inMemory(.toast))
         public var toast: Toast.Edge?
+        @Shared(.appStorage(.hasSeenHowToVote))
+        public var hasSeenHowToVote: Bool = false
 
         public var selectedProposalId: UInt32?
 
@@ -675,6 +677,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 return .none
 
             case .howToVoteContinueTapped:
+                state.$hasSeenHowToVote.withLock { $0 = true }
                 state.screenStack = [.loading]
                 return .send(.initialize)
 
