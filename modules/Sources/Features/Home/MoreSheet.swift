@@ -44,15 +44,6 @@ extension HomeView {
             }
             
             ActionRow(
-                icon: Image(systemName: "checkmark.shield"),
-                title: "Governance",
-                desc: "Vote on proposed network upgrades",
-                divider: true
-            ) {
-                store.send(.votingBannerTapped)
-            }
-
-            ActionRow(
                 icon: Asset.Assets.Icons.settings.image,
                 title: String(localizable: .homeScreenMoreDotted),
                 divider: false
