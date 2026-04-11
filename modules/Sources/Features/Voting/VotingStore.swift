@@ -124,7 +124,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
             case howToVote
             case loading
             case noRounds
-            case roundsList
+            case pollsList
             case delegationSigning
             case proposalList
             case proposalDetail(id: UInt32)
@@ -276,6 +276,13 @@ public struct Voting { // swiftlint:disable:this type_body_length
         /// render "Voted MMM d · Voting Power X.XXX ZEC" days after submission.
         public var voteRecord: VoteRecord?
 
+        /// Per-round persisted vote records keyed by round ID, populated by a
+        /// one-time scan of UserDefaults during `allRoundsLoaded`. The polls
+        /// list uses this to render the Voted pill on active-round cards and
+        /// the "X of Y voted" indicator on closed cards without re-querying
+        /// UserDefaults from the view.
+        public var voteRecords: [String: VoteRecord] = [:]
+
         public var selectedProposalId: UInt32?
 
         // MARK: - Batch voting
@@ -364,7 +371,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
         }
 
         public var currentScreen: Screen {
-            screenStack.last ?? .proposalList
+            screenStack.last ?? .pollsList
         }
 
         public var votingWeightZECString: String {
@@ -550,6 +557,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
         case goBack
         case backToRoundsList
         case howToVoteContinueTapped
+        case viewMyVotesTapped(roundId: String)
 
         // Rounds list
         case allRoundsLoaded([VotingSession])
@@ -686,8 +694,15 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 state.screenStack = [.loading]
                 return .send(.initialize)
 
+            case .viewMyVotesTapped:
+                // TODO: navigate to the Voted Poll detail screen (image 17 in
+                // the design handoff). Placeholder no-op so the polls list
+                // Voted card has a target until that screen is implemented.
+                return .none
+
             case .backToRoundsList:
-                // Cancel per-round effects and re-fetch rounds (auto-navigates via allRoundsLoaded)
+                // Cancel per-round effects and re-fetch rounds. allRoundsLoaded
+                // sees the cleared activeSession and re-renders the polls list.
                 state.screenStack = [.loading]
                 // Clean up persisted drafts for the current round
                 Self.clearPersistedDrafts(roundId: state.roundId)
@@ -741,24 +756,29 @@ public struct Voting { // swiftlint:disable:this type_body_length
                     State.RoundListItem(roundNumber: index + 1, session: session)
                 }
 
-                // Auto-navigate: active round takes priority, else latest completed.
-                // Skip if the user is already viewing the same round (guards against
-                // onAppear re-firing .initialize and restarting the pipeline mid-vote).
-                if let activeItem = state.activeRounds.first {
-                    guard activeItem.id != state.activeSession?.voteRoundId.hexString else {
-                        return .none
+                // Populate voteRecords from persisted UserDefaults so the polls
+                // list can render the Voted pill and "X of Y voted" indicator
+                // for rounds the user has already confirmed in. Per-round, sync
+                // read — fast even for tens of rounds.
+                let walletId = state.walletId
+                var loadedRecords: [String: VoteRecord] = [:]
+                for item in state.allRounds {
+                    if let record = Self.loadVoteRecord(walletId: walletId, roundId: item.id) {
+                        loadedRecords[item.id] = record
                     }
-                    return .send(.roundTapped(activeItem.id))
-                } else if let completedItem = state.completedRounds.first {
-                    guard completedItem.id != state.activeSession?.voteRoundId.hexString else {
-                        return .none
-                    }
-                    return .send(.roundTapped(completedItem.id))
-                } else {
-                    // No rounds — show empty state
-                    state.screenStack = [.noRounds]
-                    return .none
                 }
+                state.voteRecords = loadedRecords
+
+                // Always land on the polls list when there are any rounds, so the
+                // user explicitly chooses which one to enter — even if there's only
+                // one. Empty case still shows the noRounds empty state. Guards
+                // against onAppear re-firing while the user is mid-vote.
+                if state.allRounds.isEmpty {
+                    state.screenStack = [.noRounds]
+                } else if state.activeSession == nil {
+                    state.screenStack = [.pollsList]
+                }
+                return .none
 
             case .roundTapped(let roundId):
                 guard let item = state.allRounds.first(where: { $0.id == roundId }) else { return .none }
@@ -2221,13 +2241,19 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
                 // Record the moment the user confirmed their vote. Persisted so the
                 // Results screen can show "Voted MMM d · Voting Power X.XXX ZEC"
-                // long after the active session is gone. Recorded once per round —
+                // and the polls list can show "X of Y voted" long after the
+                // active session is gone. Recorded once per round —
                 // re-confirmations (e.g. retry after a partial failure) keep the
                 // original timestamp.
                 if state.voteRecord == nil {
-                    let record = VoteRecord(votedAt: Date(), votingWeight: state.votingWeight)
+                    let record = VoteRecord(
+                        votedAt: Date(),
+                        votingWeight: state.votingWeight,
+                        proposalCount: state.draftVotes.count
+                    )
                     state.voteRecord = record
                     Self.persistVoteRecord(record, walletId: state.walletId, roundId: state.roundId)
+                    state.voteRecords[state.roundId] = record
                 }
 
                 // Keystone: delegation requires QR signing UI, so route through
@@ -2698,18 +2724,21 @@ public struct Voting { // swiftlint:disable:this type_body_length
     private static let draftPrefix = "voting.draftVotes."
     private static let voteRecordPrefix = "voting.voteRecord."
 
-    /// Persisted record of when the user confirmed their vote in a given round
-    /// and the voting weight at that moment. Survives app termination so the
-    /// Results screen can render "Voted Feb 15 · Voting Power X.XXX ZEC" days
-    /// later when the round finalizes, even though the live `state.votingWeight`
-    /// is per-session.
+    /// Persisted record of when the user confirmed their vote in a given round,
+    /// the voting weight at that moment, and how many proposals they voted on.
+    /// Survives app termination so the Results screen can render
+    /// "Voted Feb 15 · Voting Power X.XXX ZEC" and the polls list can show the
+    /// "X of Y voted" indicator days after submission, even though the live
+    /// session state is per-session.
     public struct VoteRecord: Equatable {
         public let votedAt: Date
         public let votingWeight: UInt64
+        public let proposalCount: Int
 
-        public init(votedAt: Date, votingWeight: UInt64) {
+        public init(votedAt: Date, votingWeight: UInt64, proposalCount: Int) {
             self.votedAt = votedAt
             self.votingWeight = votingWeight
+            self.proposalCount = proposalCount
         }
     }
 
@@ -2722,7 +2751,8 @@ public struct Voting { // swiftlint:disable:this type_body_length
         UserDefaults.standard.set(
             [
                 "votedAt": record.votedAt.timeIntervalSince1970,
-                "votingWeight": NSNumber(value: record.votingWeight)
+                "votingWeight": NSNumber(value: record.votingWeight),
+                "proposalCount": NSNumber(value: record.proposalCount)
             ],
             forKey: key
         )
@@ -2735,7 +2765,14 @@ public struct Voting { // swiftlint:disable:this type_body_length
               let weight = (raw["votingWeight"] as? NSNumber)?.uint64Value else {
             return nil
         }
-        return VoteRecord(votedAt: Date(timeIntervalSince1970: votedAtUnix), votingWeight: weight)
+        // proposalCount was added later — older records default to 0 and the
+        // view falls back to the round's full proposal count for display.
+        let count = (raw["proposalCount"] as? NSNumber)?.intValue ?? 0
+        return VoteRecord(
+            votedAt: Date(timeIntervalSince1970: votedAtUnix),
+            votingWeight: weight,
+            proposalCount: count
+        )
     }
 
     /// Persist draft votes to UserDefaults so they survive app termination.

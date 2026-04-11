@@ -12,7 +12,7 @@ public struct VotingView: View {
 
     public var body: some View {
         WithPerceptionTracking {
-            let screen = store.screenStack.last ?? .proposalList
+            let screen = store.screenStack.last ?? .pollsList
             screenView(for: screen)
                 .id(screenId(screen))
                 .animation(.easeInOut(duration: 0.3), value: store.selectedProposal?.id)
@@ -35,7 +35,7 @@ public struct VotingView: View {
         case .howToVote: return "howToVote"
         case .loading: return "loading"
         case .noRounds: return "noRounds"
-        case .roundsList: return "roundsList"  // Dead — kept for exhaustive switch
+        case .pollsList: return "pollsList"
         case .delegationSigning: return "delegationSigning"
         case .proposalList: return "proposalList"
         case .proposalDetail(let id): return "detail-\(id)"
@@ -59,8 +59,8 @@ public struct VotingView: View {
             ProgressView()
         case .noRounds:
             NoRoundsView(store: store)
-        case .roundsList:
-            NoRoundsView(store: store)  // Dead — kept for exhaustive switch
+        case .pollsList:
+            PollsListView(store: store)
         case .delegationSigning:
             DelegationSigningView(store: store)
         case .proposalList:
