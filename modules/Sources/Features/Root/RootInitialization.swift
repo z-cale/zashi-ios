@@ -492,6 +492,15 @@ extension Root {
                 userDefaults.remove(Constants.udIsRestoringWallet)
                 userDefaults.remove(Constants.udLeavesScreenOpen)
                 userDefaults.remove(.hasSeenHowToVote)
+                // Wipe persisted per-round vote records (timestamp + voting weight)
+                // written by the Voting module during vote confirmation. Prefix is
+                // canonically defined in VotingStore.voteRecordPrefix; kept inline
+                // here to avoid re-introducing a Root → Voting build dependency.
+                let standardDefaults = UserDefaults.standard
+                for key in standardDefaults.dictionaryRepresentation().keys
+                    where key.hasPrefix("voting.voteRecord.") {
+                    standardDefaults.removeObject(forKey: key)
+                }
                 flexaHandler.signOut()
                 userStoredPreferences.removeAll()
                 try? readTransactionsStorage.resetZashi()

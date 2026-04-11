@@ -258,7 +258,8 @@ private func parseVotingSession(from round: [String: Any]) throws -> VotingSessi
                 id: parseUInt32(p["id"]),
                 title: p["title"] as? String ?? "",
                 description: p["description"] as? String ?? "",
-                options: options
+                options: options,
+                zipNumber: (p["zip_number"] ?? p["zipNumber"] ?? p["zip"]) as? String
             )
         }
     }

@@ -271,6 +271,11 @@ public struct Voting { // swiftlint:disable:this type_body_length
         @Shared(.appStorage(.hasSeenHowToVote))
         public var hasSeenHowToVote: Bool = false
 
+        /// Persisted record of when the user confirmed their vote in the current
+        /// round, loaded from UserDefaults in `roundTapped`. Used by Results to
+        /// render "Voted MMM d · Voting Power X.XXX ZEC" days after submission.
+        public var voteRecord: VoteRecord?
+
         public var selectedProposalId: UInt32?
 
         // MARK: - Batch voting
@@ -711,6 +716,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 state.showShareInfoSheet = false
                 state.shareTrackingStatus = .idle
                 state.shareDelegations = []
+                state.voteRecord = nil
                 // Refresh the rounds list
                 return .merge(
                     .cancel(id: cancelStateStreamId),
@@ -760,6 +766,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 state.activeSession = session
                 state.roundId = session.voteRoundId.hexString
                 state.votingRound = sessionBackedRound(from: session, title: item.title, fallback: state.votingRound)
+                state.voteRecord = Self.loadVoteRecord(walletId: state.walletId, roundId: state.roundId)
                 reconcileProposalState(&state)
 
                 switch session.status {
@@ -2212,6 +2219,17 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 guard state.canSubmitBatch else { return .none }
                 guard state.activeSession != nil else { return .none }
 
+                // Record the moment the user confirmed their vote. Persisted so the
+                // Results screen can show "Voted MMM d · Voting Power X.XXX ZEC"
+                // long after the active session is gone. Recorded once per round —
+                // re-confirmations (e.g. retry after a partial failure) keep the
+                // original timestamp.
+                if state.voteRecord == nil {
+                    let record = VoteRecord(votedAt: Date(), votingWeight: state.votingWeight)
+                    state.voteRecord = record
+                    Self.persistVoteRecord(record, walletId: state.walletId, roundId: state.roundId)
+                }
+
                 // Keystone: delegation requires QR signing UI, so route through
                 // the delegation signing screen before batch submission.
                 if state.isKeystoneUser && !state.isDelegationReady {
@@ -2678,6 +2696,47 @@ public struct Voting { // swiftlint:disable:this type_body_length
     // MARK: - Draft Persistence
 
     private static let draftPrefix = "voting.draftVotes."
+    private static let voteRecordPrefix = "voting.voteRecord."
+
+    /// Persisted record of when the user confirmed their vote in a given round
+    /// and the voting weight at that moment. Survives app termination so the
+    /// Results screen can render "Voted Feb 15 · Voting Power X.XXX ZEC" days
+    /// later when the round finalizes, even though the live `state.votingWeight`
+    /// is per-session.
+    public struct VoteRecord: Equatable {
+        public let votedAt: Date
+        public let votingWeight: UInt64
+
+        public init(votedAt: Date, votingWeight: UInt64) {
+            self.votedAt = votedAt
+            self.votingWeight = votingWeight
+        }
+    }
+
+    private static func voteRecordKey(walletId: String, roundId: String) -> String {
+        "\(voteRecordPrefix)\(walletId)|\(roundId)"
+    }
+
+    static func persistVoteRecord(_ record: VoteRecord, walletId: String, roundId: String) {
+        let key = voteRecordKey(walletId: walletId, roundId: roundId)
+        UserDefaults.standard.set(
+            [
+                "votedAt": record.votedAt.timeIntervalSince1970,
+                "votingWeight": NSNumber(value: record.votingWeight)
+            ],
+            forKey: key
+        )
+    }
+
+    static func loadVoteRecord(walletId: String, roundId: String) -> VoteRecord? {
+        let key = voteRecordKey(walletId: walletId, roundId: roundId)
+        guard let raw = UserDefaults.standard.dictionary(forKey: key),
+              let votedAtUnix = raw["votedAt"] as? Double,
+              let weight = (raw["votingWeight"] as? NSNumber)?.uint64Value else {
+            return nil
+        }
+        return VoteRecord(votedAt: Date(timeIntervalSince1970: votedAtUnix), votingWeight: weight)
+    }
 
     /// Persist draft votes to UserDefaults so they survive app termination.
     static func persistDrafts(_ drafts: [UInt32: VoteChoice], roundId: String) {
