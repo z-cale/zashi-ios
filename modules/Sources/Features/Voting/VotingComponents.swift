@@ -39,6 +39,47 @@ func voteOptionIcon(for index: UInt32, total: Int) -> String {
     return "\(index + 1).circle.fill"
 }
 
+// MARK: - Vote Badge (for proposal cards)
+
+/// Utility Blue Dark 700 from the design system.
+private let abstainBlue = Color(red: 0 / 255, green: 78 / 255, blue: 235 / 255)
+
+/// Resolves a `VoteChoice` to a human label and color for display on proposal cards.
+func voteBadgeInfo(for choice: VoteChoice, proposal: Proposal) -> (label: String, color: Color) {
+    let options = proposal.options
+    let hasAbstain = options.contains { $0.label.localizedCaseInsensitiveContains("abstain") }
+    let synthesizedAbstainIndex: UInt32? = hasAbstain ? nil : (options.map(\.index).max() ?? 0) + 1
+
+    if let syntheticIdx = synthesizedAbstainIndex, choice.index == syntheticIdx {
+        return ("Abstain", abstainBlue)
+    }
+
+    if let matched = options.first(where: { $0.index == choice.index }) {
+        if matched.label.localizedCaseInsensitiveContains("abstain") {
+            return (matched.label, abstainBlue)
+        }
+        let color = voteOptionColor(for: matched.index, total: options.count)
+        return (matched.label, color)
+    }
+
+    return ("Voted", .gray)
+}
+
+struct VoteBadgePill: View {
+    let label: String
+    let color: Color
+
+    var body: some View {
+        Text(label)
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(color)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(color.opacity(0.12))
+            .clipShape(Capsule())
+    }
+}
+
 // MARK: - Vote Chip
 
 struct VoteChip: View {

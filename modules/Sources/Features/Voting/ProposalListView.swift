@@ -6,13 +6,15 @@ import UIComponents
 import VotingModels
 
 struct ProposalListView: View {
+    enum Mode { case voting, review }
+
     @Environment(\.colorScheme)
     var colorScheme
     @State private var now = Date()
     @State private var descriptionExpanded = false
-    @State private var showUnansweredSheet = false
 
     let store: StoreOf<Voting>
+    var mode: Mode = .voting
 
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -37,11 +39,6 @@ struct ProposalListView: View {
                     .padding(.horizontal, 24)
                     .padding(.top, 8)
                     .padding(.bottom, 16)
-            }
-            .sheet(isPresented: $showUnansweredSheet) {
-                unansweredConfirmationSheet()
-                    .presentationDetents([.height(380)])
-                    .presentationDragIndicator(.hidden)
             }
             .onReceive(timer) { self.now = $0 }
             .onAppear { store.send(.governanceTabAppeared) }
@@ -74,7 +71,12 @@ struct ProposalListView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    overviewHeader()
+                    switch mode {
+                    case .voting:
+                        overviewHeader()
+                    case .review:
+                        reviewHeader()
+                    }
 
                     VStack(spacing: 16) {
                         ForEach(store.votingRound.proposals) { proposal in
@@ -107,6 +109,22 @@ struct ProposalListView: View {
                     }
                 }
             }
+        }
+    }
+
+    // MARK: - Review Header
+
+    @ViewBuilder
+    private func reviewHeader() -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Review and submit vote")
+                .zFont(.semiBold, size: 24, style: Design.Text.primary)
+                .tracking(-0.384)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text("Tap on the question to edit any of your answers. After you review your answers, tap on Confirm & Submit.")
+                .zFont(size: 14, style: Design.Text.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -318,8 +336,17 @@ struct ProposalListView: View {
 extension ProposalListView {
     @ViewBuilder
     func proposalCard(_ proposal: Proposal) -> some View {
+        let choice = store.draftVotes[proposal.id] ?? store.votes[proposal.id]
+
         VStack(alignment: .leading, spacing: 12) {
-            ZIPBadge(zipNumber: proposal.zipNumber ?? "ZIP-TBD")
+            HStack {
+                ZIPBadge(zipNumber: proposal.zipNumber ?? "ZIP-TBD")
+                Spacer()
+                if let choice {
+                    let info = voteBadgeInfo(for: choice, proposal: proposal)
+                    VoteBadgePill(label: info.label, color: info.color)
+                }
+            }
 
             Text(proposal.title)
                 .zFont(.semiBold, size: 16, style: Design.Text.primary)
@@ -388,103 +415,44 @@ extension ProposalListView {
     }
 
     private func ctaButtonSpec() -> CTAButtonSpec {
-        let proposals = store.votingRound.proposals
-        let drafts = store.draftVotes
-        let draftCount = drafts.count
-        let total = proposals.count
-        let firstUnvoted = proposals.first { drafts[$0.id] == nil }
+        switch mode {
+        case .review:
+            return CTAButtonSpec(
+                label: "Confirm & Submit",
+                action: { store.send(.submitAllDrafts) },
+                disabled: false
+            )
 
-        if total == 0 {
-            return CTAButtonSpec(label: "Start Voting", action: {}, disabled: true)
-        }
+        case .voting:
+            let proposals = store.votingRound.proposals
+            let drafts = store.draftVotes
+            let draftCount = drafts.count
+            let total = proposals.count
+            let firstUndrafted = proposals.first { drafts[$0.id] == nil }
 
-        if draftCount == 0 {
-            let action: () -> Void = firstUnvoted.map { target in
-                { store.send(.proposalTapped(target.id)) }
-            } ?? {}
-            return CTAButtonSpec(label: "Start Voting", action: action, disabled: false)
-        }
-
-        return CTAButtonSpec(
-            label: draftCount < total ? "Continue Voting" : "Confirm & Submit",
-            action: { confirmOrSubmit() },
-            disabled: false
-        )
-    }
-
-    private func confirmOrSubmit() {
-        let unansweredCount = unansweredProposalCount()
-        if unansweredCount > 0 {
-            showUnansweredSheet = true
-        } else {
-            store.send(.submitAllDrafts)
-        }
-    }
-
-    /// Count of proposals without a draft vote.
-    private func unansweredProposalCount() -> Int {
-        store.votingRound.proposals.filter { store.draftVotes[$0.id] == nil }.count
-    }
-
-    /// Auto-draft Abstain for every unanswered proposal, then submit.
-    private func fillAbstainAndSubmit() {
-        for proposal in store.votingRound.proposals where store.draftVotes[proposal.id] == nil {
-            let abstainIndex = (proposal.options.map(\.index).max() ?? 0) + 1
-            store.send(.castVote(proposalId: proposal.id, choice: .option(abstainIndex)))
-        }
-        store.send(.submitAllDrafts)
-    }
-}
-
-// MARK: - Unanswered Confirmation Sheet
-
-extension ProposalListView {
-    @ViewBuilder
-    func unansweredConfirmationSheet() -> some View {
-        let count = unansweredProposalCount()
-
-        VStack(spacing: 0) {
-            // Drag indicator
-            Capsule()
-                .fill(Color.secondary.opacity(0.4))
-                .frame(width: 36, height: 5)
-                .padding(.top, 8)
-                .padding(.bottom, 24)
-
-            // Warning icon
-            ZStack {
-                Circle()
-                    .fill(Color.red.opacity(0.1))
-                    .frame(width: 48, height: 48)
-                Image(systemName: "exclamationmark.circle")
-                    .font(.system(size: 24, weight: .medium))
-                    .foregroundStyle(.red.opacity(0.8))
+            if total == 0 {
+                return CTAButtonSpec(label: "Start Voting", action: {}, disabled: true)
             }
-            .padding(.bottom, 16)
 
-            Text("Unanswered Questions")
-                .zFont(.semiBold, size: 22, style: Design.Text.primary)
-                .padding(.bottom, 8)
-
-            Text("You have not responded to \(count) question\(count == 1 ? "" : "s"). Confirm to abstain from \(count == 1 ? "this question" : "these questions") or go back to respond.")
-                .zFont(size: 14, style: Design.Text.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
-                .padding(.bottom, 24)
-
-            VStack(spacing: 12) {
-                ZashiButton("Confirm", type: .secondary) {
-                    showUnansweredSheet = false
-                    fillAbstainAndSubmit()
-                }
-
-                ZashiButton("Go back") {
-                    showUnansweredSheet = false
-                }
+            if draftCount == 0 {
+                let action: () -> Void = firstUndrafted.map { target in
+                    { store.send(.proposalTapped(target.id)) }
+                } ?? {}
+                return CTAButtonSpec(label: "Start Voting", action: action, disabled: false)
             }
-            .padding(.horizontal, 24)
 
-            Spacer()
+            if draftCount < total {
+                let action: () -> Void = firstUndrafted.map { target in
+                    { store.send(.proposalTapped(target.id)) }
+                } ?? {}
+                return CTAButtonSpec(label: "Continue Voting", action: action, disabled: false)
+            }
+
+            return CTAButtonSpec(
+                label: "Review & Submit",
+                action: { store.send(.navigateToReview) },
+                disabled: false
+            )
         }
     }
 }

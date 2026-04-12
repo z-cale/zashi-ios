@@ -7,6 +7,7 @@ import VotingModels
 struct ProposalDetailView: View {
     @Environment(\.colorScheme)
     var colorScheme
+    @State private var showUnansweredSheet = false
 
     let store: StoreOf<Voting>
     let proposal: Proposal
@@ -25,6 +26,11 @@ struct ProposalDetailView: View {
             .applyScreenBackground()
             .navigationBarBackButtonHidden(true)
             .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $showUnansweredSheet) {
+                unansweredConfirmationSheet()
+                    .presentationDetents([.height(320)])
+                    .presentationDragIndicator(.hidden)
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button {
@@ -221,23 +227,72 @@ struct ProposalDetailView: View {
 
     @ViewBuilder
     private func navigationButtons() -> some View {
-        let isFirst = store.detailProposalIndex == 0
-        let isLast = store.detailProposalIndex == store.totalProposals - 1
-
         HStack(spacing: 12) {
-            if !isFirst {
-                ZashiButton("Back", type: .secondary) {
-                    store.send(.previousProposalDetail)
-                }
+            ZashiButton("Back", type: .secondary) {
+                store.send(.backToList)
             }
 
-            ZashiButton(isLast ? "Done" : "Next") {
-                if isLast {
-                    store.send(.backToList)
-                } else {
-                    store.send(.nextProposalDetail)
+            if !store.isEditingFromReview {
+                ZashiButton("Next") {
+                    let isLast = store.detailProposalIndex == store.totalProposals - 1
+                    if isLast && !store.allDrafted {
+                        showUnansweredSheet = true
+                    } else {
+                        store.send(.nextProposalDetail)
+                    }
                 }
             }
+        }
+    }
+
+    // MARK: - Unanswered Confirmation Sheet
+
+    @ViewBuilder
+    private func unansweredConfirmationSheet() -> some View {
+        let count = store.votingRound.proposals.filter { store.draftVotes[$0.id] == nil }.count
+
+        VStack(spacing: 0) {
+            Capsule()
+                .fill(Color.secondary.opacity(0.4))
+                .frame(width: 36, height: 5)
+                .padding(.top, 8)
+                .padding(.bottom, 24)
+
+            ZStack {
+                Circle()
+                    .fill(Color.red.opacity(0.1))
+                    .frame(width: 48, height: 48)
+                Image(systemName: "exclamationmark.circle")
+                    .font(.system(size: 24, weight: .medium))
+                    .foregroundStyle(.red.opacity(0.8))
+            }
+            .padding(.bottom, 16)
+
+            Text("Unanswered Questions")
+                .zFont(.semiBold, size: 22, style: Design.Text.primary)
+                .padding(.bottom, 8)
+
+            Text(
+                "You have not responded to \(count) question\(count == 1 ? "" : "s"). "
+                + "Confirm to abstain from \(count == 1 ? "this question" : "these questions") or go back to respond."
+            )
+                .zFont(size: 14, style: Design.Text.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 24)
+
+            VStack(spacing: 12) {
+                ZashiButton("Confirm", type: .secondary) {
+                    showUnansweredSheet = false
+                    store.send(.confirmUnanswered)
+                }
+
+                ZashiButton("Go back") {
+                    showUnansweredSheet = false
+                    store.send(.dismissUnanswered)
+                }
+            }
+            .padding(.horizontal, 24)
         }
     }
 }

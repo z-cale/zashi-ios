@@ -132,6 +132,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
             case ineligible
             case tallying
             case results
+            case reviewVotes
             case error(String)
             case walletSyncing
         }
@@ -502,6 +503,21 @@ public struct Voting { // swiftlint:disable:this type_body_length
             votingRound.proposals.first { votes[$0.id] == nil }?.id
         }
 
+        public var nextUndraftedProposalId: UInt32? {
+            votingRound.proposals.first { draftVotes[$0.id] == nil }?.id
+        }
+
+        public var allDrafted: Bool {
+            !votingRound.proposals.isEmpty &&
+            votingRound.proposals.allSatisfy { draftVotes[$0.id] != nil }
+        }
+
+        /// Whether the current proposal detail was opened from the review screen.
+        public var isEditingFromReview: Bool {
+            guard case .proposalDetail = screenStack.last else { return false }
+            return screenStack.dropLast().last == .reviewVotes
+        }
+
         public var activeProposalId: UInt32? {
             selectedProposalId ?? nextUnvotedProposalId
         }
@@ -627,6 +643,9 @@ public struct Voting { // swiftlint:disable:this type_body_length
         case backToList
         case nextProposalDetail
         case previousProposalDetail
+        case navigateToReview
+        case confirmUnanswered
+        case dismissUnanswered
 
         // Round status polling
         case startRoundStatusPolling
@@ -2202,18 +2221,57 @@ public struct Voting { // swiftlint:disable:this type_body_length
             case .backToList:
                 if case .proposalDetail = state.currentScreen {
                     state.screenStack.removeLast()
+                } else if case .reviewVotes = state.currentScreen {
+                    state.screenStack.removeLast()
                 } else if case .proposalList = state.currentScreen, state.screenStack.count > 1 {
                     state.screenStack.removeLast()
                 }
                 return .none
 
             case .nextProposalDetail:
-                if let index = state.detailProposalIndex,
-                    index + 1 < state.votingRound.proposals.count {
+                guard let index = state.detailProposalIndex else { return .none }
+                let isLast = index == state.votingRound.proposals.count - 1
+
+                if isLast {
+                    if state.allDrafted {
+                        // All answered → review
+                        state.screenStack.removeLast()
+                        state.screenStack.append(.reviewVotes)
+                    }
+                    // If unanswered → .none; view handles sheet display
+                } else {
                     let nextId = state.votingRound.proposals[index + 1].id
                     state.selectedProposalId = nextId
                     state.screenStack.removeLast()
                     state.screenStack.append(.proposalDetail(id: nextId))
+                }
+                return .none
+
+            case .navigateToReview:
+                state.screenStack.append(.reviewVotes)
+                return .none
+
+            case .confirmUnanswered:
+                // Auto-draft Abstain for every unanswered proposal, then go to review.
+                for proposal in state.votingRound.proposals where state.draftVotes[proposal.id] == nil {
+                    let abstainIndex: UInt32
+                    if let existing = proposal.options.first(where: {
+                        $0.label.localizedCaseInsensitiveContains("abstain")
+                    }) {
+                        abstainIndex = existing.index
+                    } else {
+                        abstainIndex = (proposal.options.map(\.index).max() ?? 0) + 1
+                    }
+                    state.draftVotes[proposal.id] = .option(abstainIndex)
+                }
+                Self.persistDrafts(state.draftVotes, roundId: state.roundId)
+                state.screenStack.removeLast()
+                state.screenStack.append(.reviewVotes)
+                return .none
+
+            case .dismissUnanswered:
+                if case .proposalDetail = state.currentScreen {
+                    state.screenStack.removeLast()
                 }
                 return .none
 
