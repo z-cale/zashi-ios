@@ -11,7 +11,7 @@ struct ProposalListView: View {
     @Environment(\.colorScheme)
     var colorScheme
     @State private var now = Date()
-    @State private var descriptionExpanded = false
+    @State private var showDescriptionSheet = false
 
     let store: StoreOf<Voting>
     var mode: Mode = .voting
@@ -43,6 +43,9 @@ struct ProposalListView: View {
             .onReceive(timer) { self.now = $0 }
             .onAppear { store.send(.governanceTabAppeared) }
             .onDisappear { store.send(.governanceTabDisappeared) }
+            .sheet(isPresented: $showDescriptionSheet) {
+                pollDescriptionSheet()
+            }
             .sheet(isPresented: Binding(
                 get: { store.showShareInfoSheet },
                 set: { newValue in
@@ -157,25 +160,17 @@ struct ProposalListView: View {
             voteProgressBar()
 
             // Meta line: Ends X · Voting Power Y · N days left
-            // Single line — scale down slightly if all three pieces don't quite
-            // fit (e.g. when "Voting Power 0.750 ZEC" + a long date pushes the
-            // line just past the available width).
-            Text(metaLine)
-                .zFont(.medium, size: 12, style: Design.Text.tertiary)
-                .tracking(-0.072) // -0.6% × 12pt
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-                .truncationMode(.tail)
+            metaLineView()
+                .padding(.horizontal, -24) // bleed to screen edges
 
-            // Description with View more toggle. Collapsed to one line by
-            // default; tapping "View more" expands to the full description.
+            // Description — always collapsed to one line with "View more"
+            // opening a bottom sheet with the full poll description.
             if !store.votingRound.description.isEmpty {
                 VStack(alignment: .trailing, spacing: 4) {
                     Text(store.votingRound.description)
                         .zFont(size: 14, style: Design.Text.primary)
-                        .lineLimit(descriptionExpanded ? nil : 1)
+                        .lineLimit(1)
                         .truncationMode(.tail)
-                        .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                     viewMoreButton()
@@ -187,15 +182,13 @@ struct ProposalListView: View {
     @ViewBuilder
     private func viewMoreButton() -> some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                descriptionExpanded.toggle()
-            }
+            showDescriptionSheet = true
         } label: {
             HStack(spacing: 4) {
-                Text(descriptionExpanded ? "View less" : "View more")
+                Text("View more")
                     .zFont(.medium, size: 14, style: Design.Text.tertiary)
                     .tracking(-0.224)
-                Image(systemName: descriptionExpanded ? "chevron.up" : "chevron.down")
+                Image(systemName: "chevron.down")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Design.Text.tertiary.color(colorScheme))
             }
@@ -203,6 +196,84 @@ struct ProposalListView: View {
             .frame(height: 20)
             .background(Design.Surfaces.bgSecondary.color(colorScheme))
             .clipShape(RoundedRectangle(cornerRadius: Design.Radius._md))
+        }
+    }
+
+    // MARK: - Poll Description Sheet
+
+    @ViewBuilder
+    private func pollDescriptionSheet() -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header: close button + centered title
+            HStack {
+                Button { showDescriptionSheet = false } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundStyle(Color(red: 114/255, green: 114/255, blue: 114/255))
+                        .frame(width: 48, height: 48)
+                        .background(Design.Surfaces.bgTertiary.color(colorScheme))
+                        .clipShape(Circle())
+                }
+                Spacer()
+                Text("Poll Description")
+                    .zFont(.semiBold, size: 14, style: Design.Text.primary)
+                    .textCase(.uppercase)
+                Spacer()
+                Color.clear.frame(width: 48, height: 48)
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 16)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(store.votingRound.title)
+                        .zFont(.semiBold, size: 24, style: Design.Text.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 24)
+
+                    Text(store.votingRound.description)
+                        .zFont(size: 15, style: Design.Text.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    // Forum link
+                    forumDiscussionsLink()
+                        .padding(.top, 8)
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 24)
+            }
+        }
+        .presentationDragIndicator(.visible)
+    }
+
+    @ViewBuilder
+    private func forumDiscussionsLink() -> some View {
+        let content = HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Design.Surfaces.bgTertiary.color(colorScheme))
+                    .frame(width: 36, height: 36)
+                Image(systemName: "bubble.left.and.bubble.right")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(Design.Text.primary.color(colorScheme))
+            }
+
+            Text("View Forum Discussions")
+                .zFont(.medium, size: 16, style: Design.Text.primary)
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(Design.Text.tertiary.color(colorScheme))
+        }
+
+        // Use the first proposal's forum URL as the round-level link
+        if let url = store.votingRound.proposals.first?.forumURL {
+            Link(destination: url) { content }
+        } else {
+            content
+                .opacity(0.5)
         }
     }
 
@@ -227,29 +298,30 @@ struct ProposalListView: View {
             let leadingInset = knobDiameter / 2
 
             ZStack(alignment: .leading) {
-                // Solid capsule — the bar background.
+                // Bar background.
                 Capsule()
                     .fill(Design.Surfaces.bgTertiary.color(colorScheme))
                     .frame(height: barHeight)
 
-                // Per-proposal dots inside the bar, slightly darker than the
-                // bar background so they read as markers without competing
-                // with the knob.
-                ForEach(0..<total, id: \.self) { index in
-                    let position: CGFloat = total <= 1
-                        ? 0
-                        : usableWidth * (CGFloat(index) / CGFloat(total - 1))
-                    Circle()
-                        .fill(Design.Text.tertiary.color(colorScheme).opacity(0.35))
-                        .frame(width: dotDiameter, height: dotDiameter)
-                        .offset(x: leadingInset + position - dotDiameter / 2)
-                }
-
-                // Knob — continuous progress based on voted / total.
-                Circle()
+                // Filled portion — dark fill from left edge to the knob.
+                let fillWidth = knobDiameter + usableWidth * ratio
+                Capsule()
                     .fill(Design.Text.primary.color(colorScheme))
-                    .frame(width: knobDiameter, height: knobDiameter)
-                    .offset(x: usableWidth * ratio)
+                    .frame(width: fillWidth, height: barHeight)
+
+                // Per-proposal dots — only show unvoted dots (ahead of fill).
+                ForEach(0..<total, id: \.self) { index in
+                    let dotRatio: CGFloat = total <= 1
+                        ? 0
+                        : CGFloat(index) / CGFloat(total - 1)
+                    if dotRatio > ratio {
+                        let position = usableWidth * dotRatio
+                        Circle()
+                            .fill(Design.Text.tertiary.color(colorScheme).opacity(0.35))
+                            .frame(width: dotDiameter, height: dotDiameter)
+                            .offset(x: leadingInset + position - dotDiameter / 2)
+                    }
+                }
             }
             .frame(maxHeight: .infinity, alignment: .center)
         }
@@ -257,6 +329,55 @@ struct ProposalListView: View {
     }
 
     // MARK: - Meta Line
+
+    @ViewBuilder
+    private func metaLineView() -> some View {
+        let parts = metaParts
+        HStack(spacing: 0) {
+            ForEach(Array(parts.enumerated()), id: \.offset) { index, part in
+                if index > 0 {
+                    Spacer(minLength: 2)
+                    Text("·")
+                        .zFont(.medium, size: 12, style: Design.Text.tertiary)
+                    Spacer(minLength: 2)
+                }
+                Text(part)
+                    .zFont(.medium, size: 12, style: Design.Text.tertiary)
+                    .tracking(-0.072)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+        }
+        .minimumScaleFactor(0.85)
+        .padding(.horizontal, 24)
+    }
+
+    private var metaParts: [String] {
+        let dateString: String
+        let votingPowerString: String
+        let timeLeftString: String
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "MMM d, yyyy"
+
+        if !store.votes.isEmpty {
+            if let record = store.voteRecord {
+                dateString = "Voted \(dateFormatter.string(from: record.votedAt))"
+            } else {
+                dateString = "Voted"
+            }
+        } else if let session = store.activeSession {
+            dateString = "Ends \(dateFormatter.string(from: session.voteEndTime))"
+        } else {
+            dateString = ""
+        }
+
+        votingPowerString = "Voting Power \(store.votingWeightZECString) ZEC"
+        timeLeftString = timeLeftLabel
+
+        return [dateString, votingPowerString, timeLeftString]
+            .filter { !$0.isEmpty }
+    }
 
     private var metaLine: String {
         let dateString: String
