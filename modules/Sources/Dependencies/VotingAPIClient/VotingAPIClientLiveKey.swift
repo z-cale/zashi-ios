@@ -254,16 +254,19 @@ private func parseVotingSession(from round: [String: Any]) throws -> VotingSessi
                     )
                 }
             }
+            let forumURLString = p["forum_url"] as? String
             return Proposal(
                 id: parseUInt32(p["id"]),
                 title: p["title"] as? String ?? "",
                 description: p["description"] as? String ?? "",
                 options: options,
-                zipNumber: (p["zip_number"] ?? p["zipNumber"] ?? p["zip"]) as? String
+                zipNumber: (p["zip_number"] ?? p["zipNumber"] ?? p["zip"]) as? String,
+                forumURL: forumURLString.flatMap { URL(string: $0) }
             )
         }
     }
 
+    let discussionURLString = round["discussion_url"] as? String
     return VotingSession(
         voteRoundId: parseBase64(round["vote_round_id"]),
         snapshotHeight: parseUInt64(round["snapshot_height"]),
@@ -279,6 +282,7 @@ private func parseVotingSession(from round: [String: Any]) throws -> VotingSessi
         nullifierIMTRoot: parseBase64(round["nullifier_imt_root"]),
         creator: round["creator"] as? String ?? "",
         description: round["description"] as? String ?? "",
+        discussionURL: discussionURLString.flatMap { URL(string: $0) },
         proposals: proposals,
         status: SessionStatus(rawValue: statusRaw) ?? .unspecified,
         createdAtHeight: parseUInt64(round["created_at_height"]),

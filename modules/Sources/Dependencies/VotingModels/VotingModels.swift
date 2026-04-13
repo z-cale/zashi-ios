@@ -41,6 +41,7 @@ public struct VotingSession: Equatable, Sendable {
     public let nullifierIMTRoot: Data
     public let creator: String
     public let description: String
+    public let discussionURL: URL?
     public let proposals: [Proposal]
     public let status: SessionStatus
     public let createdAtHeight: UInt64
@@ -84,6 +85,7 @@ public struct VotingSession: Equatable, Sendable {
         nullifierIMTRoot: Data,
         creator: String,
         description: String = "",
+        discussionURL: URL? = nil,
         proposals: [Proposal],
         status: SessionStatus,
         createdAtHeight: UInt64 = 0,
@@ -103,6 +105,7 @@ public struct VotingSession: Equatable, Sendable {
         self.nullifierIMTRoot = nullifierIMTRoot
         self.creator = creator
         self.description = description
+        self.discussionURL = discussionURL
         self.proposals = proposals
         self.status = status
         self.createdAtHeight = createdAtHeight
