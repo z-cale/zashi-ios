@@ -18,18 +18,27 @@ struct DelegationSigningView: View {
         WithPerceptionTracking {
             VStack(spacing: 0) {
                 ScrollView {
-                    transactionSummary()
+                    VStack(spacing: 0) {
+                        keystoneDeviceCard()
+                            .padding(.top, 40)
+
+                        qrCodeSection()
+                            .padding(.top, 32)
+
+                        instructionText()
+                            .padding(.top, 32)
+                    }
+                    .padding(.horizontal, 24)
                 }
-                .padding(.vertical, 1)
 
                 Spacer()
 
-                actionButton()
+                actionButtons()
                     .padding(.horizontal, 24)
                     .padding(.bottom, 24)
             }
         }
-        .screenTitle("Authorize Voting")
+        .screenTitle("Confirmation")
         .zashiBack {
             store.send(.delegationRejected)
         }
@@ -42,289 +51,199 @@ struct DelegationSigningView: View {
         )
     }
 
-    // MARK: - Transaction Summary (matches SendConfirmation layout)
+    // MARK: - Keystone Device Card
 
     @ViewBuilder
-    private func transactionSummary() -> some View {
-        VStack(spacing: 0) {
-            // Voting weight summary (centered)
-            VStack(spacing: 0) {
-                Text("Eligible Funds")
-                    .zFont(size: 14, style: Design.Text.primary)
-                    .padding(.bottom, 2)
-
-                Text("\(store.votingWeightZECString) ZEC")
-                    .zFont(.semiBold, size: 28, style: Design.Text.primary)
-
-                // Show per-bundle ZEC for Keystone multi-bundle so the user
-                // understands why Keystone displays a smaller amount.
-                if let bundleZec = store.currentBundleZECString {
-                    Text("Bundle \(store.currentKeystoneBundleIndex + 1) of \(store.bundleCount): \(bundleZec) ZEC")
-                        .zFont(.medium, size: 14, style: Design.Text.tertiary)
-                        .padding(.top, 4)
+    private func keystoneDeviceCard() -> some View {
+        HStack(spacing: 0) {
+            Asset.Assets.Partners.keystoneLogo.image
+                .resizable()
+                .frame(width: 24, height: 24)
+                .padding(8)
+                .background {
+                    Circle()
+                        .fill(Design.Surfaces.bgAlt.color(colorScheme))
                 }
+                .padding(.trailing, 12)
 
-                Text("Authorize a hotkey to vote on your behalf")
-                    .zFont(.medium, size: 14, style: Design.Text.tertiary)
-                    .multilineTextAlignment(.center)
-                    .padding(.top, 6)
-            }
-            .padding(.top, 40)
-            .padding(.bottom, 20)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(localizable: .accountsKeystone)
+                    .zFont(.semiBold, size: 16, style: Design.Text.primary)
 
-            // Hotkey address
-            detailSection(label: "Voting hotkey") {
-                Text(store.hotkeyAddress ?? "")
-                    .zFont(fontFamily: .robotoMono, size: 12, style: Design.Text.primary)
-                    .onTapGesture {
-                        store.send(.copyHotkeyAddress)
-                    }
-            }
-
-            // Round
-            detailRow(label: "Round", value: store.votingRound.title)
-
-            // Memo
-            memoSection()
-
-            // Keystone device (if applicable)
-            if store.isKeystoneUser {
-                keystoneSigningSection()
-                    .padding(.horizontal, 24)
-                    .padding(.top, 20)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func detailSection(label: String, @ViewBuilder content: () -> some View) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(label)
-                    .zFont(.medium, size: 14, style: Design.Text.tertiary)
-                content()
-            }
-            Spacer()
-        }
-        .padding(.horizontal, 24)
-        .padding(.bottom, 20)
-    }
-
-    @ViewBuilder
-    private func detailRow(label: String, value: String) -> some View {
-        HStack {
-            Text(label)
-                .zFont(.medium, size: 14, style: Design.Text.tertiary)
-            Spacer()
-            Text(value)
-                .zFont(.semiBold, size: 14, style: Design.Text.primary)
-        }
-        .padding(.horizontal, 24)
-        .padding(.bottom, 20)
-    }
-
-    @ViewBuilder
-    private func memoSection() -> some View {
-        // Use raw note sum (not quantized votingWeight) to match the Rust-side memo.
-        // For Keystone multi-bundle, uses only the current bundle's notes so the
-        // memo matches what Keystone displays.
-        let zec = Double(store.memoWeightZatoshi) / 100_000_000.0
-        let memoAmount = String(format: "%.8f", zec)
-
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Memo")
-                .zFont(.medium, size: 14, style: Design.Text.tertiary)
-
-            HStack {
-                Text("I am authorizing this hotkey managed by my wallet to vote on \(store.votingRound.title) with \(memoAmount) ZEC.")
-                    .zFont(.medium, size: 14, style: Design.Inputs.Filled.text)
-                Spacer(minLength: 0)
-            }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background {
-                RoundedRectangle(cornerRadius: Design.Radius._lg)
-                    .fill(Design.Inputs.Filled.bg.color(colorScheme))
-            }
-        }
-        .padding(.horizontal, 24)
-        .padding(.bottom, 20)
-    }
-
-    // MARK: - Action Button
-
-    @ViewBuilder
-    private func actionButton() -> some View {
-        let witnessReady = store.witnessStatus == .completed
-            && store.noteWitnessResults.allSatisfy(\.verified)
-
-        if store.isKeystoneUser {
-            VStack(spacing: 8) {
-                switch store.keystoneSigningStatus {
-                case .idle, .preparingRequest:
-                    ZashiButton("Preparing Keystone request...") { }
-                        .disabled(true)
-                        .opacity(0.5)
-
-                case .awaitingSignature:
-                    ZashiButton("Scan Signed Keystone QR") {
-                        store.send(.openKeystoneSignatureScan)
-                    }
-
-                case .parsingSignature:
-                    ZashiButton("Processing Keystone signature...") { }
-                        .disabled(true)
-                        .opacity(0.5)
-
-                case .failed:
-                    ZashiButton("Retry Keystone Request") {
-                        store.send(.retryKeystoneSigning)
-                    }
-                    ZashiButton("Scan Signed Keystone QR", type: .ghost) {
-                        store.send(.openKeystoneSignatureScan)
-                    }
-                }
-
-                // Skip remaining bundles — only shown after at least one bundle is signed
-                if !store.keystoneBundleSignatures.isEmpty && store.bundleCount > 1 {
-                    skipRemainingBundlesButton()
+                if let address = store.selectedWalletAccount?.unifiedAddress {
+                    Text(address)
+                        .zFont(fontFamily: .robotoMono, size: 12, style: Design.Text.tertiary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                 }
             }
-        } else {
-            ZashiButton("Authorize Voting") {
-                store.send(.delegationApproved)
-            }
-            .disabled(!witnessReady)
-            .opacity(witnessReady ? 1.0 : 0.5)
-        }
-    }
-}
-
-// MARK: - Note Verification
-
-extension DelegationSigningView {
-    @ViewBuilder
-    func noteVerificationSection() -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Note Verification")
-                .zFont(.semiBold, size: 14, style: Design.Text.primary)
-
-            switch store.witnessStatus {
-            case .notStarted:
-                EmptyView()
-
-            case .inProgress:
-                HStack(spacing: 8) {
-                    ProgressView()
-                    Text("Verifying note witnesses...")
-                        .zFont(.medium, size: 14, style: Design.Text.tertiary)
-                }
-
-            case .completed:
-                ForEach(store.noteWitnessResults) { result in
-                    noteResultRow(result)
-                }
-
-                let passCount = store.noteWitnessResults.filter(\.verified).count
-                let total = store.noteWitnessResults.count
-                Text("\(passCount)/\(total) notes verified")
-                    .zFont(
-                        .medium,
-                        size: 13,
-                        style: passCount == total
-                            ? Design.Text.primary
-                            : Design.Text.tertiary
-                    )
-
-                if let timing = store.witnessTiming {
-                    timingBreakdown(timing)
-                }
-
-                Button {
-                    store.send(.rerunWitnessVerification)
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 11))
-                        Text("Re-verify (invalidate cache)")
-                            .zFont(.medium, size: 12, style: Design.Text.tertiary)
-                    }
-                }
-                .padding(.top, 4)
-
-            case .failed(let error):
-                HStack(spacing: 6) {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(Design.Utility.ErrorRed._500.color(colorScheme))
-                    Text(error)
-                        .zFont(.medium, size: 13, style: Design.Text.tertiary)
-                        .lineLimit(3)
-                }
-            }
-        }
-        .padding(.horizontal, 24)
-        .padding(.bottom, 20)
-    }
-
-    @ViewBuilder
-    func noteResultRow(_ result: Voting.State.NoteWitnessResult) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: result.verified ? "checkmark.circle.fill" : "xmark.circle.fill")
-                .foregroundStyle(result.verified
-                                ? Design.Utility.SuccessGreen._500.color(colorScheme)
-                                : Design.Utility.ErrorRed._500.color(colorScheme))
-                .font(.system(size: 14))
-
-            let zec = Double(result.value) / 100_000_000.0
-            Text(String(format: "%.2f ZEC", zec))
-                .zFont(.medium, size: 14, style: Design.Text.primary)
-
-            Text("pos \(result.position)")
-                .zFont(size: 12, style: Design.Text.tertiary)
 
             Spacer()
 
-            Text(result.verified ? "PASS" : "FAIL")
-                .zFont(.semiBold, size: 12, style: Design.Text.primary)
-                .foregroundStyle(result.verified
-                                ? Design.Utility.SuccessGreen._500.color(colorScheme)
-                                : Design.Utility.ErrorRed._500.color(colorScheme))
+            Text(localizable: .keystoneSignWithHardware)
+                .zFont(.medium, size: 12, style: Design.Utility.HyperBlue._700)
+                .padding(.vertical, 2)
+                .padding(.horizontal, 8)
+                .background {
+                    RoundedRectangle(cornerRadius: Design.Radius._2xl)
+                        .fill(Design.Utility.HyperBlue._50.color(colorScheme))
+                        .background {
+                            RoundedRectangle(cornerRadius: Design.Radius._2xl)
+                                .stroke(Design.Utility.HyperBlue._200.color(colorScheme))
+                        }
+                }
         }
-    }
-
-    @ViewBuilder
-    func timingBreakdown(_ timing: Voting.State.WitnessTiming) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            timingRow("Tree state fetch", milliseconds: timing.treeStateFetchMs)
-            timingRow("Witness generation", milliseconds: timing.witnessGenerationMs)
-            timingRow("Verification", milliseconds: timing.verificationMs)
-            Divider()
-            timingRow("Total", milliseconds: timing.totalMs)
-        }
-        .padding(10)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .background {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Design.Inputs.Filled.bg.color(colorScheme))
+            RoundedRectangle(cornerRadius: Design.Radius._2xl)
+                .stroke(Design.Surfaces.strokeSecondary.color(colorScheme))
         }
     }
 
+    // MARK: - QR Code Section
+
     @ViewBuilder
-    func timingRow(_ label: String, milliseconds: UInt64) -> some View {
-        HStack {
-            Text(label)
-                .zFont(size: 12, style: Design.Text.tertiary)
-            Spacer()
-            Text(
-                milliseconds >= 1000
-                    ? String(format: "%.1fs", Double(milliseconds) / 1000.0)
-                    : "\(milliseconds)ms"
-            )
-                .zFont(.medium, size: 12, style: Design.Text.primary)
+    private func qrCodeSection() -> some View {
+        switch store.keystoneSigningStatus {
+        case .idle, .preparingRequest:
+            VStack {
+                ProgressView()
+                    .padding(.bottom, 8)
+                Text("Building delegation request...")
+                    .zFont(.medium, size: 13, style: Design.Text.tertiary)
+            }
+            .frame(width: 216, height: 216)
+            .padding(24)
+            .background {
+                RoundedRectangle(cornerRadius: Design.Radius._xl)
+                    .fill(Asset.Colors.ZDesign.Base.bone.color)
+                    .background {
+                        RoundedRectangle(cornerRadius: Design.Radius._xl)
+                            .stroke(Design.Surfaces.strokeSecondary.color(colorScheme))
+                    }
+            }
+
+        case .awaitingSignature:
+            if let pczt = store.pendingUnsignedDelegationPczt,
+               let encoder = sdkSynchronizer.urEncoderForPCZT(pczt) {
+                AnimatedQRCode(urEncoder: encoder, size: 250)
+                    .frame(width: 216, height: 216)
+                    .padding(24)
+                    .background {
+                        RoundedRectangle(cornerRadius: Design.Radius._xl)
+                            .fill(Asset.Colors.ZDesign.Base.bone.color)
+                            .background {
+                                RoundedRectangle(cornerRadius: Design.Radius._xl)
+                                    .stroke(Design.Surfaces.strokeSecondary.color(colorScheme))
+                            }
+                    }
+            } else {
+                Text("QR encoding failed. Tap Cancel and try again.")
+                    .zFont(size: 13, style: Design.Text.tertiary)
+                    .multilineTextAlignment(.center)
+                    .padding(24)
+            }
+
+        case .parsingSignature:
+            VStack {
+                ProgressView()
+                    .padding(.bottom, 8)
+                Text("Processing signature...")
+                    .zFont(.medium, size: 13, style: Design.Text.tertiary)
+            }
+            .frame(width: 216, height: 216)
+            .padding(24)
+            .background {
+                RoundedRectangle(cornerRadius: Design.Radius._xl)
+                    .fill(Asset.Colors.ZDesign.Base.bone.color)
+                    .background {
+                        RoundedRectangle(cornerRadius: Design.Radius._xl)
+                            .stroke(Design.Surfaces.strokeSecondary.color(colorScheme))
+                    }
+            }
+
+        case .failed(let error):
+            VStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 24))
+                    .foregroundStyle(Design.Utility.ErrorRed._500.color(colorScheme))
+                Text(error)
+                    .zFont(size: 13, style: Design.Text.tertiary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(width: 216)
+            .padding(24)
+        }
+    }
+
+    // MARK: - Instruction Text
+
+    @ViewBuilder
+    private func instructionText() -> some View {
+        VStack(spacing: 4) {
+            if store.bundleCount > 1 {
+                Text("Bundle \(store.currentKeystoneBundleIndex + 1) of \(store.bundleCount)")
+                    .zFont(.semiBold, size: 14, style: Design.Text.primary)
+                    .padding(.bottom, 4)
+            }
+
+            Text(localizable: .keystoneSignWithTitle)
+                .zFont(.medium, size: 16, style: Design.Text.primary)
+
+            // swiftlint:disable:next line_length
+            Text("After you have signed with Keystone, tap on the Scan Signature button below.")
+                .zFont(size: 14, style: Design.Text.tertiary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - Action Buttons
+
+    @ViewBuilder
+    private func actionButtons() -> some View {
+        VStack(spacing: 8) {
+            switch store.keystoneSigningStatus {
+            case .idle, .preparingRequest:
+                ZashiButton("Cancel", type: .ghost) {
+                    store.send(.delegationRejected)
+                }
+                ZashiButton("Scan Signature") { }
+                    .disabled(true)
+                    .opacity(0.5)
+
+            case .awaitingSignature:
+                ZashiButton("Cancel", type: .ghost) {
+                    store.send(.delegationRejected)
+                }
+                ZashiButton("Scan Signature") {
+                    store.send(.openKeystoneSignatureScan)
+                }
+
+            case .parsingSignature:
+                ZashiButton("Processing...") { }
+                    .disabled(true)
+                    .opacity(0.5)
+
+            case .failed:
+                ZashiButton("Cancel", type: .ghost) {
+                    store.send(.delegationRejected)
+                }
+                ZashiButton("Retry") {
+                    store.send(.retryKeystoneSigning)
+                }
+            }
+
+            // Skip remaining bundles — only shown after at least one bundle is signed
+            if !store.keystoneBundleSignatures.isEmpty && store.bundleCount > 1 {
+                skipRemainingBundlesButton()
+            }
         }
     }
 }
 
-// MARK: - Skip Remaining Bundles & Keystone
+// MARK: - Skip Remaining Bundles
 
 extension DelegationSigningView {
     @ViewBuilder
@@ -334,50 +253,6 @@ extension DelegationSigningView {
 
         ZashiButton("Skip Remaining \(remaining) Bundle\(remaining == 1 ? "" : "s")", type: .ghost) {
             store.send(.skipRemainingKeystoneBundles)
-        }
-    }
-
-    @ViewBuilder
-    func keystoneSigningSection() -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if store.bundleCount > 1 {
-                Text("Bundle \(store.currentKeystoneBundleIndex + 1) of \(store.bundleCount)")
-                    .zFont(.semiBold, size: 14, style: Design.Text.primary)
-            }
-
-            switch store.keystoneSigningStatus {
-            case .idle, .preparingRequest:
-                HStack(spacing: 8) {
-                    ProgressView()
-                    Text("Building delegation PCZT for Keystone...")
-                        .zFont(.medium, size: 13, style: Design.Text.tertiary)
-                }
-            case .awaitingSignature:
-                if let pczt = store.pendingUnsignedDelegationPczt,
-                    let encoder = sdkSynchronizer.urEncoderForPCZT(pczt) {
-                    AnimatedQRCode(urEncoder: encoder, size: 240)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(10)
-                        .background {
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Asset.Colors.ZDesign.Base.bone.color)
-                        }
-                    Text("Scan this QR in Keystone, sign the request, then scan the signed QR back.")
-                        .zFont(size: 12, style: Design.Text.tertiary)
-                } else {
-                    Text("Keystone request is ready, but QR encoding failed. Rebuild the request.")
-                        .zFont(size: 12, style: Design.Text.tertiary)
-                }
-            case .parsingSignature:
-                HStack(spacing: 8) {
-                    ProgressView()
-                    Text("Extracting SpendAuthSig from signed PCZT...")
-                        .zFont(.medium, size: 13, style: Design.Text.tertiary)
-                }
-            case .failed(let error):
-                Text(error)
-                    .zFont(size: 12, style: Design.Text.tertiary)
-            }
         }
     }
 }
