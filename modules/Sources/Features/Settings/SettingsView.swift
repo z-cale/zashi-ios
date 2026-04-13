@@ -53,7 +53,7 @@ public struct SettingsView: View {
 
                             ActionRow(
                                 icon: Image(systemName: "checkmark.seal"),
-                                title: L10n.Settings.coinholderPolling
+                                title: String(localizable: .settingsCoinholderPolling)
                             ) {
                                 store.send(.coinholderPollingTapped)
                             }
