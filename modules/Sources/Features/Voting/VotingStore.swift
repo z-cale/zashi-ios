@@ -2151,20 +2151,21 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 }
 
                 let roundId = state.roundId
-                // Auto-resume batch submission after delegation completes.
-                let resumeAction: Action?
+                // Auto-resume batch submission immediately so the UI transitions
+                // to .submitting without a visible gap. Run cleanup in parallel.
                 if state.pendingBatchSubmission {
                     state.pendingBatchSubmission = false
-                    resumeAction = .submitAllDrafts
-                } else {
-                    resumeAction = nil
+                    return .merge(
+                        .send(.submitAllDrafts),
+                        .run { [votingCrypto] _ in
+                            await votingCrypto.refreshState(roundId)
+                            try await votingCrypto.clearRecoveryState(roundId)
+                        }
+                    )
                 }
-                return .run { [votingCrypto] send in
+                return .run { [votingCrypto] _ in
                     await votingCrypto.refreshState(roundId)
                     try await votingCrypto.clearRecoveryState(roundId)
-                    if let resumeAction {
-                        await send(resumeAction)
-                    }
                 }
 
             case .delegationProofFailed(let error):
