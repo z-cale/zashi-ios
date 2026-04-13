@@ -1925,9 +1925,10 @@ public struct Voting { // swiftlint:disable:this type_body_length
                     state.keystoneSigningStatus = .idle
                     return .merge(persistEffect, .send(.delegationApproved))
                 } else {
-                    // All bundles signed — navigate to proposal list and start batch proving
+                    // All bundles signed — start batch proving.
+                    // Keep the current screen stack so confirmSubmission stays visible
+                    // when resuming batch submission after delegation completes.
                     state.keystoneSigningStatus = .idle
-                    state.screenStack = [.pollsList, .proposalList]
                     state.delegationProofStatus = .generating(progress: 0)
                     return .merge(persistEffect, .send(.keystoneAllBundlesSigned))
                 }
