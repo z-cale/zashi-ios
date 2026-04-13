@@ -16,12 +16,9 @@ import Generated
 
 class SelectedServersMigrationTests: XCTestCase {
 
-    // MARK: - Custom server user must NOT be auto-upgraded to multi-server
+    // MARK: - Custom server user → manual mode
 
-    /// A user who previously selected a custom server should only have that single
-    /// custom server in their selectedServers config after migration — NOT all
-    /// hardcoded servers.
-    func testCustomServerUser_migratesOnlyCustomServer() throws {
+    func testCustomServerUser_migratesToManualMode() throws {
         let customServer = UserPreferencesStorage.ServerConfig(
             host: "my-custom-node.example.com",
             port: 9067,
@@ -42,17 +39,16 @@ class SelectedServersMigrationTests: XCTestCase {
 
         let result = try XCTUnwrap(capturedSelectedServers, "Migration should have persisted a selectedServers config")
 
+        XCTAssertEqual(result.mode, .manual, "Custom server user should be set to manual mode")
         XCTAssertEqual(result.servers.count, 1, "Custom server user should have exactly 1 selected server")
         XCTAssertEqual(result.servers.first?.host, customServer.host)
         XCTAssertEqual(result.servers.first?.port, customServer.port)
         XCTAssertTrue(result.servers.first?.isCustom == true, "The server should be marked as custom")
     }
 
-    // MARK: - Known server user should get all hardcoded servers
+    // MARK: - Known server user → automatic mode
 
-    /// A user who previously selected a known (non-custom) server should be
-    /// upgraded to all hardcoded servers.
-    func testKnownServerUser_migratesAllHardcodedServers() throws {
+    func testKnownServerUser_migratesToAutomaticMode() throws {
         let knownServer = UserPreferencesStorage.ServerConfig(
             host: "zec.rocks",
             port: 443,
@@ -73,14 +69,13 @@ class SelectedServersMigrationTests: XCTestCase {
 
         let result = try XCTUnwrap(capturedSelectedServers, "Migration should have persisted a selectedServers config")
 
-        let allEndpoints = ZcashSDKEnvironment.endpoints(for: .mainnet)
-        XCTAssertEqual(result.servers.count, allEndpoints.count, "Known server user should have all hardcoded servers selected")
-        XCTAssertTrue(result.servers.allSatisfy { !$0.isCustom }, "All servers should be non-custom")
+        XCTAssertEqual(result.mode, .automatic, "Known server user should be set to automatic mode")
+        XCTAssertTrue(result.servers.isEmpty, "Automatic mode should have empty servers array")
     }
 
-    // MARK: - New user (no server preference) should get all hardcoded servers
+    // MARK: - New user → automatic mode
 
-    func testNewUser_defaultsToAllHardcodedServers() throws {
+    func testNewUser_defaultsToAutomaticMode() throws {
         var capturedSelectedServers: UserPreferencesStorage.SelectedServersConfig?
 
         withDependencies {
@@ -95,13 +90,13 @@ class SelectedServersMigrationTests: XCTestCase {
 
         let result = try XCTUnwrap(capturedSelectedServers, "Migration should have persisted a selectedServers config")
 
-        let allEndpoints = ZcashSDKEnvironment.endpoints(for: .mainnet)
-        XCTAssertEqual(result.servers.count, allEndpoints.count, "New user should have all hardcoded servers selected")
+        XCTAssertEqual(result.mode, .automatic, "New user should default to automatic mode")
+        XCTAssertTrue(result.servers.isEmpty, "Automatic mode should have empty servers array")
     }
 
-    // MARK: - Testnet users should only get testnet endpoints
+    // MARK: - Testnet
 
-    func testTestnetKnownServerUser_migratesOnlyTestnetEndpoint() throws {
+    func testTestnetKnownServerUser_migratesToAutomaticMode() throws {
         let knownServer = ZcashSDKEnvironment.defaultEndpoint(for: .testnet).serverConfig()
 
         var capturedSelectedServers: UserPreferencesStorage.SelectedServersConfig?
@@ -117,14 +112,12 @@ class SelectedServersMigrationTests: XCTestCase {
         }
 
         let result = try XCTUnwrap(capturedSelectedServers, "Migration should have persisted a selectedServers config")
-        let testnetEndpoints = ZcashSDKEnvironment.endpoints(for: .testnet)
 
-        XCTAssertEqual(result.servers.count, testnetEndpoints.count, "Testnet known server user should only have testnet servers selected")
-        XCTAssertEqual(result.servers.first?.host, testnetEndpoints.first?.host)
-        XCTAssertEqual(result.servers.first?.port, testnetEndpoints.first?.port)
+        XCTAssertEqual(result.mode, .automatic)
+        XCTAssertTrue(result.servers.isEmpty)
     }
 
-    func testTestnetNewUser_defaultsToOnlyTestnetEndpoints() throws {
+    func testTestnetNewUser_defaultsToAutomaticMode() throws {
         var capturedSelectedServers: UserPreferencesStorage.SelectedServersConfig?
 
         withDependencies {
@@ -138,19 +131,18 @@ class SelectedServersMigrationTests: XCTestCase {
         }
 
         let result = try XCTUnwrap(capturedSelectedServers, "Migration should have persisted a selectedServers config")
-        let testnetEndpoints = ZcashSDKEnvironment.endpoints(for: .testnet)
 
-        XCTAssertEqual(result.servers.count, testnetEndpoints.count, "Testnet new user should only have testnet servers selected")
-        XCTAssertEqual(result.servers.first?.host, testnetEndpoints.first?.host)
-        XCTAssertEqual(result.servers.first?.port, testnetEndpoints.first?.port)
+        XCTAssertEqual(result.mode, .automatic)
+        XCTAssertTrue(result.servers.isEmpty)
     }
 
     // MARK: - Already migrated user is not re-migrated
 
     func testAlreadyMigratedUser_noOp() {
-        let existingConfig = UserPreferencesStorage.SelectedServersConfig(servers: [
-            .init(host: "zec.rocks", port: 443, isCustom: false)
-        ])
+        let existingConfig = UserPreferencesStorage.SelectedServersConfig(
+            mode: .manual,
+            servers: [.init(host: "zec.rocks", port: 443, isCustom: false)]
+        )
 
         var setSelectedServersCalled = false
 
@@ -164,6 +156,48 @@ class SelectedServersMigrationTests: XCTestCase {
         }
 
         XCTAssertFalse(setSelectedServersCalled, "Should not overwrite existing selectedServers config")
+    }
+
+    // MARK: - Backward compat decoding
+
+    func testBackwardCompat_oldFormatWithCustomServer_decodesToManual() throws {
+        // Simulate old JSON without "mode" field, single custom server
+        let json = """
+        {"servers":[{"host":"my-node.example.com","port":9067,"isCustom":true}]}
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(UserPreferencesStorage.SelectedServersConfig.self, from: json)
+        XCTAssertEqual(config.mode, .manual, "Single custom server should decode as manual")
+        XCTAssertEqual(config.servers.count, 1)
+    }
+
+    func testBackwardCompat_oldFormatWithMultipleServers_decodesToAutomatic() throws {
+        let json = """
+        {"servers":[{"host":"zec.rocks","port":443,"isCustom":false},{"host":"eu.zec.rocks","port":443,"isCustom":false}]}
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(UserPreferencesStorage.SelectedServersConfig.self, from: json)
+        XCTAssertEqual(config.mode, .automatic, "Multiple non-custom servers should decode as automatic")
+    }
+
+    func testBackwardCompat_oldFormatWithSingleNonCustomServer_decodesToAutomatic() throws {
+        let json = """
+        {"servers":[{"host":"zec.rocks","port":443,"isCustom":false}]}
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(UserPreferencesStorage.SelectedServersConfig.self, from: json)
+        XCTAssertEqual(config.mode, .automatic, "Single non-custom server should decode as automatic")
+        XCTAssertEqual(config.servers.count, 1)
+    }
+
+    func testBackwardCompat_newFormatWithMode_decodesCorrectly() throws {
+        let json = """
+        {"mode":"manual","servers":[{"host":"zec.rocks","port":443,"isCustom":false}]}
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(UserPreferencesStorage.SelectedServersConfig.self, from: json)
+        XCTAssertEqual(config.mode, .manual)
+        XCTAssertEqual(config.servers.count, 1)
     }
 
     func testIsKnownEndpoint_isNetworkAware() {
@@ -191,14 +225,17 @@ class ServerSetupChangeDetectionTests: XCTestCase {
         )
 
         let store = TestStore(
-            initialState: ServerSetup.State(topKServers: [.default])
+            initialState: ServerSetup.State(
+                connectionMode: .manual,
+                topKServers: [.default]
+            )
         ) {
             ServerSetup()
         }
 
         store.dependencies.zcashSDKEnvironment = .testValue
         store.dependencies.userStoredPreferences.selectedServers = {
-            .init(servers: [customServer])
+            .init(mode: .manual, servers: [customServer])
         }
 
         let customLabel = String(localizable: .serverSetupCustom)
@@ -210,8 +247,10 @@ class ServerSetupChangeDetectionTests: XCTestCase {
             state.activeSyncServer = ZcashSDKEnvironment.defaultEndpoint(for: .testnet).server()
             state.customServer = originalValue
             state.initialCustomServer = originalValue
-            state.selectedServers = [customLabel]
-            state.initialSelectedServers = [customLabel]
+            state.connectionMode = .manual
+            state.initialConnectionMode = .manual
+            state.selectedServer = customLabel
+            state.initialSelectedServer = customLabel
             state.servers = [.custom]
         }
 
@@ -224,7 +263,7 @@ class ServerSetupChangeDetectionTests: XCTestCase {
         XCTAssertTrue(store.state.hasChanges)
     }
 
-    func testSwitchSucceededResetsChangeTrackingAfterCustomServerEdit() async {
+    func testSwitchSucceededResetsChangeTracking() async {
         let customServer = UserPreferencesStorage.ServerConfig(
             host: "old-custom.example.com",
             port: 9067,
@@ -232,14 +271,17 @@ class ServerSetupChangeDetectionTests: XCTestCase {
         )
 
         let store = TestStore(
-            initialState: ServerSetup.State(topKServers: [.default])
+            initialState: ServerSetup.State(
+                connectionMode: .manual,
+                topKServers: [.default]
+            )
         ) {
             ServerSetup()
         }
 
         store.dependencies.zcashSDKEnvironment = .testValue
         store.dependencies.userStoredPreferences.selectedServers = {
-            .init(servers: [customServer])
+            .init(mode: .manual, servers: [customServer])
         }
 
         let customLabel = String(localizable: .serverSetupCustom)
@@ -251,8 +293,10 @@ class ServerSetupChangeDetectionTests: XCTestCase {
             state.activeSyncServer = ZcashSDKEnvironment.defaultEndpoint(for: .testnet).server()
             state.customServer = originalValue
             state.initialCustomServer = originalValue
-            state.selectedServers = [customLabel]
-            state.initialSelectedServers = [customLabel]
+            state.connectionMode = .manual
+            state.initialConnectionMode = .manual
+            state.selectedServer = customLabel
+            state.initialSelectedServer = customLabel
             state.servers = [.custom]
         }
 
@@ -264,7 +308,8 @@ class ServerSetupChangeDetectionTests: XCTestCase {
 
         await store.send(.switchSucceeded(updatedValue)) { state in
             state.isUpdatingServer = false
-            state.initialSelectedServers = state.selectedServers
+            state.initialConnectionMode = .manual
+            state.initialSelectedServer = customLabel
             state.initialCustomServer = updatedValue
             state.activeSyncServer = updatedValue
         }
@@ -272,38 +317,35 @@ class ServerSetupChangeDetectionTests: XCTestCase {
         XCTAssertFalse(store.state.hasChanges)
     }
 
-    func testEditingCustomServerWhileCustomIsNotSelectedDoesNotMarkStateChanged() async {
-        let defaultServer = ZcashSDKEnvironment.defaultEndpoint(for: .testnet).serverConfig()
-
+    func testConnectionModeChangeMarksStateChanged() async {
         let store = TestStore(
-            initialState: ServerSetup.State(topKServers: [.custom])
+            initialState: ServerSetup.State(
+                connectionMode: .automatic,
+                topKServers: [.default]
+            )
         ) {
             ServerSetup()
         }
 
         store.dependencies.zcashSDKEnvironment = .testValue
         store.dependencies.userStoredPreferences.selectedServers = {
-            .init(servers: [defaultServer])
+            .init(mode: .automatic, servers: [])
         }
-
-        let updatedValue = "new-custom.example.com:9067"
 
         await store.send(.onAppear) { state in
             state.network = .testnet
-            state.activeSyncServer = defaultServer.serverString()
-            state.customServer = ""
-            state.initialCustomServer = ""
-            state.selectedServers = [defaultServer.serverString()]
-            state.initialSelectedServers = [defaultServer.serverString()]
-            state.servers = [.default]
+            state.activeSyncServer = ZcashSDKEnvironment.defaultEndpoint(for: .testnet).server()
+            state.connectionMode = .automatic
+            state.initialConnectionMode = .automatic
+            state.servers = [.custom]
         }
 
         XCTAssertFalse(store.state.hasChanges)
 
-        await store.send(.binding(.set(\.customServer, updatedValue))) { state in
-            state.customServer = updatedValue
+        await store.send(.connectionModeChanged(.manual)) { state in
+            state.connectionMode = .manual
         }
 
-        XCTAssertFalse(store.state.hasChanges)
+        XCTAssertTrue(store.state.hasChanges)
     }
 }

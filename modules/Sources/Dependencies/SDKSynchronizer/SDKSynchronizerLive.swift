@@ -293,6 +293,12 @@ extension SDKSynchronizerClient: DependencyKey {
                     return .partial(txIds: txIds, statuses: statuses)
                 }
             },
+            createTransactionFromPCZTWithoutSubmitting: { pcztWithProofs, pcztWithSigs in
+                try await synchronizer.createTransactionFromPCZTWithoutSubmitting(
+                    pcztWithProofs: pcztWithProofs,
+                    pcztWithSigs: pcztWithSigs
+                )
+            },
             urEncoderForPCZT: { pczt in
                 let keystoneSDK = KeystoneZcashSDK()
 

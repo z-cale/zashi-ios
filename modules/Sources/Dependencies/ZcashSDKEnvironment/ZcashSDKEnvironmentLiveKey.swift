@@ -42,10 +42,12 @@ extension ZcashSDKEnvironment {
         initializeSelectedServersIfNeeded(for: network)
 
         guard let serverConfig = storedServerConfig() else {
-            // Fall back to first selected server if available
+            // Fall back to first selected server (manual mode) or default endpoint (automatic mode)
             @Dependency(\.userStoredPreferences) var userStoredPreferences
-            if let selected = userStoredPreferences.selectedServers(), let first = selected.servers.first {
-                return first
+            if let selected = userStoredPreferences.selectedServers() {
+                if selected.mode == .manual, let first = selected.servers.first {
+                    return first
+                }
             }
             return defaultEndpoint(for: network).serverConfig()
         }
@@ -103,8 +105,8 @@ extension ZcashSDKEnvironment {
     }
     
     /// On first launch (no selected servers config), initialize based on existing server preference:
-    /// - Custom server users: keep only their custom server (no auto-upgrade to multi-server)
-    /// - Known server users / new users: default to all hardcoded servers selected
+    /// - Custom server users: manual mode with their custom server (privacy)
+    /// - Known server users / new users: automatic mode (sends to all servers)
     static func initializeSelectedServersIfNeeded(for network: NetworkType) {
         @Dependency(\.userStoredPreferences) var userStoredPreferences
 
@@ -112,18 +114,15 @@ extension ZcashSDKEnvironment {
 
         if let existing = userStoredPreferences.server(), existing.isCustom {
             do {
-                try userStoredPreferences.setSelectedServers(.init(servers: [existing]))
+                try userStoredPreferences.setSelectedServers(.init(mode: .manual, servers: [existing]))
             } catch {
                 LoggerProxy.error("[Migration] Failed to persist custom server selection: \(error)")
             }
             return
         }
 
-        let servers = ZcashSDKEnvironment.endpoints(for: network).map {
-            UserPreferencesStorage.ServerConfig(host: $0.host, port: $0.port, isCustom: false)
-        }
         do {
-            try userStoredPreferences.setSelectedServers(.init(servers: servers))
+            try userStoredPreferences.setSelectedServers(.init(mode: .automatic, servers: []))
         } catch {
             LoggerProxy.error("[Migration] Failed to persist default server selection: \(error)")
         }

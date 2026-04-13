@@ -11,6 +11,7 @@ import ZcashLightClientKit
 
 import Generated
 import UIComponents
+import UserPreferencesStorage
 import ZcashSDKEnvironment
 
 public struct ServerSetupView: View {
@@ -29,124 +30,18 @@ public struct ServerSetupView: View {
         WithPerceptionTracking {
             VStack(alignment: .center, spacing: 0) {
                 ScrollView {
-                    Text(localizable: .serverSetupDescription)
-                        .zFont(size: 14, style: Design.Text.tertiary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .screenHorizontalPadding()
-                        .padding(.top, 12)
-                        .padding(.bottom, 8)
+                    // MARK: - Connection Mode Section
+                    connectionModeSection()
 
-                    if store.topKServers.isEmpty {
-                        VStack(spacing: 15) {
-                            progressView()
-
-                            Text(localizable: .serverSetupPerformingTest)
-                                .zFont(.semiBold, size: 20, style: Design.Text.primary)
-
-                            Text(localizable: .serverSetupCouldTakeTime)
-                                .zFont(size: 14, style: Design.Text.tertiary)
-                        }
-                        .frame(height: 136)
-                    } else {
-                        HStack {
-                            Text(localizable: .serverSetupFastestServers)
-                                .zFont(.semiBold, size: 18, style: Design.Text.primary)
-
-                            Spacer()
-
-                            Button {
-                                store.send(.refreshServersTapped)
-                            } label: {
-                                HStack(spacing: 4) {
-                                    Text(localizable: .serverSetupRefresh)
-                                        .zFont(.semiBold, size: 14, style: Design.Text.primary)
-
-                                    if store.isEvaluatingServers {
-                                        progressView()
-                                            .scaleEffect(0.7)
-                                    } else {
-                                        Asset.Assets.refreshCCW2.image
-                                            .zImage(size: 20, style: Design.Text.primary)
-                                    }
-                                }
-                                .padding(5)
-                            }
-                        }
-                        .screenHorizontalPadding()
-                        .padding(.top, 12)
-
-                        serverList(store.topKServers)
+                    // MARK: - Server List (Manual mode only)
+                    if store.connectionMode == .manual {
+                        serverListSection()
                     }
-
-                    HStack {
-                        Text(
-                            store.topKServers.isEmpty
-                            ? String(localizable: .serverSetupAllServers)
-                            : String(localizable: .serverSetupOtherServers)
-                        )
-                        .zFont(.semiBold, size: 18, style: Design.Text.primary)
-
-                        Spacer()
-                    }
-                    .screenHorizontalPadding()
-                    .padding(.top, store.topKServers.isEmpty ? 0 : 15)
-
-                    serverList(store.servers)
                 }
                 .padding(.vertical, 1)
 
-                WithPerceptionTracking {
-                    ZStack {
-                        Asset.Colors.background.color
-                            .frame(height: 72)
-                            .cornerRadius(32)
-                            .shadow(color: .black.opacity(0.02), radius: 4, x: 0, y: -8)
-
-                        let canSave = store.hasChanges && !store.selectedServers.isEmpty
-
-                        Button {
-                            store.send(.setServerTapped)
-                        } label: {
-                            if store.isUpdatingServer {
-                                HStack(spacing: 8) {
-                                    Text(localizable: .serverSetupSave)
-                                        .zFont(.semiBold, size: 16,
-                                               style: !canSave
-                                               ? Design.Btns.Primary.fgDisabled
-                                               : Design.Btns.Primary.fg
-                                        )
-                                    progressView(invertTint: true)
-                                }
-                                .frame(height: 48)
-                                .frame(maxWidth: .infinity)
-                                .background(
-                                    !canSave
-                                    ? Design.Btns.Primary.bgDisabled.color(colorScheme)
-                                    : Design.Btns.Primary.bg.color(colorScheme)
-                                )
-                                .cornerRadius(10)
-                                .screenHorizontalPadding()
-                            } else {
-                                Text(localizable: .serverSetupSave)
-                                    .zFont(.semiBold, size: 16,
-                                           style: !canSave
-                                           ? Design.Btns.Primary.fgDisabled
-                                           : Design.Btns.Primary.fg
-                                    )
-                                    .frame(height: 48)
-                                    .frame(maxWidth: .infinity)
-                                    .background(
-                                        !canSave
-                                        ? Design.Btns.Primary.bgDisabled.color(colorScheme)
-                                        : Design.Btns.Primary.bg.color(colorScheme)
-                                    )
-                                    .cornerRadius(10)
-                                    .screenHorizontalPadding()
-                            }
-                        }
-                        .disabled(store.isUpdatingServer || !canSave)
-                    }
-                }
+                // MARK: - Save Button
+                saveButton()
             }
             .frame(maxWidth: .infinity)
             .zashiBack(store.isUpdatingServer, customDismiss: customDismiss)
@@ -158,12 +53,150 @@ public struct ServerSetupView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
+    // MARK: - Connection Mode
+
+    @ViewBuilder
+    private func connectionModeSection() -> some View {
+        HStack {
+            Text(localizable: .serverSetupConnectionMode)
+                .zFont(.semiBold, size: 18, style: Design.Text.primary)
+            Spacer()
+        }
+        .screenHorizontalPadding()
+        .padding(.top, 12)
+        .padding(.bottom, 8)
+
+        // Automatic
+        Button {
+            store.send(.connectionModeChanged(.automatic))
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 10) {
+                    radioIndicator(isSelected: store.connectionMode == .automatic)
+
+                    Text(localizable: .serverSetupAutomatic)
+                        .zFont(.medium, size: 14, style: Design.Text.primary)
+
+                    Spacer()
+                }
+
+                if store.connectionMode == .automatic && !store.activeSyncServer.isEmpty {
+                    HStack(spacing: 8) {
+                        Text(store.activeSyncServer)
+                            .zFont(size: 14, style: Design.Text.tertiary)
+
+                        if store.isEvaluatingServers {
+                            testingBadge()
+                        } else {
+                            activeBadge()
+                        }
+                    }
+                    .padding(.leading, 30)
+                }
+            }
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .screenHorizontalPadding()
+
+        Design.Surfaces.divider.color(colorScheme)
+            .frame(height: 1)
+            .screenHorizontalPadding()
+
+        // Manual
+        Button {
+            store.send(.connectionModeChanged(.manual))
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 10) {
+                    radioIndicator(isSelected: store.connectionMode == .manual)
+
+                    Text(localizable: .serverSetupManual)
+                        .zFont(.medium, size: 14, style: Design.Text.primary)
+
+                    Spacer()
+                }
+
+                if store.connectionMode == .manual && store.isEvaluatingServers && store.topKServers.isEmpty {
+                    Text(localizable: .serverSetupPerformingTest)
+                        .zFont(size: 14, style: Design.Text.tertiary)
+                        .padding(.leading, 30)
+                }
+            }
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .screenHorizontalPadding()
+    }
+
+    // MARK: - Server List Section
+
+    @ViewBuilder
+    private func serverListSection() -> some View {
+        if store.topKServers.isEmpty {
+            // Before evaluation completes: flat list
+            HStack {
+                Text(localizable: .serverSetupAllServers)
+                    .zFont(.semiBold, size: 18, style: Design.Text.primary)
+                Spacer()
+            }
+            .screenHorizontalPadding()
+            .padding(.top, 15)
+
+            serverList(store.servers)
+        } else {
+            // After evaluation: fastest + other
+            HStack {
+                Text(localizable: .serverSetupFastestServers)
+                    .zFont(.semiBold, size: 18, style: Design.Text.primary)
+
+                Spacer()
+
+                Button {
+                    store.send(.refreshServersTapped)
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(localizable: .serverSetupRefresh)
+                            .zFont(.semiBold, size: 14, style: Design.Text.primary)
+
+                        if store.isEvaluatingServers {
+                            progressView()
+                                .scaleEffect(0.7)
+                        } else {
+                            Asset.Assets.refreshCCW2.image
+                                .zImage(size: 20, style: Design.Text.primary)
+                        }
+                    }
+                    .padding(5)
+                }
+            }
+            .screenHorizontalPadding()
+            .padding(.top, 15)
+
+            serverList(store.topKServers)
+
+            HStack {
+                Text(localizable: .serverSetupOtherServers)
+                    .zFont(.semiBold, size: 18, style: Design.Text.primary)
+                Spacer()
+            }
+            .screenHorizontalPadding()
+            .padding(.top, 15)
+
+            serverList(store.servers)
+        }
+    }
+
+    // MARK: - Server List
+
     private func serverList(_ servers: [ZcashSDKEnvironment.Server]) -> some View {
         ForEach(servers, id: \.self) { server in
             WithPerceptionTracking {
                 let serverValue = server.value(for: store.network)
-                let isSelected = store.selectedServers.contains(serverValue)
                 let isCustom = serverValue == String(localizable: .serverSetupCustom)
+                let isSelected = isCustom
+                    ? store.selectedServer == String(localizable: .serverSetupCustom)
+                    : store.selectedServer == serverValue
                 let isCustomExpanded = isCustom && isSelected
                 let isSyncServer = isCustom
                     ? store.activeSyncServer == store.customServer
@@ -172,13 +205,13 @@ public struct ServerSetupView: View {
                 VStack {
                     HStack(spacing: 0) {
                         Button {
-                            store.send(.serverToggled(serverValue))
+                            store.send(.serverSelected(serverValue))
                         } label: {
                             HStack(
                                 alignment: isCustomExpanded ? .top : .center,
                                 spacing: 10
                             ) {
-                                checkbox(isSelected: isSelected)
+                                radioIndicator(isSelected: isSelected)
                                     .padding(.top, isCustomExpanded ? 16 : 0)
 
                                 if isCustomExpanded {
@@ -228,19 +261,8 @@ public struct ServerSetupView: View {
 
                                 Spacer()
 
-                                if isSyncServer {
-                                    Text(localizable: .serverSetupActive)
-                                        .zFont(.medium, size: 14, style: Design.Utility.SuccessGreen._700)
-                                        .frame(height: 20)
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 2)
-                                        .zBackground(Design.Utility.SuccessGreen._50)
-                                        .cornerRadius(16)
-                                        .overlay {
-                                            RoundedRectangle(cornerRadius: Design.Radius._2xl)
-                                                .inset(by: 0.5)
-                                                .stroke(Design.Utility.SuccessGreen._200.color(colorScheme), lineWidth: 1)
-                                        }
+                                if isSyncServer && isSelected {
+                                    activeBadge()
                                 }
 
                                 if isCustom && !isSelected {
@@ -275,25 +297,122 @@ public struct ServerSetupView: View {
         }
     }
 
+    // MARK: - Save Button
+
     @ViewBuilder
-    private func checkbox(isSelected: Bool) -> some View {
+    private func saveButton() -> some View {
+        WithPerceptionTracking {
+            ZStack {
+                Asset.Colors.background.color
+                    .frame(height: 72)
+                    .cornerRadius(32)
+                    .shadow(color: .black.opacity(0.02), radius: 4, x: 0, y: -8)
+
+                let needsServer = store.connectionMode == .manual && store.selectedServer == nil
+                let canSave = store.hasChanges && !needsServer
+
+                Button {
+                    store.send(.setServerTapped)
+                } label: {
+                    if store.isUpdatingServer {
+                        HStack(spacing: 8) {
+                            Text(localizable: .serverSetupSave)
+                                .zFont(.semiBold, size: 16,
+                                       style: !canSave
+                                       ? Design.Btns.Primary.fgDisabled
+                                       : Design.Btns.Primary.fg
+                                )
+                            progressView(invertTint: true)
+                        }
+                        .frame(height: 48)
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            !canSave
+                            ? Design.Btns.Primary.bgDisabled.color(colorScheme)
+                            : Design.Btns.Primary.bg.color(colorScheme)
+                        )
+                        .cornerRadius(10)
+                        .screenHorizontalPadding()
+                    } else {
+                        Text(localizable: .serverSetupSave)
+                            .zFont(.semiBold, size: 16,
+                                   style: !canSave
+                                   ? Design.Btns.Primary.fgDisabled
+                                   : Design.Btns.Primary.fg
+                            )
+                            .frame(height: 48)
+                            .frame(maxWidth: .infinity)
+                            .background(
+                                !canSave
+                                ? Design.Btns.Primary.bgDisabled.color(colorScheme)
+                                : Design.Btns.Primary.bg.color(colorScheme)
+                            )
+                            .cornerRadius(10)
+                            .screenHorizontalPadding()
+                    }
+                }
+                .disabled(store.isUpdatingServer || !canSave)
+            }
+        }
+    }
+
+    // MARK: - Components
+
+    @ViewBuilder
+    private func radioIndicator(isSelected: Bool) -> some View {
         if isSelected {
-            RoundedRectangle(cornerRadius: 6)
-                .fill(Design.Surfaces.brandPrimary.color(colorScheme))
-                .frame(width: 20, height: 20)
+            Circle()
+                .fill(Design.Text.primary.color(colorScheme))
+                .frame(width: 24, height: 24)
                 .overlay {
                     Asset.Assets.check.image
-                        .zImage(size: 14, style: Design.Surfaces.brandFg)
+                        .zImage(size: 14, color: colorScheme == .dark ? .black : .white)
                 }
         } else {
-            RoundedRectangle(cornerRadius: 6)
+            Circle()
                 .fill(Design.Checkboxes.offBg.color(colorScheme))
-                .frame(width: 20, height: 20)
+                .frame(width: 24, height: 24)
                 .overlay {
-                    RoundedRectangle(cornerRadius: 6)
+                    Circle()
                         .stroke(Design.Checkboxes.offStroke.color(colorScheme))
-                        .frame(width: 20, height: 20)
+                        .frame(width: 24, height: 24)
                 }
+        }
+    }
+
+    @ViewBuilder
+    private func activeBadge() -> some View {
+        Text(localizable: .serverSetupActive)
+            .zFont(.medium, size: 14, style: Design.Utility.SuccessGreen._700)
+            .frame(height: 20)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 2)
+            .zBackground(Design.Utility.SuccessGreen._50)
+            .cornerRadius(16)
+            .overlay {
+                RoundedRectangle(cornerRadius: Design.Radius._2xl)
+                    .inset(by: 0.5)
+                    .stroke(Design.Utility.SuccessGreen._200.color(colorScheme), lineWidth: 1)
+            }
+    }
+
+    @ViewBuilder
+    private func testingBadge() -> some View {
+        HStack(spacing: 4) {
+            Text(localizable: .serverSetupTesting)
+                .zFont(.medium, size: 14, style: Design.Utility.WarningYellow._700)
+            progressView()
+                .scaleEffect(0.6)
+        }
+        .frame(height: 20)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 2)
+        .zBackground(Design.Utility.WarningYellow._50)
+        .cornerRadius(16)
+        .overlay {
+            RoundedRectangle(cornerRadius: Design.Radius._2xl)
+                .inset(by: 0.5)
+                .stroke(Design.Utility.WarningYellow._200.color(colorScheme), lineWidth: 1)
         }
     }
 

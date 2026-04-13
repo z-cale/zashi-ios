@@ -81,6 +81,7 @@ public struct SDKSynchronizerClient {
     public var createPCZTFromProposal: (AccountUUID, Proposal) async throws -> Pczt
     public var addProofsToPCZT: (Pczt) async throws -> Pczt
     public var createTransactionFromPCZT: (Pczt, Pczt) async throws -> CreateProposedTransactionsResult
+    public var createTransactionFromPCZTWithoutSubmitting: (Pczt, Pczt) async throws -> [ZcashTransaction.Overview]
     public var urEncoderForPCZT: (Pczt) -> UREncoder?
     public var redactPCZTForSigner: (Pczt) async throws  -> Pczt
     

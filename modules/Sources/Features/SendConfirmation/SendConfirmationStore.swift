@@ -563,10 +563,10 @@ public struct SendConfirmation {
 
                 redactedPcztForSigner:
                 \(state.redactedPcztForSigner?.hexEncodedString() ?? "failed to unwrap")
-                
+
                 pcztWithProofs:
                 \(pcztWithProofs.hexEncodedString())
-                
+
                 pcztWithSigs:
                 \(pcztWithSigs.hexEncodedString())
                 """
@@ -575,34 +575,50 @@ public struct SendConfirmation {
                 #endif
                 return .run { send in
                     do {
-                        let result = try await sdkSynchronizer.createTransactionFromPCZT(pcztWithProofs, pcztWithSigs)
+                        // Step 1: Create transaction locally from PCZT (no network call)
+                        let transactions = try await sdkSynchronizer.createTransactionFromPCZTWithoutSubmitting(pcztWithProofs, pcztWithSigs)
 
                         await send(.resetPCZTs)
 
-                        switch result {
-                        case .grpcFailure(let txIds):
-                            await send(.updateFailedData(-999, "grpcFailure", pcztMessage))
-                            let txId = txIds.last
-                            await send(.updateTxIdToExpand(txId))
-                            let isTxIdPresentInTheDB = try await sdkSynchronizer.txIdExists(txId)
-                            await send(.sendFailed("sdkSynchronizer.createProposedTransactions".toZcashError(), isTxIdPresentInTheDB))
-                        case let .failure(txIds, code, description):
-                            if description.isEmpty {
-                                await send(.updateFailedData(-997, "result.failure \(txIds)", pcztMessage))
-                            } else {
-                                await send(.updateFailedData(code, description, pcztMessage))
-                            }
-                            let txId = txIds.last
-                            await send(.updateTxIdToExpand(txId))
-                            let isTxIdPresentInTheDB = try await sdkSynchronizer.txIdExists(txId)
-                            await send(.sendFailed("sdkSynchronizer.createProposedTransactions".toZcashError(), isTxIdPresentInTheDB))
-                        case let .partial(txIds: txIds, statuses: statuses):
-                            await send(.updateTxIdToExpand(txIds.last))
-                            await send(.sendPartial(txIds, statuses))
-                        case .success(let txIds):
-                            await send(.updateTxIdToExpand(txIds.last))
-                            await send(.sendDone)
+                        guard !transactions.isEmpty else {
+                            await send(.updateFailedData(-998, "No transactions created from PCZT", pcztMessage))
+                            await send(.sendFailed("No transactions created from PCZT".toZcashError(), false))
+                            return
                         }
+
+                        let txId = transactions.last?.rawID.toHexStringTxId()
+                        await send(.updateTxIdToExpand(txId))
+
+                        // Step 2: Submit each transaction to ALL selected endpoints in parallel
+                        let allEndpoints = self.allSelectedEndpoints()
+                        LoggerProxy.event("[MultiSubmit/PCZT] Submitting \(transactions.count) transaction(s) to \(allEndpoints.count) server(s).")
+
+                        for (index, tx) in transactions.enumerated() {
+                            guard let rawTx = tx.raw else {
+                                await send(.updateFailedData(-997, "PCZT transaction \(index) raw bytes unavailable", pcztMessage))
+                                await send(.sendFailed(
+                                    "PCZT transaction \(index) created but raw bytes unavailable".toZcashError(),
+                                    true
+                                ))
+                                return
+                            }
+
+                            let accepted = await self.submitToAllEndpoints(rawTx: rawTx, endpoints: allEndpoints)
+
+                            if let winner = accepted {
+                                LoggerProxy.event("[MultiSubmit/PCZT] Transaction \(index) accepted by \(winner).")
+                            } else {
+                                LoggerProxy.error("[MultiSubmit/PCZT] Transaction \(index) rejected by all \(allEndpoints.count) server(s).")
+                                await send(.updateFailedData(-999, "PCZT transaction rejected by all servers", pcztMessage))
+                                await send(.sendFailed(
+                                    "PCZT transaction \(index + 1) of \(transactions.count) failed on all servers".toZcashError(),
+                                    true
+                                ))
+                                return
+                            }
+                        }
+
+                        await send(.sendDone)
                     } catch {
                         await send(.resetPCZTs)
                         await send(.updateFailedData(-998, error.toZcashError().detailedMessage, pcztMessage))
@@ -631,11 +647,21 @@ public struct SendConfirmation {
 }
 
 extension SendConfirmation {
-    /// Returns all endpoints the user has selected for transaction submission.
+    /// Returns endpoints for transaction submission based on connection mode.
+    /// Automatic: all known endpoints. Manual: only the user's selected server.
     func allSelectedEndpoints() -> [LightWalletEndpoint] {
         let streamingTimeout = ZcashSDKEnvironment.ZcashSDKConstants.streamingCallTimeoutInMillis
-        if let config = userStoredPreferences.selectedServers(), !config.servers.isEmpty {
-            return config.servers.map { $0.endpoint(streamingCallTimeoutInMillis: streamingTimeout) }
+        if let config = userStoredPreferences.selectedServers() {
+            switch config.mode {
+            case .automatic:
+                return ZcashSDKEnvironment.endpoints(
+                    for: zcashSDKEnvironment.network.networkType
+                )
+            case .manual:
+                if let server = config.servers.first {
+                    return [server.endpoint(streamingCallTimeoutInMillis: streamingTimeout)]
+                }
+            }
         }
         return [zcashSDKEnvironment.endpoint()]
     }
@@ -675,8 +701,13 @@ extension SendConfirmation {
                     }
 
                     group.addTask {
-                        try? await Task.sleep(for: .seconds(30))
-                        LoggerProxy.error("[MultiSubmit] Timed out waiting for any server to respond.")
+                        do {
+                            try await Task.sleep(for: .seconds(30))
+                            // Only log if 30 seconds actually elapsed (not cancelled by grace period)
+                            LoggerProxy.error("[MultiSubmit] Timed out waiting for any server to respond.")
+                        } catch {
+                            // Cancelled by grace period or all-reject — normal cleanup
+                        }
                         return .server(nil)
                     }
 

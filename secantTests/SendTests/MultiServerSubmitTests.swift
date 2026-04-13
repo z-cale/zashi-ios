@@ -130,7 +130,7 @@ class MultiServerSubmitTests: XCTestCase {
         }
 
         store.dependencies.userStoredPreferences.selectedServers = {
-            .init(servers: [.init(host: "test.server", port: 443, isCustom: false)])
+            .init(mode: .manual, servers: [.init(host: "test.server", port: 443, isCustom: false)])
         }
 
         await store.send(.sendTriggered)
@@ -219,17 +219,14 @@ class MultiServerSubmitTests: XCTestCase {
         }
 
         store.dependencies.userStoredPreferences.selectedServers = {
-            .init(servers: [
-                .init(host: "server1", port: 443, isCustom: false),
-                .init(host: "server2", port: 443, isCustom: false)
-            ])
+            .init(mode: .manual, servers: [.init(host: "server1", port: 443, isCustom: false)])
         }
 
         await store.send(.sendTriggered)
         await store.finish()
 
         submitCallCount.withValue { count in
-            XCTAssertEqual(count, 2, "Should have attempted submission to both servers")
+            XCTAssertEqual(count, 1, "Should have attempted submission to the selected server")
         }
 
         XCTAssertNotEqual(store.state.result, .success, "Send should not succeed when all servers reject")
@@ -309,15 +306,12 @@ class MultiServerSubmitTests: XCTestCase {
         }
 
         store.dependencies.userStoredPreferences.selectedServers = {
-            .init(servers: [
-                .init(host: "good.server", port: 443, isCustom: false),
-                .init(host: "bad.server", port: 443, isCustom: false)
-            ])
+            .init(mode: .manual, servers: [.init(host: "good.server", port: 443, isCustom: false)])
         }
 
         await store.send(.sendTriggered)
         await store.finish()
 
-        XCTAssertEqual(store.state.result, .success, "Send should succeed when at least one server accepts")
+        XCTAssertEqual(store.state.result, .success, "Send should succeed when the selected server accepts")
     }
 }

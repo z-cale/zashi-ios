@@ -455,15 +455,13 @@ public struct Root {
 
             case .benchmarkSyncEndpoint:
                 return .run { _ in
+                    // Only benchmark in automatic mode — manual users chose their server explicitly
                     guard let config = userStoredPreferences.selectedServers(),
-                          config.servers.count > 1 else { return }
-
-                    let streamingTimeout = ZcashSDKEnvironment.ZcashSDKConstants.streamingCallTimeoutInMillis
-                    let endpoints = config.servers.map {
-                        $0.endpoint(streamingCallTimeoutInMillis: streamingTimeout)
-                    }
+                          config.mode == .automatic else { return }
 
                     let network = zcashSDKEnvironment.network.networkType
+                    let endpoints = ZcashSDKEnvironment.endpoints(for: network)
+
                     let bestServers = await sdkSynchronizer.evaluateBestOf(
                         endpoints,   // candidates
                         300.0,       // connectionTimeoutMs

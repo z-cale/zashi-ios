@@ -211,14 +211,42 @@ public extension UserPreferencesStorage {
     }
 }
 
+// MARK: Connection Mode
+
+public extension UserPreferencesStorage {
+    enum ConnectionMode: String, Codable, Equatable {
+        case automatic
+        case manual
+    }
+}
+
 // MARK: Selected Servers Config
 
 public extension UserPreferencesStorage {
     struct SelectedServersConfig: Equatable, Codable {
+        public let mode: ConnectionMode
         public let servers: [ServerConfig]
 
-        public init(servers: [ServerConfig]) {
+        public init(mode: ConnectionMode, servers: [ServerConfig]) {
+            self.mode = mode
             self.servers = servers
+        }
+
+        // Backward compatibility: infer mode when decoding old format without `mode` field
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.servers = try container.decode([ServerConfig].self, forKey: .servers)
+            if let mode = try container.decodeIfPresent(ConnectionMode.self, forKey: .mode) {
+                self.mode = mode
+            } else {
+                // Old multi-select format: single custom server → manual, otherwise automatic
+                self.mode = (servers.count == 1 && servers[0].isCustom) ? .manual : .automatic
+            }
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case mode
+            case servers
         }
     }
 }
