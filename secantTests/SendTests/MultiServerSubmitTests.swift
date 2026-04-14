@@ -315,9 +315,14 @@ class MultiServerSubmitTests: XCTestCase {
 
         submittedEndpoints.withValue { endpoints in
             XCTAssertEqual(
+                endpoints.count,
+                expectedEndpoints.count,
+                "Each endpoint must be submitted to exactly once (got \(endpoints.count), expected \(expectedEndpoints.count))"
+            )
+            XCTAssertEqual(
                 Set(endpoints).count,
                 expectedEndpoints.count,
-                "Automatic mode must broadcast to every known endpoint (expected \(expectedEndpoints.count), got \(endpoints.count) unique)"
+                "No duplicate submissions allowed (got \(endpoints.count) total, \(Set(endpoints).count) unique)"
             )
             for ep in expectedEndpoints {
                 XCTAssertTrue(
@@ -357,6 +362,8 @@ class MultiServerSubmitTests: XCTestCase {
 
         // Only the default server succeeds; all others reject
         let successHost = "us.zec.stardust.rest"
+        let submittedEndpoints = LockIsolated<[String]>([])
+        let expectedEndpointCount = ZcashSDKEnvironment.endpoints(for: .mainnet).count
 
         var initialState = SendConfirmation.State(
             address: "ztestaddr",
@@ -400,6 +407,7 @@ class MultiServerSubmitTests: XCTestCase {
         }
 
         store.dependencies.sdkSynchronizer.submitTransaction = { _, endpoint in
+            submittedEndpoints.withValue { $0.append(endpoint.host) }
             if endpoint.host != successHost {
                 throw ZcashError.synchronizerServerSwitch
             }
@@ -411,6 +419,14 @@ class MultiServerSubmitTests: XCTestCase {
 
         await store.send(.sendTriggered)
         await store.finish()
+
+        submittedEndpoints.withValue { endpoints in
+            XCTAssertEqual(endpoints.count, expectedEndpointCount, "All servers must be attempted")
+            XCTAssertTrue(
+                endpoints.filter({ $0 != successHost }).count > 0,
+                "At least one failing server must have been attempted"
+            )
+        }
 
         XCTAssertEqual(store.state.result, .success, "Send should succeed when at least one server accepts")
     }
