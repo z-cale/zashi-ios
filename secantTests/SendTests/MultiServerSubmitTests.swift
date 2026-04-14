@@ -229,7 +229,7 @@ class MultiServerSubmitTests: XCTestCase {
             XCTAssertEqual(count, 1, "Should have attempted submission to the selected server")
         }
 
-        XCTAssertNotEqual(store.state.result, .success, "Send should not succeed when all servers reject")
+        XCTAssertEqual(store.state.result, .pending, "Send should be pending (tx exists in DB) when all servers reject")
         XCTAssertNotNil(store.state.result, "Send result must be set after all effects complete")
     }
 

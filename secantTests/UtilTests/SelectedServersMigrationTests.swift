@@ -178,6 +178,7 @@ class SelectedServersMigrationTests: XCTestCase {
 
         let config = try JSONDecoder().decode(UserPreferencesStorage.SelectedServersConfig.self, from: json)
         XCTAssertEqual(config.mode, .automatic, "Multiple non-custom servers should decode as automatic")
+        XCTAssertEqual(config.servers.count, 2, "Both servers should be preserved in decoded config")
     }
 
     func testBackwardCompat_oldFormatWithSingleNonCustomServer_decodesToAutomatic() throws {
