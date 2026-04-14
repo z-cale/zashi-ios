@@ -204,15 +204,6 @@ public struct ServerSetup {
                 }
 
                 state.isUpdatingServer = true
-
-                // Persist connection mode and selected server
-                do {
-                    try self.persistSelection(state: state)
-                } catch {
-                    state.isUpdatingServer = false
-                    return .send(.switchFailed(ZcashError.unknown(error)))
-                }
-
                 let network = state.network
 
                 switch state.connectionMode {
@@ -235,7 +226,8 @@ public struct ServerSetup {
                             let serverConfig = UserPreferencesStorage.ServerConfig(
                                 host: best.host, port: best.port, isCustom: false
                             )
-                            // Also update legacy ups_server key so existing code reading that key stays in sync
+                            // Persist connection mode and legacy key only after switch succeeds
+                            try? userStoredPreferences.setSelectedServers(.init(mode: .automatic, servers: []))
                             try? userStoredPreferences.setServer(serverConfig)
 
                             let bestServerString = "\(best.host):\(best.port)"
@@ -272,7 +264,8 @@ public struct ServerSetup {
                             let serverConfig = UserPreferencesStorage.ServerConfig(
                                 host: endpoint.host, port: endpoint.port, isCustom: isCustom
                             )
-                            // Also update legacy ups_server key so existing code reading that key stays in sync
+                            // Persist connection mode, selected server, and legacy key only after switch succeeds
+                            try? userStoredPreferences.setSelectedServers(.init(mode: .manual, servers: [serverConfig]))
                             try? userStoredPreferences.setServer(serverConfig)
 
                             let serverStr = "\(endpoint.host):\(endpoint.port)"
@@ -297,29 +290,6 @@ public struct ServerSetup {
                 state.activeSyncServer = bestServer
                 return .none
             }
-        }
-    }
-}
-
-extension ServerSetup {
-    func persistSelection(state: State) throws {
-        switch state.connectionMode {
-        case .automatic:
-            try userStoredPreferences.setSelectedServers(.init(mode: .automatic, servers: []))
-
-        case .manual:
-            let serverString = state.selectedServer == String(localizable: .serverSetupCustom)
-                ? state.customServer
-                : (state.selectedServer ?? "")
-            let isCustom = state.selectedServer == String(localizable: .serverSetupCustom)
-            guard let config = UserPreferencesStorage.ServerConfig.config(
-                for: serverString,
-                isCustom: isCustom,
-                streamingCallTimeoutInMillis: streamingCallTimeoutInMillis
-            ) else {
-                throw ZcashError.synchronizerServerSwitch
-            }
-            try userStoredPreferences.setSelectedServers(.init(mode: .manual, servers: [config]))
         }
     }
 }
