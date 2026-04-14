@@ -186,49 +186,6 @@ class SelectedServersMigrationTests: XCTestCase {
         XCTAssertFalse(setSelectedServersCalled, "Should not overwrite existing selectedServers config")
     }
 
-    // MARK: - Backward compat decoding
-
-    func testBackwardCompat_oldFormatWithCustomServer_decodesToManual() throws {
-        // Simulate old JSON without "mode" field, single custom server
-        let json = """
-        {"servers":[{"host":"my-node.example.com","port":9067,"isCustom":true}]}
-        """.data(using: .utf8)!
-
-        let config = try JSONDecoder().decode(UserPreferencesStorage.SelectedServersConfig.self, from: json)
-        XCTAssertEqual(config.mode, .manual, "Single custom server should decode as manual")
-        XCTAssertEqual(config.servers.count, 1)
-    }
-
-    func testBackwardCompat_oldFormatWithMultipleServers_decodesToAutomatic() throws {
-        let json = """
-        {"servers":[{"host":"zec.rocks","port":443,"isCustom":false},{"host":"eu.zec.rocks","port":443,"isCustom":false}]}
-        """.data(using: .utf8)!
-
-        let config = try JSONDecoder().decode(UserPreferencesStorage.SelectedServersConfig.self, from: json)
-        XCTAssertEqual(config.mode, .automatic, "Multiple non-custom servers should decode as automatic")
-        XCTAssertEqual(config.servers.count, 2, "Both servers should be preserved in decoded config")
-    }
-
-    func testBackwardCompat_oldFormatWithSingleNonCustomServer_decodesToAutomatic() throws {
-        let json = """
-        {"servers":[{"host":"zec.rocks","port":443,"isCustom":false}]}
-        """.data(using: .utf8)!
-
-        let config = try JSONDecoder().decode(UserPreferencesStorage.SelectedServersConfig.self, from: json)
-        XCTAssertEqual(config.mode, .automatic, "Single non-custom server should decode as automatic")
-        XCTAssertEqual(config.servers.count, 1)
-    }
-
-    func testBackwardCompat_newFormatWithMode_decodesCorrectly() throws {
-        let json = """
-        {"mode":"manual","servers":[{"host":"zec.rocks","port":443,"isCustom":false}]}
-        """.data(using: .utf8)!
-
-        let config = try JSONDecoder().decode(UserPreferencesStorage.SelectedServersConfig.self, from: json)
-        XCTAssertEqual(config.mode, .manual)
-        XCTAssertEqual(config.servers.count, 1)
-    }
-
     func testIsKnownEndpoint_isNetworkAware() {
         let testnetEndpoint = ZcashSDKEnvironment.defaultEndpoint(for: .testnet)
 

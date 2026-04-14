@@ -115,10 +115,6 @@ extension ZcashSDKEnvironment {
         return result
     }
 
-    public static func endpoints(skipDefault: Bool = false) -> [LightWalletEndpoint] {
-        endpoints(for: .mainnet, skipDefault: skipDefault)
-    }
-
     public static func isKnownEndpoint(host: String, port: Int, network: NetworkType) -> Bool {
         endpoints(for: network).contains { $0.host == host && $0.port == port }
     }

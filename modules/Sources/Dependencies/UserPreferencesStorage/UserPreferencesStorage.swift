@@ -231,22 +231,5 @@ public extension UserPreferencesStorage {
             self.mode = mode
             self.servers = servers
         }
-
-        // Backward compatibility: infer mode when decoding old format without `mode` field
-        public init(from decoder: Decoder) throws {
-            let container = try decoder.container(keyedBy: CodingKeys.self)
-            self.servers = try container.decode([ServerConfig].self, forKey: .servers)
-            if let mode = try container.decodeIfPresent(ConnectionMode.self, forKey: .mode) {
-                self.mode = mode
-            } else {
-                // Old multi-select format: single custom server → manual, otherwise automatic
-                self.mode = (servers.count == 1 && servers[0].isCustom) ? .manual : .automatic
-            }
-        }
-
-        private enum CodingKeys: String, CodingKey {
-            case mode
-            case servers
-        }
     }
 }
