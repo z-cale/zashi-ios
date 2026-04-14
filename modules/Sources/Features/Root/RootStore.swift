@@ -427,6 +427,10 @@ public struct Root {
                 state.alert = nil
                 return .none
 
+            case .serverSetup(.setServerTapped):
+                // Cancel the startup benchmark so it can't overwrite the user's save
+                return .cancel(id: state.serverBenchmarkCancelId)
+
             case .serverSetup:
                 return .none
                 
@@ -473,10 +477,30 @@ public struct Root {
 
                     guard let best = bestServers.first else { return }
 
+                    // Re-check mode — user may have switched to manual while benchmark was in flight
+                    guard userStoredPreferences.selectedServers()?.mode == .automatic else { return }
+
                     let currentEndpoint = zcashSDKEnvironment.endpoint()
                     if best.host != currentEndpoint.host || best.port != currentEndpoint.port {
                         do {
                             try await sdkSynchronizer.switchToEndpoint(best)
+
+                            // Re-check after async switch — if user saved manual mode while
+                            // switchToEndpoint was in flight, revert to their chosen server.
+                            // Read from selectedServers (not the legacy key) because the manual
+                            // save path writes selectedServers first, so it's always up-to-date here.
+                            guard userStoredPreferences.selectedServers()?.mode == .automatic else {
+                                if let config = userStoredPreferences.selectedServers(),
+                                   config.mode == .manual,
+                                   let manualServer = config.servers.first {
+                                    let revert = manualServer.endpoint(
+                                        streamingCallTimeoutInMillis: ZcashSDKEnvironment.ZcashSDKConstants.streamingCallTimeoutInMillis
+                                    )
+                                    try? await sdkSynchronizer.switchToEndpoint(revert)
+                                }
+                                return
+                            }
+
                             let isCustom = !ZcashSDKEnvironment.isKnownEndpoint(
                                 host: best.host,
                                 port: best.port,
@@ -487,6 +511,9 @@ public struct Root {
                                 port: best.port,
                                 isCustom: isCustom
                             )
+                            // Only the legacy `server` key is updated here — `selectedServers.servers`
+                            // stays empty in automatic mode by design. The active sync server is always
+                            // derived from the legacy key; `selectedServers` only stores the mode.
                             try? userStoredPreferences.setServer(serverConfig)
                         } catch {
                             LoggerProxy.error("[Benchmark] Failed to switch endpoint: \(error)")

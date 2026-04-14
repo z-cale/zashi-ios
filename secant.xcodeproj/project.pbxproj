@@ -142,7 +142,7 @@
 		9EEB06C62B344F1E00EEE50F /* SyncProgressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EEB06C52B344F1E00EEE50F /* SyncProgressTests.swift */; };
 		9EEB06C82B405A0400EEE50F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EEB06C72B405A0400EEE50F /* AppDelegate.swift */; };
 		9EEB06C92B405A0400EEE50F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EEB06C72B405A0400EEE50F /* AppDelegate.swift */; };
-		D75B811772E900000000000A /* SelectedServersMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75B811772E900000000000B /* SelectedServersMigrationTests.swift */; };
+		A90E42E82F8ED5C300115E41 /* SelectedServersMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A90E42E72F8ED5C300115E41 /* SelectedServersMigrationTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -242,7 +242,7 @@
 		9EEB06C72B405A0400EEE50F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		9EF8135A27ECC25E0075AF48 /* WalletStorageTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WalletStorageTests.swift; sourceTree = "<group>"; };
 		9EF8135B27ECC25E0075AF48 /* UserPreferencesStorageTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UserPreferencesStorageTests.swift; sourceTree = "<group>"; };
-		D75B811772E900000000000B /* SelectedServersMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectedServersMigrationTests.swift; sourceTree = "<group>"; };
+		A90E42E72F8ED5C300115E41 /* SelectedServersMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectedServersMigrationTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -733,10 +733,10 @@
 		9EF8135927ECC25E0075AF48 /* UtilTests */ = {
 			isa = PBXGroup;
 			children = (
+				A90E42E72F8ED5C300115E41 /* SelectedServersMigrationTests.swift */,
 				9E02B56B27FED475005B809B /* DatabaseFilesTests.swift */,
 				9E0F574A2980260D005304FA /* LoggerTests.swift */,
 				9EAFEB852805A23100199FC9 /* SecItemClientTests.swift */,
-				D75B811772E900000000000B /* SelectedServersMigrationTests.swift */,
 				9EF8135B27ECC25E0075AF48 /* UserPreferencesStorageTests.swift */,
 				9EF8135A27ECC25E0075AF48 /* WalletStorageTests.swift */,
 				9E39112D283F91600073DD9A /* ZatoshiTests.swift */,
@@ -1491,10 +1491,10 @@
 				9E3451BA29C857C500177D16 /* BalanceBreakdownSnapshotTests.swift in Sources */,
 				9E3451A629C84B6600177D16 /* RootTests.swift in Sources */,
 				9E3451AE29C84F2800177D16 /* SendTests.swift in Sources */,
-				D75B811772E900000000000A /* SelectedServersMigrationTests.swift in Sources */,
 				9EA7ED062B7A591C005979F4 /* ZatoshiStringRepresentationCommaTests.swift in Sources */,
 				9E34519A29C4A52F00177D16 /* BalanceBreakdownTests.swift in Sources */,
 				9E46919A2AD5735E0082D7DF /* TabsTests.swift in Sources */,
+				A90E42E82F8ED5C300115E41 /* SelectedServersMigrationTests.swift in Sources */,
 				9E1FAFBA2AF2C7F20084CA3D /* PrivateDataConsentTests.swift in Sources */,
 				9E3451C329C857DD00177D16 /* SettingsSnapshotTests.swift in Sources */,
 				9E34519D29C8484D00177D16 /* HomeFeatureFlagTests.swift in Sources */,

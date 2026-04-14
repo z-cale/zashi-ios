@@ -366,7 +366,7 @@ public struct ServerSetupView: View {
                 .frame(width: 24, height: 24)
                 .overlay {
                     Asset.Assets.check.image
-                        .zImage(size: 14, color: colorScheme == .dark ? .black : .white)
+                        .zImage(size: 14, color: Design.screenBackground.color(colorScheme))
                 }
         } else {
             Circle()

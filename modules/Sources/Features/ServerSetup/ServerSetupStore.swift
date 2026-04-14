@@ -30,6 +30,7 @@ public struct ServerSetup {
 
     private enum CancelID {
         case evaluateServers
+        case setServer
     }
 
     @ObservableState
@@ -222,15 +223,27 @@ public struct ServerSetup {
 
                 switch state.connectionMode {
                 case .automatic:
-                    // Evaluate to find best sync server, then switch
+                    // Use already-evaluated best server when available to avoid a redundant benchmark
+                    let cachedRecommendation = state.recommendedSyncServer
+                    let timeout = streamingCallTimeoutInMillis
+
                     return .run { send in
                         do {
-                            let bestServers = await sdkSynchronizer.evaluateBestOf(
-                                ZcashSDKEnvironment.endpoints(for: network),
-                                300.0, 60.0, 100, 1, network
-                            )
+                            let best: LightWalletEndpoint
 
-                            let best = bestServers.first ?? ZcashSDKEnvironment.defaultEndpoint(for: network)
+                            if let cachedRecommendation,
+                               let cached = UserPreferencesStorage.ServerConfig.endpoint(
+                                   for: cachedRecommendation,
+                                   streamingCallTimeoutInMillis: timeout
+                               ) {
+                                best = cached
+                            } else {
+                                let bestServers = await sdkSynchronizer.evaluateBestOf(
+                                    ZcashSDKEnvironment.endpoints(for: network),
+                                    300.0, 60.0, 100, 1, network
+                                )
+                                best = bestServers.first ?? ZcashSDKEnvironment.defaultEndpoint(for: network)
+                            }
 
                             let currentEndpoint = zcashSDKEnvironment.endpoint()
                             if best.host != currentEndpoint.host || best.port != currentEndpoint.port {
@@ -240,7 +253,9 @@ public struct ServerSetup {
                             let serverConfig = UserPreferencesStorage.ServerConfig(
                                 host: best.host, port: best.port, isCustom: false
                             )
-                            // Persist connection mode and legacy key only after switch succeeds
+                            // Persist after switch succeeds. try? is intentional: the switch already
+                            // happened so we don't want a persistence error to trigger switchFailed —
+                            // worst case the user re-selects after a restart.
                             try? userStoredPreferences.setSelectedServers(.init(mode: .automatic, servers: []))
                             try? userStoredPreferences.setServer(serverConfig)
 
@@ -251,6 +266,7 @@ public struct ServerSetup {
                             await send(.switchFailed(error.toZcashError()))
                         }
                     }
+                    .cancellable(id: CancelID.setServer, cancelInFlight: true)
 
                 case .manual:
                     // Switch to the user's selected server
@@ -265,6 +281,19 @@ public struct ServerSetup {
                         return .send(.switchFailed(ZcashError.synchronizerServerSwitch))
                     }
 
+                    // Build the full config synchronously so we can write it as an intent
+                    // before the async switch — this lets the Root benchmark observe manual
+                    // mode immediately, and ensures a valid config even if the app is killed
+                    // mid-switch.
+                    let isCustom = !ZcashSDKEnvironment.isKnownEndpoint(
+                        host: endpoint.host, port: endpoint.port, network: network
+                    )
+                    let serverConfig = UserPreferencesStorage.ServerConfig(
+                        host: endpoint.host, port: endpoint.port, isCustom: isCustom
+                    )
+                    let previousConfig = userStoredPreferences.selectedServers()
+                    try? userStoredPreferences.setSelectedServers(.init(mode: .manual, servers: [serverConfig]))
+
                     return .run { send in
                         do {
                             let currentEndpoint = zcashSDKEnvironment.endpoint()
@@ -272,23 +301,21 @@ public struct ServerSetup {
                                 try await sdkSynchronizer.switchToEndpoint(endpoint)
                             }
 
-                            let isCustom = !ZcashSDKEnvironment.isKnownEndpoint(
-                                host: endpoint.host, port: endpoint.port, network: network
-                            )
-                            let serverConfig = UserPreferencesStorage.ServerConfig(
-                                host: endpoint.host, port: endpoint.port, isCustom: isCustom
-                            )
-                            // Persist connection mode, selected server, and legacy key only after switch succeeds
-                            try? userStoredPreferences.setSelectedServers(.init(mode: .manual, servers: [serverConfig]))
+                            // Persist the legacy key after switch succeeds
                             try? userStoredPreferences.setServer(serverConfig)
 
                             let serverStr = "\(endpoint.host):\(endpoint.port)"
                             try await mainQueue.sleep(for: .seconds(1))
                             await send(.switchSucceeded(serverStr))
                         } catch {
+                            // Revert the intent flag on failure
+                            if let previousConfig {
+                                try? userStoredPreferences.setSelectedServers(previousConfig)
+                            }
                             await send(.switchFailed(error.toZcashError()))
                         }
                     }
+                    .cancellable(id: CancelID.setServer, cancelInFlight: true)
                 }
 
             case .switchFailed(let error):
