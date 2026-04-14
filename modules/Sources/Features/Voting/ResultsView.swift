@@ -7,7 +7,30 @@ import VotingModels
 private func tallyToZEC(_ value: UInt64) -> String {
     let zatoshi = value * ballotDivisor
     let zec = Double(zatoshi) / 100_000_000.0
-    return String(format: "%.3f ZEC", zec)
+    return String(format: "%.2f ZEC", zec)
+}
+
+private func formatWeightZEC(_ weight: UInt64) -> String {
+    let zec = Double(weight) / 100_000_000.0
+    return String(format: "%.3f", zec)
+}
+
+/// Picks the design-system winner color for an option index. Mirrors
+/// `voteOptionColor`'s green/red convention for binary proposals so the visual
+/// rhythm matches existing screens, but uses the Figma utility-500 tokens.
+private func winnerColorForDecision(
+    _ decision: UInt32,
+    total: Int,
+    colorScheme: ColorScheme
+) -> Color {
+    if total == 2 {
+        return decision == 0
+            ? Design.Utility.SuccessGreen._500.color(colorScheme)
+            : Design.Utility.ErrorRed._500.color(colorScheme)
+    }
+    // For 3+ options the design hasn't specified a palette yet — fall back to
+    // the existing palette so we don't crash on a multi-option round.
+    return voteOptionColor(for: decision, total: total, colorScheme: colorScheme)
 }
 
 struct ResultsView: View {
@@ -19,135 +42,68 @@ struct ResultsView: View {
     var body: some View {
         WithPerceptionTracking {
             ScrollView {
-                VStack(spacing: 16) {
-                    // Round header card
-                    roundHeaderCard()
+                VStack(alignment: .leading, spacing: 24) {
+                    roundHeader()
 
-                    // Section header
-                    HStack {
-                        Text("Results")
-                            .zFont(.semiBold, size: 18, style: Design.Text.primary)
-                        Spacer()
-                    }
+                    Text("Results")
+                        .zFont(.semiBold, size: 18, style: Design.Text.primary)
 
                     if store.isLoadingTallyResults {
                         HStack(spacing: 8) {
                             ProgressView()
                             Text("Loading results...")
-                                .zFont(.regular, size: 14, style: Design.Text.secondary)
+                                .zFont(size: 14, style: Design.Text.secondary)
                         }
-                        .padding(.top, 20)
                     } else {
-                        // Per-proposal result cards
-                        ForEach(Array(store.votingRound.proposals.enumerated()), id: \.element.id) { index, proposal in
-                            proposalResultCard(proposal: proposal, index: index)
+                        VStack(spacing: 16) {
+                            ForEach(Array(store.votingRound.proposals.enumerated()), id: \.element.id) { _, proposal in
+                                proposalResultCard(proposal: proposal)
+                            }
                         }
                     }
                 }
                 .padding(.horizontal, 24)
+                .padding(.top, 8)
                 .padding(.bottom, 24)
             }
-            .navigationTitle("Governance")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        store.send(.dismissFlow)
-                    } label: {
-                        Image(systemName: "xmark")
-                    }
-                }
-            }
+            .applyScreenBackground()
+            .screenTitle("Coinholder Polling")
+            .zashiBack { store.send(.dismissFlow) }
         }
     }
 
     // MARK: - Round Header
 
-    private var statusLabel: String {
-        switch store.activeSession?.status {
-        case .active: return "Active"
-        case .tallying: return "Tallying"
-        case .finalized: return "Finalized"
-        default: return "Unknown"
-        }
-    }
-
-    private var statusColor: Color {
-        switch store.activeSession?.status {
-        case .active: return .green
-        case .tallying: return .orange
-        case .finalized: return .blue
-        default: return .secondary
-        }
-    }
-
     @ViewBuilder
-    private func roundHeaderCard() -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Title
+    private func roundHeader() -> some View {
+        VStack(alignment: .leading, spacing: 8) {
             Text(store.votingRound.title)
-                .zFont(.semiBold, size: 18, style: Design.Text.primary)
+                .zFont(.semiBold, size: 24, style: Design.Text.primary)
+                .fixedSize(horizontal: false, vertical: true)
 
-            // Round description
             if !store.votingRound.description.isEmpty {
                 Text(store.votingRound.description)
-                    .zFont(.regular, size: 13, style: Design.Text.secondary)
+                    .zFont(size: 14, style: Design.Text.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            // Detail pills
-            HStack(spacing: 0) {
-                detailPill(
-                    label: "Snapshot",
-                    value: store.votingRound.snapshotDate.formatted(date: .abbreviated, time: .omitted)
-                )
-                Spacer()
-                detailPill(
-                    label: "Ended",
-                    value: store.votingRound.votingEnd.formatted(date: .abbreviated, time: .omitted)
-                )
-                Spacer()
-                // Status pill
-                VStack(spacing: 2) {
-                    Text("Status")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.secondary)
-                    Text(statusLabel)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(statusColor)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(statusColor.opacity(0.12))
-                        .clipShape(Capsule())
-                }
+            if let record = store.voteRecord {
+                Text(metaLine(for: record))
+                    .zFont(size: 12, style: Design.Text.tertiary)
+                    .padding(.top, 4)
             }
         }
-        .padding(16)
-        .background(Design.Surfaces.bgPrimary.color(colorScheme))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(Design.Surfaces.strokeSecondary.color(colorScheme), lineWidth: 1)
-        )
-        .padding(.top, 8)
     }
 
-    @ViewBuilder
-    private func detailPill(label: String, value: String) -> some View {
-        VStack(spacing: 2) {
-            Text(label)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                .foregroundStyle(Design.Text.primary.color(colorScheme))
-        }
+    private func metaLine(for record: Voting.VoteRecord) -> String {
+        let dateString = record.votedAt.formatted(.dateTime.month(.abbreviated).day())
+        return "Voted \(dateString)  ·  Voting Power \(formatWeightZEC(record.votingWeight)) ZEC"
     }
 
     // MARK: - Proposal Result Card
 
     @ViewBuilder
-    private func proposalResultCard(proposal: Proposal, index: Int) -> some View {
+    private func proposalResultCard(proposal: Proposal) -> some View {
         let tally = store.tallyResults[proposal.id]
         let rawEntries = tally?.entries ?? []
         // Backfill missing options so they always display (even with 0 votes).
@@ -159,106 +115,120 @@ struct ResultsView: View {
         let totalAmount = entries.reduce(UInt64(0)) { $0 + $1.amount }
         let winningEntry = totalAmount > 0 ? entries.max(by: { $0.amount < $1.amount }) : nil
 
-        VStack(alignment: .leading, spacing: 10) {
-            // Header: number badge + title
-            HStack(spacing: 8) {
-                Text(String(format: "%02d", index + 1))
-                    .zFont(.semiBold, size: 11, style: Design.Text.secondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.secondary.opacity(0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-
-                Text(proposal.title)
-                    .zFont(.semiBold, size: 15, style: Design.Text.primary)
-                    .lineLimit(2)
+        VStack(alignment: .leading, spacing: 12) {
+            // Top row: ZIP pill + Winner pill
+            HStack(spacing: 0) {
+                ZIPBadge(zipNumber: proposal.zipNumber ?? "ZIP-TBD")
+                Spacer()
+                winnerBadge(winningEntry: winningEntry, proposal: proposal)
             }
 
-            // Proposal description
+            // Title
+            Text(proposal.title)
+                .zFont(.semiBold, size: 18, style: Design.Text.primary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // Description (truncated)
             if !proposal.description.isEmpty {
                 Text(proposal.description)
-                    .zFont(.regular, size: 12, style: Design.Text.secondary)
+                    .zFont(size: 14, style: Design.Text.tertiary)
+                    .lineLimit(2)
+                    .truncationMode(.tail)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            // Result highlight
-            if let winner = winningEntry, totalAmount > 0 {
-                let winnerLabel = optionLabel(for: winner.decision, proposal: proposal)
-                HStack(spacing: 6) {
-                    Image(systemName: "checkmark.seal.fill")
-                        .foregroundStyle(colorForDecision(winner.decision, proposal: proposal))
-                    Text("Result: \(winnerLabel)")
-                        .zFont(.semiBold, size: 14, style: Design.Text.primary)
+            // Result bars
+            VStack(spacing: 12) {
+                ForEach(entries, id: \.decision) { entry in
+                    let isWinner = entry.decision == winningEntry?.decision
+                    resultBar(
+                        label: optionLabel(for: entry.decision, proposal: proposal),
+                        amount: entry.amount,
+                        total: totalAmount,
+                        winnerColor: winnerColorForDecision(
+                            entry.decision,
+                            total: proposal.options.count,
+                            colorScheme: colorScheme
+                        ),
+                        isWinner: isWinner
+                    )
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(colorForDecision(winner.decision, proposal: proposal).opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
-
-            // Result bars — use option labels from proposal.options when available
-            ForEach(entries.sorted(by: { $0.decision < $1.decision }), id: \.decision) { entry in
-                let label = optionLabel(for: entry.decision, proposal: proposal)
-                let isWinner = entry.decision == winningEntry?.decision
-                resultBar(
-                    label: label,
-                    amount: entry.amount,
-                    total: totalAmount,
-                    color: colorForDecision(entry.decision, proposal: proposal),
-                    isWinner: isWinner
-                )
-            }
+            .padding(.top, 4)
 
             if entries.isEmpty {
                 Text("No votes recorded")
                     .zFont(.medium, size: 13, style: Design.Text.tertiary)
             }
 
-            // Total
             if totalAmount > 0 {
                 Text("Total: \(tallyToZEC(totalAmount))")
-                    .zFont(.medium, size: 12, style: Design.Text.tertiary)
+                    .zFont(size: 12, style: Design.Text.tertiary)
+                    .padding(.top, 4)
             }
         }
         .padding(16)
-        .background(Design.Surfaces.bgPrimary.color(colorScheme))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(Design.Surfaces.strokeSecondary.color(colorScheme), lineWidth: 1)
-        )
+        .background(Design.Surfaces.bgSecondary.color(colorScheme))
+        .clipShape(RoundedRectangle(cornerRadius: Design.Radius._2xl))
+    }
+
+    // MARK: - Winner Badge
+
+    @ViewBuilder
+    private func winnerBadge(winningEntry: TallyResult.Entry?, proposal: Proposal) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "checkmark.seal")
+                .font(.system(size: 14, weight: .regular))
+                .foregroundStyle(Design.Text.primary.color(colorScheme))
+
+            HStack(spacing: 4) {
+                Text("Winner:")
+                    .zFont(.medium, size: 13, style: Design.Text.primary)
+
+                if let winner = winningEntry {
+                    let label = optionLabel(for: winner.decision, proposal: proposal)
+                    let color = winnerColorForDecision(
+                        winner.decision,
+                        total: proposal.options.count,
+                        colorScheme: colorScheme
+                    )
+                    Text(label)
+                        .zFont(.semiBold, size: 13, color: color)
+                } else {
+                    Text("—")
+                        .zFont(.medium, size: 13, style: Design.Text.tertiary)
+                }
+            }
+        }
     }
 
     // MARK: - Result Bar
 
     @ViewBuilder
-    private func resultBar(label: String, amount: UInt64, total: UInt64, color: Color, isWinner: Bool) -> some View {
+    private func resultBar(label: String, amount: UInt64, total: UInt64, winnerColor: Color, isWinner: Bool) -> some View {
         let ratio = total > 0 ? Double(amount) / Double(total) : 0
+        let labelColor: Color = isWinner ? winnerColor : Design.Text.tertiary.color(colorScheme)
+        let fillColor: Color = isWinner ? winnerColor : Design.Text.tertiary.color(colorScheme)
 
-        VStack(spacing: 4) {
-            HStack(spacing: 8) {
-                HStack(spacing: 4) {
-                    if isWinner {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 12))
-                            .foregroundStyle(color)
-                    }
-                    Text(label)
-                        .zFont(isWinner ? .semiBold : .medium, size: 13, style: Design.Text.secondary)
-                }
-                .frame(width: 80, alignment: .leading)
-
-                GeometryReader { geo in
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(color.opacity(isWinner ? 0.9 : 0.5))
-                        .frame(width: geo.size.width * ratio)
-                }
-                .frame(height: 8)
-
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(label)
+                    .zFont(.medium, size: 14, color: labelColor)
+                Spacer()
                 Text(tallyToZEC(amount))
-                    .zFont(.medium, size: 12, style: Design.Text.primary)
-                    .frame(width: 80, alignment: .trailing)
+                    .zFont(.medium, size: 14, color: labelColor)
             }
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Design.Surfaces.bgTertiary.color(colorScheme))
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(fillColor)
+                        .frame(width: max(0, geo.size.width * ratio))
+                }
+            }
+            .frame(height: 8)
         }
     }
 
@@ -274,9 +244,5 @@ struct ResultsView: View {
         case 1: return "Oppose"
         default: return "Option \(decision)"
         }
-    }
-
-    private func colorForDecision(_ decision: UInt32, proposal: Proposal) -> Color {
-        voteOptionColor(for: decision, total: proposal.options.count)
     }
 }

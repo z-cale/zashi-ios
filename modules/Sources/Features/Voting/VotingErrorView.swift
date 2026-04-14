@@ -19,11 +19,11 @@ struct VotingErrorView: View {
                     // Icon
                     ZStack {
                         Circle()
-                            .fill(Color.red.opacity(0.12))
+                            .fill(Design.Utility.ErrorRed._500.color(colorScheme).opacity(0.12))
                             .frame(width: 72, height: 72)
                         Image(systemName: "exclamationmark.circle")
                             .font(.system(size: 32))
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Design.Utility.ErrorRed._500.color(colorScheme))
                     }
 
                     // Title

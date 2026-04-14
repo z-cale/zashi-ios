@@ -872,6 +872,7 @@ let package = Package(
                 "SupportDataGenerator",
                 "TorSetup",
                 "UIComponents",
+                "Voting",
                 "WalletStorage",
                 "WhatsNew",
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),

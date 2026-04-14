@@ -3,9 +3,59 @@ import Generated
 import UIComponents
 import VotingModels
 
+// MARK: - Voting Header Icons
+
+struct VotingHeaderIcons: View {
+    @Environment(\.colorScheme) var colorScheme
+    var isKeystone: Bool = false
+    var showCheckmark: Bool = false
+
+    var body: some View {
+        HStack(spacing: -4) {
+            if isKeystone {
+                Asset.Assets.Brandmarks.brandmarkKeystone.image
+                    .resizable()
+                    .frame(width: 48, height: 48)
+                    .clipShape(Circle())
+            } else {
+                ZStack {
+                    Circle()
+                        .fill(Design.Text.primary.color(colorScheme))
+                        .frame(width: 48, height: 48)
+                    Asset.Assets.zashiLogo.image
+                        .zImage(size: 22, color: Design.Surfaces.bgPrimary.color(colorScheme))
+                }
+            }
+
+            if showCheckmark {
+                ZStack {
+                    Circle()
+                        .fill(Design.Utility.SuccessGreen._500.color(colorScheme).opacity(0.15))
+                        .frame(width: 48, height: 48)
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 24))
+                        .foregroundStyle(Design.Utility.SuccessGreen._500.color(colorScheme))
+                }
+                .zIndex(1)
+            } else {
+                ZStack {
+                    Circle()
+                        .fill(Design.Surfaces.bgTertiary.color(colorScheme))
+                        .frame(width: 48, height: 48)
+                    Image(systemName: "hand.thumbsup")
+                        .font(.system(size: 22, weight: .regular))
+                        .foregroundStyle(Design.Text.primary.color(colorScheme))
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Prototype Banner
 
 struct PrototypeBanner: View {
+    @Environment(\.colorScheme) var colorScheme
+
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "wrench.and.screwdriver")
@@ -13,11 +63,11 @@ struct PrototypeBanner: View {
             Text("Prototype \u{2014} some features are mocked")
                 .font(.caption)
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(Design.Surfaces.bgPrimary.color(colorScheme))
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.purple.opacity(0.8))
+        .background(Design.Utility.Purple._500.color(colorScheme).opacity(0.8))
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }
@@ -26,9 +76,22 @@ struct PrototypeBanner: View {
 
 /// Color for a vote option index. For 2-option proposals this preserves the classic
 /// green (Support) / red (Oppose) look; for 3+ options it cycles through a palette.
-func voteOptionColor(for index: UInt32, total: Int) -> Color {
-    if total == 2 { return index == 0 ? .green : .red }
-    let palette: [Color] = [.green, .red, .blue, .purple, .orange, .teal, .pink, .indigo]
+func voteOptionColor(for index: UInt32, total: Int, colorScheme: ColorScheme) -> Color {
+    if total == 2 {
+        return index == 0
+            ? Design.Utility.SuccessGreen._500.color(colorScheme)
+            : Design.Utility.ErrorRed._500.color(colorScheme)
+    }
+    let palette: [Color] = [
+        Design.Utility.SuccessGreen._500.color(colorScheme),
+        Design.Utility.ErrorRed._500.color(colorScheme),
+        Design.Utility.HyperBlue._500.color(colorScheme),
+        Design.Utility.Purple._500.color(colorScheme),
+        Design.Utility.WarningYellow._500.color(colorScheme),
+        Design.Utility.Indigo._500.color(colorScheme),
+        Design.Utility.Brand._500.color(colorScheme),
+        Design.Utility.Gray._500.color(colorScheme)
+    ]
     return palette[Int(index) % palette.count]
 }
 
@@ -39,9 +102,49 @@ func voteOptionIcon(for index: UInt32, total: Int) -> String {
     return "\(index + 1).circle.fill"
 }
 
+// MARK: - Vote Badge (for proposal cards)
+
+/// Resolves a `VoteChoice` to a human label and color for display on proposal cards.
+func voteBadgeInfo(for choice: VoteChoice, proposal: Proposal, colorScheme: ColorScheme) -> (label: String, color: Color) {
+    let options = proposal.options
+    let hasAbstain = options.contains { $0.label.localizedCaseInsensitiveContains("abstain") }
+    let synthesizedAbstainIndex: UInt32? = hasAbstain ? nil : (options.map(\.index).max() ?? 0) + 1
+    let abstainBlue = Design.Utility.HyperBlue._700.color(colorScheme)
+
+    if let syntheticIdx = synthesizedAbstainIndex, choice.index == syntheticIdx {
+        return ("Abstain", abstainBlue)
+    }
+
+    if let matched = options.first(where: { $0.index == choice.index }) {
+        if matched.label.localizedCaseInsensitiveContains("abstain") {
+            return (matched.label, abstainBlue)
+        }
+        let color = voteOptionColor(for: matched.index, total: options.count, colorScheme: colorScheme)
+        return (matched.label, color)
+    }
+
+    return ("Voted", Design.Utility.Gray._500.color(colorScheme))
+}
+
+struct VoteBadgePill: View {
+    let label: String
+    let color: Color
+
+    var body: some View {
+        Text(label)
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(color)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(color.opacity(0.12))
+            .clipShape(Capsule())
+    }
+}
+
 // MARK: - Vote Chip
 
 struct VoteChip: View {
+    @Environment(\.colorScheme) var colorScheme
     let choice: VoteChoice?
     var label: String?
     var color: Color?
@@ -49,7 +152,7 @@ struct VoteChip: View {
     var body: some View {
         Text(resolvedLabel)
             .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(choice != nil ? .white : .secondary)
+            .foregroundStyle(choice != nil ? Design.Surfaces.bgPrimary.color(colorScheme) : .secondary)
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
             .background(resolvedBackground)
@@ -96,6 +199,7 @@ struct ZIPBadge: View {
 // MARK: - ZKP Status Banner
 
 struct ZKPStatusBanner: View {
+    @Environment(\.colorScheme) var colorScheme
     let proofStatus: ProofStatus
     var isPreparingWitnesses: Bool = false
 
@@ -116,13 +220,13 @@ struct ZKPStatusBanner: View {
                 }
             case .complete:
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Design.Utility.SuccessGreen._500.color(colorScheme))
                     .font(.caption)
                 Text("Ready to vote")
                     .font(.caption)
             case .failed(let error):
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Design.Utility.WarningYellow._500.color(colorScheme))
                     .font(.caption)
                 Text(error)
                     .font(.caption)
@@ -173,6 +277,7 @@ struct VoteCommitmentStubCard: View {
 // MARK: - Share Submission Status
 
 struct ShareSubmissionStatus: View {
+    @Environment(\.colorScheme) var colorScheme
     let confirmed: Int
     let total: Int
     let onInfoTapped: () -> Void
@@ -185,14 +290,14 @@ struct ShareSubmissionStatus: View {
         HStack(spacing: 6) {
             if isComplete {
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Design.Utility.SuccessGreen._500.color(colorScheme))
                     .font(.caption)
                 Text("Vote confirmed")
                     .font(.caption)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Design.Utility.SuccessGreen._500.color(colorScheme))
             } else {
                 Image(systemName: "clock.arrow.circlepath")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Design.Utility.WarningYellow._500.color(colorScheme))
                     .font(.caption)
                 Text("Submitting vote")
                     .font(.caption)
@@ -268,11 +373,15 @@ struct ShareInfoSheet: View {
             // Status icon
             ZStack {
                 Circle()
-                    .fill(allConfirmed ? Color.green.opacity(0.12) : Color.orange.opacity(0.12))
+                    .fill(allConfirmed
+                          ? Design.Utility.SuccessGreen._500.color(colorScheme).opacity(0.12)
+                          : Design.Utility.WarningYellow._500.color(colorScheme).opacity(0.12))
                     .frame(width: 56, height: 56)
                 Image(systemName: allConfirmed ? "checkmark.shield.fill" : "lock.shield")
                     .font(.system(size: 24))
-                    .foregroundStyle(allConfirmed ? .green : .orange)
+                    .foregroundStyle(allConfirmed
+                                    ? Design.Utility.SuccessGreen._500.color(colorScheme)
+                                    : Design.Utility.WarningYellow._500.color(colorScheme))
             }
             .padding(.bottom, 16)
 
@@ -298,7 +407,7 @@ struct ShareInfoSheet: View {
                     HStack(spacing: 6) {
                         Image(systemName: "clock")
                             .font(.subheadline)
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(Design.Utility.WarningYellow._500.color(colorScheme))
                         Text("Expected by \(formatted)")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
@@ -321,7 +430,7 @@ struct ShareInfoSheet: View {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: "eye.slash")
                     .font(.subheadline)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Design.Utility.WarningYellow._500.color(colorScheme))
                     .padding(.top, 2)
 
                 Text("Each share is sent at different times across various servers throughout the vote period to further protect your privacy. Each value is encrypted, and only the total amount across all voters will be revealed at the end of the vote period.")
@@ -331,7 +440,7 @@ struct ShareInfoSheet: View {
             .padding(14)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.03))
+                    .fill(Design.Surfaces.bgTertiary.color(colorScheme))
             )
             .padding(.horizontal, 24)
 

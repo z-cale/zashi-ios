@@ -10,7 +10,6 @@ import ZcashLightClientKit
 import UIComponents
 import DeeplinkWarning
 import OSStatusError
-import Voting
 
 // Path
 import CurrencyConversionSetup
@@ -255,17 +254,6 @@ private extension RootView {
                                     ) {
                                         store.send(.backToHomeFromServerSwitchTapped)
                                     }
-                                }
-                                .transition(.move(edge: .trailing))
-                                .zIndex(1)
-                            } else if path == .voting {
-                                NavigationStack {
-                                    VotingView(
-                                        store:
-                                            store.scope(
-                                                state: \.votingState,
-                                                action: \.voting)
-                                    )
                                 }
                                 .transition(.move(edge: .trailing))
                                 .zIndex(1)

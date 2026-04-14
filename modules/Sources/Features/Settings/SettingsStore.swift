@@ -22,6 +22,7 @@ import RecoveryPhraseDisplay
 import Scan
 import ServerSetup
 import SendFeedback
+import Voting
 import WhatsNew
 import TorSetup
 
@@ -45,6 +46,7 @@ public struct Settings {
         case scan(Scan)
         case sendUsFeedback(SendFeedback)
         case torSetup(TorSetup)
+        case voting(Voting)
         case whatsNew(WhatsNew)
     }
     
@@ -88,6 +90,7 @@ public struct Settings {
         case backToHomeTapped
         case binding(BindingAction<Settings.State>)
         case checkFundsForAddress(String)
+        case coinholderPollingTapped
         case currencyConversionTapped
         case enableEnhanceTransactionMode
         case enableRecoverFundsMode
@@ -139,6 +142,9 @@ public struct Settings {
                         await send(.addressBookTapped)
                     }
                 }
+
+            case .coinholderPollingTapped:
+                return .none
 
             case .currencyConversionTapped:
                 return .none

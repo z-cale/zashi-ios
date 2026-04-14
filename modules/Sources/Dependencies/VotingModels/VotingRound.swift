@@ -4,6 +4,7 @@ public struct VotingRound: Equatable {
     public let id: String
     public let title: String
     public let description: String
+    public let discussionURL: URL?
     public let snapshotHeight: UInt64
     public let snapshotDate: Date
     public let votingStart: Date
@@ -14,6 +15,7 @@ public struct VotingRound: Equatable {
         id: String,
         title: String,
         description: String,
+        discussionURL: URL? = nil,
         snapshotHeight: UInt64,
         snapshotDate: Date,
         votingStart: Date,
@@ -23,6 +25,7 @@ public struct VotingRound: Equatable {
         self.id = id
         self.title = title
         self.description = description
+        self.discussionURL = discussionURL
         self.snapshotHeight = snapshotHeight
         self.snapshotDate = snapshotDate
         self.votingStart = votingStart

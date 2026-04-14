@@ -16,6 +16,7 @@ import RecoveryPhraseDisplay
 import Scan
 import ServerSetup
 import SendFeedback
+import Voting
 import WhatsNew
 import TorSetup
 
@@ -49,7 +50,14 @@ public struct SettingsView: View {
                                     store.send(.currencyConversionTapped)
                                 }
                             }
-                            
+
+                            ActionRow(
+                                icon: Image(systemName: "checkmark.seal"),
+                                title: String(localizable: .settingsCoinholderPolling)
+                            ) {
+                                store.send(.coinholderPollingTapped)
+                            }
+
                             ActionRow(
                                 icon: Asset.Assets.Icons.settings.image,
                                 title: String(localizable: .settingsAdvanced)
@@ -147,6 +155,8 @@ public struct SettingsView: View {
                     SendFeedbackView(store: store)
                 case let .torSetup(store):
                     TorSetupView(store: store)
+                case let .voting(store):
+                    VotingView(store: store)
                 case let .whatsNew(store):
                     WhatsNewView(store: store)
                 }

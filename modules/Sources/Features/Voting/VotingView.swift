@@ -12,7 +12,7 @@ public struct VotingView: View {
 
     public var body: some View {
         WithPerceptionTracking {
-            let screen = store.screenStack.last ?? .proposalList
+            let screen = store.screenStack.last ?? .pollsList
             screenView(for: screen)
                 .id(screenId(screen))
                 .animation(.easeInOut(duration: 0.3), value: store.selectedProposal?.id)
@@ -32,9 +32,10 @@ public struct VotingView: View {
     // swiftlint:disable:next cyclomatic_complexity
     private func screenId(_ screen: Voting.State.Screen) -> String {
         switch screen {
+        case .howToVote: return "howToVote"
         case .loading: return "loading"
         case .noRounds: return "noRounds"
-        case .roundsList: return "roundsList"  // Dead — kept for exhaustive switch
+        case .pollsList: return "pollsList"
         case .delegationSigning: return "delegationSigning"
         case .proposalList: return "proposalList"
         case .proposalDetail(let id): return "detail-\(id)"
@@ -42,6 +43,8 @@ public struct VotingView: View {
         case .ineligible: return "ineligible"
         case .tallying: return "tallying"
         case .results: return "results"
+        case .reviewVotes: return "reviewVotes"
+        case .confirmSubmission: return "confirmSubmission"
         case .error: return "error"
         case .walletSyncing: return "walletSyncing"
         }
@@ -52,16 +55,22 @@ public struct VotingView: View {
         for screen: Voting.State.Screen
     ) -> some View {
         switch screen {
+        case .howToVote:
+            HowToVoteView(store: store)
         case .loading:
             ProgressView()
         case .noRounds:
             NoRoundsView(store: store)
-        case .roundsList:
-            NoRoundsView(store: store)  // Dead — kept for exhaustive switch
+        case .pollsList:
+            PollsListView(store: store)
         case .delegationSigning:
             DelegationSigningView(store: store)
         case .proposalList:
-            ProposalListView(store: store)
+            ProposalListView(store: store, mode: .voting)
+        case .reviewVotes:
+            ProposalListView(store: store, mode: .review)
+        case .confirmSubmission:
+            ConfirmSubmissionView(store: store)
         case .proposalDetail:
             if let proposal = store.selectedProposal {
                 ProposalDetailView(store: store, proposal: proposal)

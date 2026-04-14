@@ -749,7 +749,6 @@
 			buildConfigurationList = 0D26AF91299E8196005260EE /* Build configuration list for PBXNativeTarget "secant-mainnet" */;
 			buildPhases = (
 				9E599F2F2C3EEE5A000E4997 /* Generate PartnerKeys.plist */,
-				9E89DF8A2CD3971E002E5317 /* Localizations */,
 				34968BEE2ABDC6FA0027F495 /* Swiftgen */,
 				0D26AE99299E8196005260EE /* SwiftLint */,
 				0D26AE9A299E8196005260EE /* Sources */,
@@ -779,7 +778,6 @@
 			buildConfigurationList = 0D4E7A2A26B364180058B01E /* Build configuration list for PBXNativeTarget "secant-testnet" */;
 			buildPhases = (
 				9E599F2E2C3EEE25000E4997 /* Generate PartnerKeys.plist */,
-				9E89DF8D2CD39751002E5317 /* Localizations */,
 				34968BED2ABDC6310027F495 /* Swiftgen */,
 				6696BA8726F0B1D200D5C875 /* SwiftLint */,
 				0D4E7A0126B364170058B01E /* Sources */,
@@ -844,7 +842,6 @@
 			buildConfigurationList = 9E41FFB72CB2814500783CFD /* Build configuration list for PBXNativeTarget "zashi-testnet" */;
 			buildPhases = (
 				9E41FFA12CB2814500783CFD /* Generate PartnerKeys.plist */,
-				9E89DF8C2CD39740002E5317 /* Localizations */,
 				9E41FFA32CB2814500783CFD /* Swiftgen */,
 				9E41FFA42CB2814500783CFD /* SwiftLint */,
 				9E41FFA52CB2814500783CFD /* Sources */,
@@ -1367,63 +1364,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/zsh;
 			shellScript = "swiftlint_version=0.50.3\n\nif which swiftlint >/dev/null; then\n  if [[ $(swiftlint version) != $swiftlint_version ]]; then\n    echo \"warning: Compatible SwiftLint version not installed, download version $swiftlint_version from https://github.com/realm/SwiftLint. Currently installed version is $(swiftlint version)\"\n  fi\n   \n  echo \"Linting the Secant code\"\n  swiftlint lint --config .swiftlint.yml\n  echo \"Linting tests\"\n  swiftlint lint --config .swiftlint_tests.yml\nelse\n  echo \"warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint\"\nfi\n";
-		};
-		9E89DF8A2CD3971E002E5317 /* Localizations */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = Localizations;
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/zsh;
-			shellScript = "cp modules/Sources/Generated/Resources/en.lproj/Localizable.strings secant/Resources/en.lproj/\ncp modules/Sources/Generated/Resources/es.lproj/Localizable.strings secant/Resources/es.lproj/\n";
-		};
-		9E89DF8C2CD39740002E5317 /* Localizations */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = Localizations;
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/zsh;
-			shellScript = "cp modules/Sources/Generated/Resources/en.lproj/Localizable.strings secant/Resources/en.lproj/\ncp modules/Sources/Generated/Resources/es.lproj/Localizable.strings secant/Resources/es.lproj/\n";
-		};
-		9E89DF8D2CD39751002E5317 /* Localizations */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = Localizations;
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/zsh;
-			shellScript = "cp modules/Sources/Generated/Resources/en.lproj/Localizable.strings secant/Resources/en.lproj/\ncp modules/Sources/Generated/Resources/es.lproj/Localizable.strings secant/Resources/es.lproj/\n";
 		};
 		AA000001VOTING000000000001 /* Copy Voting Config */ = {
 			isa = PBXShellScriptBuildPhase;

@@ -114,6 +114,8 @@ public struct Voting { // swiftlint:disable:this type_body_length
     var votingAPI
     @Dependency(\.votingCrypto)
     var votingCrypto
+    @Dependency(\.localAuthentication)
+    var localAuthentication
     @Dependency(\.walletStorage)
     var walletStorage
     @Dependency(\.zcashSDKEnvironment)
@@ -121,9 +123,10 @@ public struct Voting { // swiftlint:disable:this type_body_length
     @ObservableState
     public struct State: Equatable {
         public enum Screen: Equatable {
+            case howToVote
             case loading
             case noRounds
-            case roundsList
+            case pollsList
             case delegationSigning
             case proposalList
             case proposalDetail(id: UInt32)
@@ -131,6 +134,8 @@ public struct Voting { // swiftlint:disable:this type_body_length
             case ineligible
             case tallying
             case results
+            case reviewVotes
+            case confirmSubmission
             case error(String)
             case walletSyncing
         }
@@ -205,7 +210,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
             public static let totalSteps = 4
         }
 
-        public var screenStack: [Screen] = [.loading]
+        public var screenStack: [Screen] = [.howToVote]
         public var votingRound: VotingRound
         public var votes: [UInt32: VoteChoice] = [:]
         public var votingWeight: UInt64
@@ -267,6 +272,20 @@ public struct Voting { // swiftlint:disable:this type_body_length
         public var selectedWalletAccount: WalletAccount?
         @Shared(.inMemory(.toast))
         public var toast: Toast.Edge?
+        @Shared(.appStorage(.hasSeenHowToVote))
+        public var hasSeenHowToVote: Bool = false
+
+        /// Persisted record of when the user confirmed their vote in the current
+        /// round, loaded from UserDefaults in `roundTapped`. Used by Results to
+        /// render "Voted MMM d · Voting Power X.XXX ZEC" days after submission.
+        public var voteRecord: VoteRecord?
+
+        /// Per-round persisted vote records keyed by round ID, populated by a
+        /// one-time scan of UserDefaults during `allRoundsLoaded`. The polls
+        /// list uses this to render the Voted pill on active-round cards and
+        /// the "X of Y voted" indicator on closed cards without re-querying
+        /// UserDefaults from the view.
+        public var voteRecords: [String: VoteRecord] = [:]
 
         public var selectedProposalId: UInt32?
 
@@ -356,7 +375,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
         }
 
         public var currentScreen: Screen {
-            screenStack.last ?? .proposalList
+            screenStack.last ?? .pollsList
         }
 
         public var votingWeightZECString: String {
@@ -487,6 +506,21 @@ public struct Voting { // swiftlint:disable:this type_body_length
             votingRound.proposals.first { votes[$0.id] == nil }?.id
         }
 
+        public var nextUndraftedProposalId: UInt32? {
+            votingRound.proposals.first { draftVotes[$0.id] == nil }?.id
+        }
+
+        public var allDrafted: Bool {
+            !votingRound.proposals.isEmpty &&
+            votingRound.proposals.allSatisfy { draftVotes[$0.id] != nil }
+        }
+
+        /// Whether the current proposal detail was opened from the review screen.
+        public var isEditingFromReview: Bool {
+            guard case .proposalDetail = screenStack.last else { return false }
+            return screenStack.dropLast().last == .reviewVotes
+        }
+
         public var activeProposalId: UInt32? {
             selectedProposalId ?? nextUnvotedProposalId
         }
@@ -541,6 +575,8 @@ public struct Voting { // swiftlint:disable:this type_body_length
         case dismissFlow
         case goBack
         case backToRoundsList
+        case howToVoteContinueTapped
+        case viewMyVotesTapped(roundId: String)
 
         // Rounds list
         case allRoundsLoaded([VotingSession])
@@ -610,6 +646,10 @@ public struct Voting { // swiftlint:disable:this type_body_length
         case backToList
         case nextProposalDetail
         case previousProposalDetail
+        case navigateToReview
+        case confirmUnanswered
+        case dismissUnanswered
+        case navigateToConfirmation
 
         // Round status polling
         case startRoundStatusPolling
@@ -638,6 +678,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
         case setDraftVote(proposalId: UInt32, choice: VoteChoice)
         case clearDraftVote(proposalId: UInt32)
         case submitAllDrafts
+        case authenticationSucceeded
         case batchSubmissionProgress(currentIndex: Int, totalCount: Int, proposalId: UInt32)
         case batchVoteSubmitted(proposalId: UInt32, choice: VoteChoice)
         case batchVoteFailed(proposalId: UInt32, error: String)
@@ -672,11 +713,22 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 }
                 return .none
 
+            case .howToVoteContinueTapped:
+                state.$hasSeenHowToVote.withLock { $0 = true }
+                state.screenStack = [.loading]
+                return .send(.initialize)
+
+            case .viewMyVotesTapped(let roundId):
+                // Reuse roundTapped to load the session and navigate into it.
+                // The proposal list will show confirmed votes in read-only mode.
+                return .send(.roundTapped(roundId))
+
             case .backToRoundsList:
-                // Cancel per-round effects and re-fetch rounds (auto-navigates via allRoundsLoaded)
+                // Cancel per-round effects and re-fetch rounds. allRoundsLoaded
+                // sees the cleared activeSession and re-renders the polls list.
                 state.screenStack = [.loading]
                 // Clean up persisted drafts for the current round
-                Self.clearPersistedDrafts(roundId: state.roundId)
+                Self.clearPersistedDrafts(walletId: state.walletId, roundId: state.roundId)
                 // Reset per-round state
                 state.activeSession = nil
                 state.votes = [:]
@@ -702,6 +754,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 state.showShareInfoSheet = false
                 state.shareTrackingStatus = .idle
                 state.shareDelegations = []
+                state.voteRecord = nil
                 // Refresh the rounds list
                 return .merge(
                     .cancel(id: cancelStateStreamId),
@@ -726,24 +779,29 @@ public struct Voting { // swiftlint:disable:this type_body_length
                     State.RoundListItem(roundNumber: index + 1, session: session)
                 }
 
-                // Auto-navigate: active round takes priority, else latest completed.
-                // Skip if the user is already viewing the same round (guards against
-                // onAppear re-firing .initialize and restarting the pipeline mid-vote).
-                if let activeItem = state.activeRounds.first {
-                    guard activeItem.id != state.activeSession?.voteRoundId.hexString else {
-                        return .none
+                // Populate voteRecords from persisted UserDefaults so the polls
+                // list can render the Voted pill and "X of Y voted" indicator
+                // for rounds the user has already confirmed in. Per-round, sync
+                // read — fast even for tens of rounds.
+                let walletId = state.walletId
+                var loadedRecords: [String: VoteRecord] = [:]
+                for item in state.allRounds {
+                    if let record = Self.loadVoteRecord(walletId: walletId, roundId: item.id) {
+                        loadedRecords[item.id] = record
                     }
-                    return .send(.roundTapped(activeItem.id))
-                } else if let completedItem = state.completedRounds.first {
-                    guard completedItem.id != state.activeSession?.voteRoundId.hexString else {
-                        return .none
-                    }
-                    return .send(.roundTapped(completedItem.id))
-                } else {
-                    // No rounds — show empty state
-                    state.screenStack = [.noRounds]
-                    return .none
                 }
+                state.voteRecords = loadedRecords
+
+                // Always land on the polls list when there are any rounds, so the
+                // user explicitly chooses which one to enter — even if there's only
+                // one. Empty case still shows the noRounds empty state. Guards
+                // against onAppear re-firing while the user is mid-vote.
+                if state.allRounds.isEmpty {
+                    state.screenStack = [.noRounds]
+                } else if state.activeSession == nil {
+                    state.screenStack = [.pollsList]
+                }
+                return .none
 
             case .roundTapped(let roundId):
                 guard let item = state.allRounds.first(where: { $0.id == roundId }) else { return .none }
@@ -751,13 +809,14 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 state.activeSession = session
                 state.roundId = session.voteRoundId.hexString
                 state.votingRound = sessionBackedRound(from: session, title: item.title, fallback: state.votingRound)
+                state.voteRecord = Self.loadVoteRecord(walletId: state.walletId, roundId: state.roundId)
                 reconcileProposalState(&state)
 
                 switch session.status {
                 case .active:
                     // Go straight to proposal list — the witness/proof pipeline
                     // runs in the background once voting weight is loaded.
-                    state.screenStack = [.proposalList]
+                    state.screenStack = [.pollsList, .proposalList]
                     return .merge(
                         .cancel(id: cancelNewRoundPollingId),
                         .send(.startRoundStatusPolling),
@@ -830,8 +889,18 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 let roundId = session.voteRoundId.hexString
                 let accountUUID: [UInt8] = state.selectedWalletAccount?.id.id ?? []
                 return .run { [votingCrypto, mnemonic, walletStorage, sdkSynchronizer] send in
-                    // Check wallet sync progress before querying notes
-                    let walletScannedHeight = UInt64(sdkSynchronizer.latestState().latestBlockHeight)
+                    // Check wallet sync progress before querying notes.
+                    // The SDK synchronizer may report height 0 briefly on a
+                    // fresh app launch before it hydrates its persisted state.
+                    // Retry a few times to avoid a false "not synced" screen.
+                    var walletScannedHeight = UInt64(sdkSynchronizer.latestState().latestBlockHeight)
+                    if walletScannedHeight == 0 {
+                        for _ in 0..<5 {
+                            try await Task.sleep(for: .seconds(1))
+                            walletScannedHeight = UInt64(sdkSynchronizer.latestState().latestBlockHeight)
+                            if walletScannedHeight > 0 { break }
+                        }
+                    }
                     if walletScannedHeight < snapshotHeight {
                         logger.info("Wallet scanned to \(walletScannedHeight), snapshot at \(snapshotHeight) — not synced yet")
                         await send(.walletNotSynced(scannedHeight: walletScannedHeight, snapshotHeight: snapshotHeight))
@@ -911,7 +980,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 // Don't set delegationProofStatus here — verifyWitnesses will set it
                 // only for fresh rounds, avoiding a brief flash for cached rounds.
                 // Restore persisted draft votes (survives app termination)
-                let restored = Self.loadDrafts(roundId: state.roundId)
+                let restored = Self.loadDrafts(walletId: state.walletId, roundId: state.roundId)
                 // Only keep drafts for proposals that haven't been submitted yet
                 state.draftVotes = restored.filter { state.votes[$0.key] == nil }
                 if !state.draftVotes.isEmpty {
@@ -919,7 +988,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                     logger.info("Restored \(draftCount) persisted draft votes")
                 }
 
-                state.screenStack = [.proposalList]
+                state.screenStack = [.pollsList, .proposalList]
                 return .merge(
                     .publisher {
                         votingCrypto.stateStream()
@@ -1010,6 +1079,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                     nullifierIMTRoot: session.nullifierIMTRoot,
                     creator: session.creator,
                     description: session.description,
+                    discussionURL: session.discussionURL,
                     proposals: session.proposals,
                     status: newStatus,
                     createdAtHeight: session.createdAtHeight,
@@ -1475,7 +1545,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
             case .roundResumeChecked(let alreadyAuthorized):
                 if alreadyAuthorized {
                     state.delegationProofStatus = .complete
-                    state.screenStack = [.proposalList]
+                    state.screenStack = [.pollsList, .proposalList]
                     state.witnessStatus = .completed
                     // Restore bundleCount from the DB so vote casting knows how many bundles to iterate.
                     // Start state stream to sync votes and hotkey from the existing round,
@@ -1594,7 +1664,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
             case .copyHotkeyAddress:
                 if let address = state.hotkeyAddress {
                     pasteboard.setString(address.redacted)
-                    state.$toast.withLock { $0 = .top(L10n.General.copiedToTheClipboard) }
+                    state.$toast.withLock { $0 = .top(String(localizable: .generalCopiedToTheClipboard)) }
                 }
                 return .none
 
@@ -1779,7 +1849,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
             case .openKeystoneSignatureScan:
                 keystoneHandler.resetQRDecoder()
                 var scanState = Scan.State.initial
-                scanState.instructions = "Scan signed delegation QR from Keystone"
+                scanState.instructions = "Scan Keystone QR code\nto sign the transaction"
                 scanState.checkers = [.keystoneVotingDelegationPCZTScanChecker]
                 state.keystoneScan = scanState
                 return .none
@@ -1858,10 +1928,15 @@ public struct Voting { // swiftlint:disable:this type_body_length
                     state.keystoneSigningStatus = .idle
                     return .merge(persistEffect, .send(.delegationApproved))
                 } else {
-                    // All bundles signed — navigate to proposal list and start batch proving
+                    // All bundles signed — pop delegation signing and show the
+                    // submission screen with the authorizing progress bar while
+                    // the ZKP proof is generated and delegation TX submitted.
                     state.keystoneSigningStatus = .idle
-                    state.screenStack = [.proposalList]
                     state.delegationProofStatus = .generating(progress: 0)
+                    state.batchSubmissionStatus = .authorizing
+                    if state.screenStack.last == .delegationSigning {
+                        state.screenStack.removeLast()
+                    }
                     return .merge(persistEffect, .send(.keystoneAllBundlesSigned))
                 }
 
@@ -1990,7 +2065,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 if UInt32(savedSigs.count) >= state.bundleCount {
                     // All bundles were signed — go straight to batch proving
                     state.keystoneSigningStatus = .idle
-                    state.screenStack = [.proposalList]
+                    state.screenStack = [.pollsList, .proposalList]
                     state.delegationProofStatus = .generating(progress: 0)
                     return .send(.keystoneAllBundlesSigned)
                 } else {
@@ -2043,7 +2118,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 state.pendingGovernancePczt = nil
                 state.pendingUnsignedDelegationPczt = nil
                 state.keystoneSigningStatus = .idle
-                state.screenStack = [.proposalList]
+                state.screenStack = [.pollsList, .proposalList]
                 state.delegationProofStatus = .generating(progress: 0)
 
                 // Delete skipped bundles from DB so proof_generated reflects reality
@@ -2079,20 +2154,24 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 }
 
                 let roundId = state.roundId
-                // Auto-resume batch submission after delegation completes.
-                let resumeAction: Action?
+                // Auto-resume batch submission immediately so the UI transitions
+                // to .submitting without a visible gap. Run cleanup in parallel.
                 if state.pendingBatchSubmission {
                     state.pendingBatchSubmission = false
-                    resumeAction = .submitAllDrafts
-                } else {
-                    resumeAction = nil
+                    // Reset so canSubmitBatch passes — .authorizing makes
+                    // isBatchSubmitting true which blocks the guard.
+                    state.batchSubmissionStatus = .idle
+                    return .merge(
+                        .send(.authenticationSucceeded),
+                        .run { [votingCrypto] _ in
+                            await votingCrypto.refreshState(roundId)
+                            try await votingCrypto.clearRecoveryState(roundId)
+                        }
+                    )
                 }
-                return .run { [votingCrypto] send in
+                return .run { [votingCrypto] _ in
                     await votingCrypto.refreshState(roundId)
                     try await votingCrypto.clearRecoveryState(roundId)
-                    if let resumeAction {
-                        await send(resumeAction)
-                    }
                 }
 
             case .delegationProofFailed(let error):
@@ -2123,7 +2202,14 @@ public struct Voting { // swiftlint:disable:this type_body_length
             // MARK: - Proposal Detail
 
             case let .castVote(proposalId, choice):
-                return .send(.setDraftVote(proposalId: proposalId, choice: choice))
+                guard state.votes[proposalId] == nil else { return .none }
+                if state.draftVotes[proposalId] == choice {
+                    state.draftVotes.removeValue(forKey: proposalId)
+                } else {
+                    state.draftVotes[proposalId] = choice
+                }
+                Self.persistDrafts(state.draftVotes, walletId: state.walletId, roundId: state.roundId)
+                return .none
 
             case .voteSubmissionBundleStarted(let index):
                 state.currentVoteBundleIndex = index
@@ -2160,16 +2246,63 @@ public struct Voting { // swiftlint:disable:this type_body_length
             case .backToList:
                 if case .proposalDetail = state.currentScreen {
                     state.screenStack.removeLast()
+                } else if case .confirmSubmission = state.currentScreen {
+                    state.screenStack.removeLast()
+                } else if case .reviewVotes = state.currentScreen {
+                    state.screenStack.removeLast()
+                } else if case .proposalList = state.currentScreen, state.screenStack.count > 1 {
+                    state.screenStack.removeLast()
                 }
                 return .none
 
             case .nextProposalDetail:
-                if let index = state.detailProposalIndex,
-                    index + 1 < state.votingRound.proposals.count {
+                guard let index = state.detailProposalIndex else { return .none }
+                let isLast = index == state.votingRound.proposals.count - 1
+
+                if isLast {
+                    if state.allDrafted {
+                        // All answered → review
+                        state.screenStack.removeLast()
+                        state.screenStack.append(.reviewVotes)
+                    }
+                    // If unanswered → .none; view handles sheet display
+                } else {
                     let nextId = state.votingRound.proposals[index + 1].id
                     state.selectedProposalId = nextId
                     state.screenStack.removeLast()
                     state.screenStack.append(.proposalDetail(id: nextId))
+                }
+                return .none
+
+            case .navigateToReview:
+                state.screenStack.append(.reviewVotes)
+                return .none
+
+            case .navigateToConfirmation:
+                state.screenStack.append(.confirmSubmission)
+                return .none
+
+            case .confirmUnanswered:
+                // Auto-draft Abstain for every unanswered proposal, then go to review.
+                for proposal in state.votingRound.proposals where state.draftVotes[proposal.id] == nil {
+                    let abstainIndex: UInt32
+                    if let existing = proposal.options.first(where: {
+                        $0.label.localizedCaseInsensitiveContains("abstain")
+                    }) {
+                        abstainIndex = existing.index
+                    } else {
+                        abstainIndex = (proposal.options.map(\.index).max() ?? 0) + 1
+                    }
+                    state.draftVotes[proposal.id] = .option(abstainIndex)
+                }
+                Self.persistDrafts(state.draftVotes, walletId: state.walletId, roundId: state.roundId)
+                state.screenStack.removeLast()
+                state.screenStack.append(.reviewVotes)
+                return .none
+
+            case .dismissUnanswered:
+                if case .proposalDetail = state.currentScreen {
+                    state.screenStack.removeLast()
                 }
                 return .none
 
@@ -2187,7 +2320,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
             case let .setDraftVote(proposalId, choice):
                 guard state.votes[proposalId] == nil else { return .none }
                 state.draftVotes[proposalId] = choice
-                Self.persistDrafts(state.draftVotes, roundId: state.roundId)
+                Self.persistDrafts(state.draftVotes, walletId: state.walletId, roundId: state.roundId)
                 // Pop back to the list so the user can continue drafting other proposals
                 if case .proposalDetail = state.currentScreen {
                     state.screenStack.removeLast()
@@ -2196,12 +2329,44 @@ public struct Voting { // swiftlint:disable:this type_body_length
 
             case let .clearDraftVote(proposalId):
                 state.draftVotes.removeValue(forKey: proposalId)
-                Self.persistDrafts(state.draftVotes, roundId: state.roundId)
+                Self.persistDrafts(state.draftVotes, walletId: state.walletId, roundId: state.roundId)
                 return .none
 
             case .submitAllDrafts:
                 guard state.canSubmitBatch else { return .none }
                 guard state.activeSession != nil else { return .none }
+
+                // Non-Keystone: require device authentication (FaceID/TouchID/Passcode)
+                // before proceeding. Keystone users authenticate via their hardware device.
+                // Skip auth when resuming after delegation (pendingBatchSubmission flow).
+                if !state.isKeystoneUser && !state.pendingBatchSubmission {
+                    return .run { [localAuthentication] send in
+                        guard await localAuthentication.authenticate() else { return }
+                        await send(.authenticationSucceeded)
+                    }
+                }
+                return .send(.authenticationSucceeded)
+
+            case .authenticationSucceeded:
+                guard state.canSubmitBatch || state.isBatchSubmitting else { return .none }
+                guard state.activeSession != nil else { return .none }
+
+                // Record the moment the user confirmed their vote. Persisted so the
+                // Results screen can show "Voted MMM d · Voting Power X.XXX ZEC"
+                // and the polls list can show "X of Y voted" long after the
+                // active session is gone. Recorded once per round —
+                // re-confirmations (e.g. retry after a partial failure) keep the
+                // original timestamp.
+                if state.voteRecord == nil {
+                    let record = VoteRecord(
+                        votedAt: Date(),
+                        votingWeight: state.votingWeight,
+                        proposalCount: state.draftVotes.count
+                    )
+                    state.voteRecord = record
+                    Self.persistVoteRecord(record, walletId: state.walletId, roundId: state.roundId)
+                    state.voteRecords[state.roundId] = record
+                }
 
                 // Keystone: delegation requires QR signing UI, so route through
                 // the delegation signing screen before batch submission.
@@ -2479,7 +2644,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
             case let .batchVoteSubmitted(proposalId, choice):
                 state.votes[proposalId] = choice
                 state.draftVotes.removeValue(forKey: proposalId)
-                Self.persistDrafts(state.draftVotes, roundId: state.roundId)
+                Self.persistDrafts(state.draftVotes, walletId: state.walletId, roundId: state.roundId)
                 return .none
 
             case let .batchVoteFailed(proposalId, error):
@@ -2494,7 +2659,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 state.batchSubmissionStatus = .completed(successCount: successCount, failCount: failCount)
                 // Clean up persisted drafts when all votes succeeded
                 if failCount == 0 {
-                    Self.clearPersistedDrafts(roundId: state.roundId)
+                    Self.clearPersistedDrafts(walletId: state.walletId, roundId: state.roundId)
                 }
                 return .none
 
@@ -2518,7 +2683,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
             // MARK: - Complete
 
             case .doneTapped:
-                state.screenStack = [.proposalList]
+                state.screenStack = [.pollsList, .proposalList]
                 return .none
             }
         }
@@ -2535,6 +2700,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
             id: session.voteRoundId.hexString,
             title: resolvedTitle,
             description: session.description.isEmpty ? fallback.description : session.description,
+            discussionURL: session.discussionURL ?? fallback.discussionURL,
             snapshotHeight: session.snapshotHeight,
             snapshotDate: fallback.snapshotDate,
             votingStart: fallback.votingStart,
@@ -2669,10 +2835,66 @@ public struct Voting { // swiftlint:disable:this type_body_length
     // MARK: - Draft Persistence
 
     private static let draftPrefix = "voting.draftVotes."
+    private static let voteRecordPrefix = "voting.voteRecord."
+
+    /// Persisted record of when the user confirmed their vote in a given round,
+    /// the voting weight at that moment, and how many proposals they voted on.
+    /// Survives app termination so the Results screen can render
+    /// "Voted Feb 15 · Voting Power X.XXX ZEC" and the polls list can show the
+    /// "X of Y voted" indicator days after submission, even though the live
+    /// session state is per-session.
+    public struct VoteRecord: Equatable {
+        public let votedAt: Date
+        public let votingWeight: UInt64
+        public let proposalCount: Int
+
+        public init(votedAt: Date, votingWeight: UInt64, proposalCount: Int) {
+            self.votedAt = votedAt
+            self.votingWeight = votingWeight
+            self.proposalCount = proposalCount
+        }
+    }
+
+    private static func voteRecordKey(walletId: String, roundId: String) -> String {
+        "\(voteRecordPrefix)\(walletId)|\(roundId)"
+    }
+
+    static func persistVoteRecord(_ record: VoteRecord, walletId: String, roundId: String) {
+        let key = voteRecordKey(walletId: walletId, roundId: roundId)
+        UserDefaults.standard.set(
+            [
+                "votedAt": record.votedAt.timeIntervalSince1970,
+                "votingWeight": NSNumber(value: record.votingWeight),
+                "proposalCount": NSNumber(value: record.proposalCount)
+            ],
+            forKey: key
+        )
+    }
+
+    static func loadVoteRecord(walletId: String, roundId: String) -> VoteRecord? {
+        let key = voteRecordKey(walletId: walletId, roundId: roundId)
+        guard let raw = UserDefaults.standard.dictionary(forKey: key),
+              let votedAtUnix = raw["votedAt"] as? Double,
+              let weight = (raw["votingWeight"] as? NSNumber)?.uint64Value else {
+            return nil
+        }
+        // proposalCount was added later — older records default to 0 and the
+        // view falls back to the round's full proposal count for display.
+        let count = (raw["proposalCount"] as? NSNumber)?.intValue ?? 0
+        return VoteRecord(
+            votedAt: Date(timeIntervalSince1970: votedAtUnix),
+            votingWeight: weight,
+            proposalCount: count
+        )
+    }
+
+    private static func draftKey(walletId: String, roundId: String) -> String {
+        "\(draftPrefix)\(walletId)|\(roundId)"
+    }
 
     /// Persist draft votes to UserDefaults so they survive app termination.
-    static func persistDrafts(_ drafts: [UInt32: VoteChoice], roundId: String) {
-        let key = "\(draftPrefix)\(roundId)"
+    static func persistDrafts(_ drafts: [UInt32: VoteChoice], walletId: String, roundId: String) {
+        let key = draftKey(walletId: walletId, roundId: roundId)
         if drafts.isEmpty {
             UserDefaults.standard.removeObject(forKey: key)
         } else {
@@ -2684,8 +2906,8 @@ public struct Voting { // swiftlint:disable:this type_body_length
     }
 
     /// Load persisted draft votes for a round.
-    static func loadDrafts(roundId: String) -> [UInt32: VoteChoice] {
-        let key = "\(draftPrefix)\(roundId)"
+    static func loadDrafts(walletId: String, roundId: String) -> [UInt32: VoteChoice] {
+        let key = draftKey(walletId: walletId, roundId: roundId)
         guard let raw = UserDefaults.standard.dictionary(forKey: key) as? [String: UInt32] else {
             return [:]
         }
@@ -2697,8 +2919,8 @@ public struct Voting { // swiftlint:disable:this type_body_length
     }
 
     /// Remove all persisted drafts for a round.
-    static func clearPersistedDrafts(roundId: String) {
-        UserDefaults.standard.removeObject(forKey: "\(draftPrefix)\(roundId)")
+    static func clearPersistedDrafts(walletId: String, roundId: String) {
+        UserDefaults.standard.removeObject(forKey: draftKey(walletId: walletId, roundId: roundId))
     }
 }
 

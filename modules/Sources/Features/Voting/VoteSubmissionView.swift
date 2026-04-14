@@ -5,6 +5,7 @@ import UIComponents
 import VotingModels
 
 struct VoteCompletionView: View {
+    @Environment(\.colorScheme) var colorScheme
     let store: StoreOf<Voting>
 
     var body: some View {
@@ -15,7 +16,7 @@ struct VoteCompletionView: View {
                 VStack(spacing: 20) {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 64))
-                        .foregroundStyle(.green)
+                        .foregroundStyle(Design.Utility.SuccessGreen._500.color(colorScheme))
 
                     Text("Votes Submitted!")
                         .zFont(.semiBold, size: 22, style: Design.Text.primary)

@@ -7479,6 +7479,17 @@
         }
       }
     },
+    "settings.coinholderPolling" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coinholder Polling"
+          }
+        }
+      }
+    },
     "settings.deleteZashi" : {
       "extractionState" : "manual",
       "localizations" : {

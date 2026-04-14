@@ -20,11 +20,11 @@ struct IneligibleView: View {
                         // Icon
                         ZStack {
                             Circle()
-                                .fill(Color.orange.opacity(0.12))
+                                .fill(Design.Utility.WarningYellow._500.color(colorScheme).opacity(0.12))
                                 .frame(width: 72, height: 72)
                             Image(systemName: "exclamationmark.triangle")
                                 .font(.system(size: 32))
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(Design.Utility.WarningYellow._500.color(colorScheme))
                         }
 
                         // Title
