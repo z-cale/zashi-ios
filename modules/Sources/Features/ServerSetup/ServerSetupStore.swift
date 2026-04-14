@@ -28,6 +28,10 @@ extension LightWalletEndpoint: @retroactive Equatable {
 public struct ServerSetup {
     let streamingCallTimeoutInMillis = ZcashSDKEnvironment.ZcashSDKConstants.streamingCallTimeoutInMillis
 
+    private enum CancelID {
+        case evaluateServers
+    }
+
     @ObservableState
     public struct State: Equatable {
         @Presents var alert: AlertState<Action>?
@@ -36,10 +40,12 @@ public struct ServerSetup {
         var isEvaluatingServers = false
         var isUpdatingServer = false
         var activeSyncServer: String = ""
+        var recommendedSyncServer: String?
         var initialConnectionMode: UserPreferencesStorage.ConnectionMode
         var initialCustomServer: String = ""
         var initialSelectedServer: String?
         var network: NetworkType = .mainnet
+        var serverEvaluationRequestID = 0
         var selectedServer: String?
         var servers: [ZcashSDKEnvironment.Server]
         var topKServers: [ZcashSDKEnvironment.Server]
@@ -59,7 +65,9 @@ public struct ServerSetup {
             customServer: String = "",
             isEvaluatingServers: Bool = false,
             isUpdatingServer: Bool = false,
+            recommendedSyncServer: String? = nil,
             network: NetworkType = .mainnet,
+            serverEvaluationRequestID: Int = 0,
             selectedServer: String? = nil,
             servers: [ZcashSDKEnvironment.Server] = [],
             topKServers: [ZcashSDKEnvironment.Server] = []
@@ -68,8 +76,10 @@ public struct ServerSetup {
             self.customServer = customServer
             self.isEvaluatingServers = isEvaluatingServers
             self.isUpdatingServer = isUpdatingServer
+            self.recommendedSyncServer = recommendedSyncServer
             self.initialConnectionMode = connectionMode
             self.network = network
+            self.serverEvaluationRequestID = serverEvaluationRequestID
             self.selectedServer = selectedServer
             self.servers = servers
             self.topKServers = topKServers
@@ -80,7 +90,7 @@ public struct ServerSetup {
         case alert(PresentationAction<Action>)
         case binding(BindingAction<State>)
         case connectionModeChanged(UserPreferencesStorage.ConnectionMode)
-        case evaluatedServers([LightWalletEndpoint])
+        case evaluatedServers(Int, [LightWalletEndpoint])
         case evaluateServers
         case onAppear
         case refreshServersTapped
@@ -106,6 +116,7 @@ public struct ServerSetup {
                 state.network = zcashSDKEnvironment.network.networkType
                 let syncConfig = zcashSDKEnvironment.serverConfig()
                 state.activeSyncServer = syncConfig.serverString()
+                state.recommendedSyncServer = nil
 
                 if !state.topKServers.isEmpty {
                     let allServers = ZcashSDKEnvironment.servers(for: state.network)
@@ -156,6 +167,8 @@ public struct ServerSetup {
 
             case .evaluateServers:
                 state.isEvaluatingServers = true
+                state.serverEvaluationRequestID += 1
+                let requestID = state.serverEvaluationRequestID
                 let network = state.network
                 return .run { send in
                     let kBestServers = await sdkSynchronizer.evaluateBestOf(
@@ -167,10 +180,15 @@ public struct ServerSetup {
                         network
                     )
 
-                    await send(.evaluatedServers(kBestServers))
+                    await send(.evaluatedServers(requestID, kBestServers))
+                }
+                .cancellable(id: CancelID.evaluateServers, cancelInFlight: true)
+
+            case .evaluatedServers(let requestID, let bestServers):
+                guard requestID == state.serverEvaluationRequestID else {
+                    return .none
                 }
 
-            case .evaluatedServers(let bestServers):
                 state.isEvaluatingServers = false
                 state.topKServers = bestServers.map {
                     if ZcashSDKEnvironment.Server.default.value(for: state.network) == $0.server() {
@@ -183,11 +201,7 @@ public struct ServerSetup {
                 state.servers = allServers.filter {
                     !state.topKServers.contains($0)
                 }
-
-                // In automatic mode, update the displayed active sync server to the best one
-                if state.connectionMode == .automatic, let best = bestServers.first {
-                    state.activeSyncServer = "\(best.host):\(best.port)"
-                }
+                state.recommendedSyncServer = bestServers.first?.server()
 
                 return .none
 

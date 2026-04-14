@@ -11,7 +11,6 @@ import ZcashLightClientKit
 
 import Generated
 import UIComponents
-import UserPreferencesStorage
 import ZcashSDKEnvironment
 
 public struct ServerSetupView: View {
@@ -169,6 +168,7 @@ public struct ServerSetupView: View {
                     }
                     .padding(5)
                 }
+                .disabled(store.isEvaluatingServers)
             }
             .screenHorizontalPadding()
             .padding(.top, 15)

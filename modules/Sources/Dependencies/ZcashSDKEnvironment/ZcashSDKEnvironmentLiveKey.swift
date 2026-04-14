@@ -51,13 +51,8 @@ extension ZcashSDKEnvironment {
             }
             return defaultEndpoint(for: network).serverConfig()
         }
-        
-        // Migrate lwdX.zcash-infra.com servers to custom
-        if serverConfig.host.hasSuffix(".zcash-infra.com") {
-            return UserPreferencesStorage.ServerConfig(host: serverConfig.host, port: serverConfig.port, isCustom: true)
-        }
-        
-        return serverConfig
+
+        return normalizedStoredServerConfig(serverConfig)
     }
     
     static func migrateVersion1IfNeeded() {
@@ -112,13 +107,17 @@ extension ZcashSDKEnvironment {
 
         guard userStoredPreferences.selectedServers() == nil else { return }
 
-        if let existing = userStoredPreferences.server(), existing.isCustom {
-            do {
-                try userStoredPreferences.setSelectedServers(.init(mode: .manual, servers: [existing]))
-            } catch {
-                LoggerProxy.error("[Migration] Failed to persist custom server selection: \(error)")
+        if let existing = userStoredPreferences.server() {
+            let normalizedServer = normalizedStoredServerConfig(existing)
+
+            if normalizedServer.isCustom {
+                do {
+                    try userStoredPreferences.setSelectedServers(.init(mode: .manual, servers: [normalizedServer]))
+                } catch {
+                    LoggerProxy.error("[Migration] Failed to persist custom server selection: \(error)")
+                }
+                return
             }
-            return
         }
 
         do {
@@ -126,6 +125,21 @@ extension ZcashSDKEnvironment {
         } catch {
             LoggerProxy.error("[Migration] Failed to persist default server selection: \(error)")
         }
+    }
+
+    static func normalizedStoredServerConfig(
+        _ serverConfig: UserPreferencesStorage.ServerConfig
+    ) -> UserPreferencesStorage.ServerConfig {
+        // Preserve historical zcash-infra hosts as manual/custom selections.
+        if serverConfig.host.hasSuffix(".zcash-infra.com") {
+            return UserPreferencesStorage.ServerConfig(
+                host: serverConfig.host,
+                port: serverConfig.port,
+                isCustom: true
+            )
+        }
+
+        return serverConfig
     }
 
     static func storedServerConfig() -> UserPreferencesStorage.ServerConfig? {
