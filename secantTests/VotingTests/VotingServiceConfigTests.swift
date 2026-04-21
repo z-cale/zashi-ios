@@ -62,6 +62,30 @@ final class VotingServiceConfigTests: XCTestCase {
         XCTAssertTrue(canonical.contains(#"\t"#), "should escape tabs")
     }
 
+    /// Pins the canonicalization to Rust `serde_json::to_string` byte output for a
+    /// title containing `/`. Swift's `JSONSerialization` default would emit `\/`; Rust
+    /// emits `/`. A mismatch here would cause every wallet to hard-fail `proposalsHashMismatch`
+    /// against the chain's `proposals_hash` for any round with a slash in a title or label.
+    /// The reference hash is computed from: `shasum -a 256` of the serde_json form below.
+    func testCanonicalJSONDoesNotEscapeForwardSlashInTitles() {
+        let proposal = VotingServiceConfig.Proposal(
+            id: 1,
+            title: "NU5/NU6 activation",
+            options: [
+                .init(index: 0, label: "Yes"),
+                .init(index: 1, label: "No"),
+            ]
+        )
+        let canonical = VotingServiceConfig.canonicalProposalsJSON([proposal])
+        XCTAssertEqual(
+            canonical,
+            #"[{"id":1,"title":"NU5/NU6 activation","options":[{"index":0,"label":"Yes"},{"index":1,"label":"No"}]}]"#
+        )
+        let hex = VotingServiceConfig.computeProposalsHash([proposal])
+            .map { String(format: "%02x", $0) }.joined()
+        XCTAssertEqual(hex, "45abc7c68ccaded8775d0a2ecdb1344c8f2edfab4dc0503bd757e0d8e07598e1")
+    }
+
     // MARK: - Decode regression for post-Part-E CDN JSON
 
     func testDecodeFromFullZIP1244CompliantJSON() throws {

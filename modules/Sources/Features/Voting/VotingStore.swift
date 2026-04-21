@@ -779,7 +779,11 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 // Per ZIP 1244, the config is published per-round and must pin exactly
                 // one on-chain round via `vote_round_id`; the `proposals_hash` commits
                 // to the proposals the user will see.
-                if let config = state.serviceConfig {
+                //
+                // Skip the binding check when the chain has no rounds at all — that's a
+                // legitimate "no active voting" state, not a tampered config, and the
+                // existing noRounds-screen branch below handles it.
+                if let config = state.serviceConfig, !sessions.isEmpty {
                     let configRoundId = config.voteRoundId.lowercased()
                     guard let matchingSession = sessions.first(where: { $0.voteRoundId.hexString == configRoundId }) else {
                         let chainIds = sessions.map { $0.voteRoundId.hexString.prefix(16) }.joined(separator: ", ")

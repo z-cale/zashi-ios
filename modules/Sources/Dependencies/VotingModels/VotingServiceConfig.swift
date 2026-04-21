@@ -214,9 +214,15 @@ extension VotingServiceConfig {
         return "[\(parts.joined(separator: ","))]"
     }
 
+    /// JSON-encode a Swift string to match the Rust `serde_json::to_string` byte output.
+    /// `JSONEncoder` with `.withoutEscapingSlashes` leaves `/` un-escaped (Swift default: `\/`);
+    /// otherwise defaults match serde_json (UTF-8 for non-ASCII, `\uXXXX` for control chars).
+    /// The chain server computes `proposals_hash` using `serde_json`, so divergence here would
+    /// cause a hard-fail `proposalsHashMismatch` any time a proposal title or label contained `/`.
     private static func jsonEncodedString(_ s: String) -> String {
-        let data = try! JSONSerialization.data(withJSONObject: [s], options: [])
-        let str = String(decoding: data, as: UTF8.self)
-        return String(str.dropFirst().dropLast())
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.withoutEscapingSlashes]
+        let data = try! encoder.encode(s)
+        return String(decoding: data, as: UTF8.self)
     }
 }
