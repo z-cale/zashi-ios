@@ -102,7 +102,15 @@ struct VotingConfigErrorView: View {
 
                 Spacer()
 
+                // "Retry" gives the user a self-recovery path: if the config was stale due to
+                // a round transition the single lazy-refresh didn't catch (e.g. the publisher
+                // updated the CDN after the first fetch), tapping Retry re-runs the full init
+                // pipeline with a fresh config fetch.
                 VStack(spacing: 12) {
+                    ZashiButton("Retry") {
+                        store.send(.retryConfigFetch)
+                    }
+
                     ZashiButton("Dismiss", type: .ghost) {
                         store.send(.dismissFlow)
                     }

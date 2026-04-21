@@ -235,6 +235,10 @@ public struct Voting { // swiftlint:disable:this type_body_length
         /// Resolved service config from CDN or local override.
         public var serviceConfig: VotingServiceConfig?
 
+        /// Set after one attempted lazy config refresh during the current session.
+        /// Prevents a refresh → allRoundsLoaded → refresh loop when the fresh config still doesn't match.
+        public var hasAttemptedConfigRefresh: Bool = false
+
         /// Tally results for finalized rounds (proposalId → TallyResult).
         public var tallyResults: [UInt32: TallyResult] = [:]
         public var isLoadingTallyResults: Bool = false
@@ -588,6 +592,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
         case initialize
         case serviceConfigLoaded(VotingServiceConfig)
         case configUnsupported(String)
+        case retryConfigFetch
         case activeSessionLoaded(VotingSession)
         case noActiveRound
         case votingWeightLoaded(UInt64, [NoteInfo])
@@ -785,9 +790,27 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 // existing noRounds-screen branch below handles it.
                 if let config = state.serviceConfig, !sessions.isEmpty {
                     let configRoundId = config.voteRoundId.lowercased()
+                    let hasMatch = sessions.contains { $0.voteRoundId.hexString == configRoundId }
+
+                    // Stale-config recovery: if the cached config doesn't match any on-chain
+                    // round (e.g. a new round activated while the wallet was open), attempt
+                    // one fresh fetch before bricking. The flag gates the retry so we don't
+                    // loop when the fresh config still doesn't bind.
+                    if !hasMatch && !state.hasAttemptedConfigRefresh {
+                        state.hasAttemptedConfigRefresh = true
+                        logger.info("Config round \(configRoundId.prefix(16))... not in chain rounds; refreshing config")
+                        return .run { [votingAPI] send in
+                            let fresh = try await votingAPI.fetchServiceConfig()
+                            await send(.serviceConfigLoaded(fresh))
+                        } catch: { error, send in
+                            let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                            await send(.configUnsupported(message))
+                        }
+                    }
+
                     guard let matchingSession = sessions.first(where: { $0.voteRoundId.hexString == configRoundId }) else {
                         let chainIds = sessions.map { $0.voteRoundId.hexString.prefix(16) }.joined(separator: ", ")
-                        logger.error("Config round \(configRoundId.prefix(16))... not found in chain rounds [\(chainIds)]")
+                        logger.error("Config round \(configRoundId.prefix(16))... not found in chain rounds [\(chainIds)] after refresh")
                         let error = VotingConfigError.roundIdMismatch(
                             configRoundId: configRoundId,
                             chainRoundId: sessions.first?.voteRoundId.hexString ?? ""
@@ -891,6 +914,14 @@ public struct Voting { // swiftlint:disable:this type_body_length
             case .configUnsupported(let message):
                 state.screenStack = [.configError(message)]
                 return .none
+
+            case .retryConfigFetch:
+                // User tapped "Retry" on the configError screen. Reset the single-retry flag,
+                // clear cached config, return to loading, and re-run the full init pipeline.
+                state.hasAttemptedConfigRefresh = false
+                state.serviceConfig = nil
+                state.screenStack = [.loading]
+                return .send(.initialize)
 
             case .serviceConfigLoaded(let config):
                 state.serviceConfig = config
