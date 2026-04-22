@@ -960,15 +960,18 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 let roundId = session.voteRoundId.hexString
                 let accountUUID: [UInt8] = state.selectedWalletAccount?.id.id ?? []
                 return .run { [votingCrypto, mnemonic, walletStorage, sdkSynchronizer] send in
-                    // Check wallet sync progress before querying notes.
-                    // The SDK synchronizer may report height 0 briefly on a
-                    // fresh app launch before it hydrates its persisted state.
-                    // Retry a few times to avoid a false "not synced" screen.
-                    var walletScannedHeight = UInt64(sdkSynchronizer.latestState().latestBlockHeight)
+                    // Gate on the contiguous-from-birthday scan progress, not the chain tip.
+                    // Spend-before-Sync scans head-first and birthday-first in parallel, so
+                    // a height past the snapshot from the head side doesn't imply the
+                    // snapshot itself has been scanned — getWalletNotes would return
+                    // incomplete state and downstream voting would silently fail.
+                    // The SDK synchronizer may report height 0 briefly on a fresh app
+                    // launch before it hydrates its persisted state — retry a few times.
+                    var walletScannedHeight = UInt64(sdkSynchronizer.latestState().fullyScannedHeight)
                     if walletScannedHeight == 0 {
                         for _ in 0..<5 {
                             try await Task.sleep(for: .seconds(1))
-                            walletScannedHeight = UInt64(sdkSynchronizer.latestState().latestBlockHeight)
+                            walletScannedHeight = UInt64(sdkSynchronizer.latestState().fullyScannedHeight)
                             if walletScannedHeight > 0 { break }
                         }
                     }
@@ -1082,7 +1085,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 return .run { [sdkSynchronizer] send in
                     while !Task.isCancelled {
                         try await Task.sleep(for: .seconds(2))
-                        let height = UInt64(sdkSynchronizer.latestState().latestBlockHeight)
+                        let height = UInt64(sdkSynchronizer.latestState().fullyScannedHeight)
                         await send(.walletSyncProgressUpdated(height))
                         if height >= snapshotHeight {
                             await send(.startActiveRoundPipeline)
