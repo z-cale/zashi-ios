@@ -1411,7 +1411,7 @@ public struct Voting { // swiftlint:disable:this type_body_length
                                         roundId, bundleIndex, proposalId,
                                         candidate.share.shareIndex, newServers
                                     )
-                                    logger.info("Resubmitted share \(candidate.share.shareIndex) to \(newServers.count) new server(s)")
+                                    logger.info("Resubmitted share p\(proposalId)s\(candidate.share.shareIndex) to \(newServers.count) new server(s)")
                                 }
                             }
                         } catch {
