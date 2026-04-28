@@ -295,38 +295,6 @@ extension VotingAPIClient: DependencyKey {
     static var liveValue: Self {
         Self(
             fetchServiceConfig: {
-                // [REVERT BEFORE MERGE] PR review override — return a hardcoded config
-                // pointing at the temporary review chain (orchard-0.12 z2 single-val
-                // bootstrap) with PIR on the shared nf-server on zally. Bypasses the
-                // local-override → CDN → validate path entirely so reviewers can check
-                // out the branch and run without any extra setup. Revert this whole
-                // commit to restore the normal resolution flow.
-                return VotingServiceConfig(
-                    configVersion: 1,
-                    voteRoundId: String(repeating: "0", count: 64),
-                    voteServers: [
-                        VotingServiceConfig.ServiceEndpoint(
-                            url: "https://vote-zodl-3.4.0.164-92-225-227.sslip.io",
-                            label: "Primary"
-                        )
-                    ],
-                    pirEndpoints: [
-                        VotingServiceConfig.ServiceEndpoint(
-                            url: "https://46-101-255-48.sslip.io/nullifier",
-                            label: "PIR Server"
-                        )
-                    ],
-                    snapshotHeight: 0,
-                    voteEndTime: 0,
-                    proposals: [],
-                    supportedVersions: VotingServiceConfig.SupportedVersions(
-                        pir: ["v0"],
-                        voteProtocol: "v0",
-                        tally: "v0",
-                        voteServer: "v1"
-                    )
-                )
-
                 // 1. Check for local override in app bundle (debug builds only).
                 //    A malformed override is a developer error — propagate the decode error.
                 #if DEBUG
