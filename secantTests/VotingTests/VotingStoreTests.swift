@@ -87,6 +87,48 @@ final class VotingStoreTests: XCTestCase {
         XCTAssertNil(store.state.activeSession)
     }
 
+    func testViewResultsTappedWithLoadedFinalizedRoundOpensResultsImmediately() async throws {
+        let finalized = makeVotingSession(idByte: 0x01, status: .finalized, createdAtHeight: 1, title: "Closed")
+        var initialState = Voting.State(walletId: "view-results-loaded")
+        initialState.screenStack = [.loading]
+
+        let store = TestStore(initialState: initialState) {
+            Voting()
+        }
+        store.exhaustivity = .off
+        store.dependencies.votingAPI.fetchTallyResults = { _ in [:] }
+
+        await store.send(.allRoundsLoaded([finalized]))
+        XCTAssertEqual(store.state.screenStack, [.pollsList])
+
+        await store.send(.viewResultsTapped(roundId: roundId(for: finalized)))
+
+        XCTAssertEqual(store.state.screenStack, [.results])
+        XCTAssertEqual(store.state.entryIntent, .normal)
+        XCTAssertEqual(store.state.roundId, roundId(for: finalized))
+        XCTAssertEqual(store.state.votingRound.title, "Closed")
+    }
+
+    func testOpenRoundFinalizationTransitionsDirectlyToResults() async throws {
+        let active = makeVotingSession(idByte: 0x01, status: .active, createdAtHeight: 1, title: "Open")
+        var initialState = Voting.State(walletId: "open-round-finalized")
+        initialState.screenStack = [.pollsList, .proposalList]
+        initialState.activeSession = active
+        initialState.roundId = roundId(for: active)
+
+        let store = TestStore(initialState: initialState) {
+            Voting()
+        }
+        store.exhaustivity = .off
+        store.dependencies.votingAPI.fetchTallyResults = { _ in [:] }
+
+        await store.send(.roundStatusUpdated(roundId: active.voteRoundId, .finalized))
+
+        XCTAssertEqual(store.state.screenStack, [.results])
+        XCTAssertEqual(store.state.roundId, roundId(for: active))
+        XCTAssertEqual(store.state.activeSession?.status, .finalized)
+    }
+
     func testNonKeystoneDelegationApprovalStartsDelegationProof() async throws {
         var initialState = Voting.State(
             votingRound: MockVotingService.votingRound,
