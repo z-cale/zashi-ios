@@ -68,7 +68,7 @@ struct ResultsView: View {
             }
             .applyScreenBackground()
             .screenTitle("Coinholder Polling")
-            .zashiBack { store.send(.dismissFlow) }
+            .zashiBack { store.send(.backToRoundsList) }
         }
     }
 
