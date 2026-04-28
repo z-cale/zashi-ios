@@ -220,7 +220,7 @@ struct PollsListView: View {
             }
         case .closed:
             ZashiButton("View Results", type: .tertiary, infinityWidth: false) {
-                store.send(.viewResultsTapped(roundId: item.id))
+                store.send(.roundTapped(item.id))
             }
         }
     }

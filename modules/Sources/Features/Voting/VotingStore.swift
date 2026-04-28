@@ -141,11 +141,6 @@ public struct Voting { // swiftlint:disable:this type_body_length
             case walletSyncing
         }
 
-        public enum EntryIntent: Equatable {
-            case normal
-            case results(roundId: String?)
-        }
-
         public struct RoundListItem: Equatable, Identifiable {
             public var id: String { session.voteRoundId.hexString }
             public let roundNumber: Int
@@ -223,7 +218,6 @@ public struct Voting { // swiftlint:disable:this type_body_length
         public var isKeystoneUser: Bool
         public var walletId: String
         public var roundId: String
-        public var entryIntent: EntryIntent
         public var activeSession: VotingSession?
 
         /// All rounds fetched from the server, sorted by snapshot height and numbered.
@@ -565,18 +559,13 @@ public struct Voting { // swiftlint:disable:this type_body_length
             votingWeight: UInt64 = 0,
             isKeystoneUser: Bool = false,
             walletId: String = "",
-            roundId: String = "",
-            entryIntent: EntryIntent = .normal
+            roundId: String = ""
         ) {
             self.votingRound = votingRound
             self.votingWeight = votingWeight
             self.isKeystoneUser = isKeystoneUser
             self.walletId = walletId
             self.roundId = roundId
-            self.entryIntent = entryIntent
-            if case .results = entryIntent {
-                self.screenStack = [.loading]
-            }
         }
     }
 
@@ -593,7 +582,6 @@ public struct Voting { // swiftlint:disable:this type_body_length
         case backToRoundsList
         case howToVoteContinueTapped
         case viewMyVotesTapped(roundId: String)
-        case viewResultsTapped(roundId: String?)
 
         // Rounds list
         case allRoundsLoaded([VotingSession])
@@ -741,15 +729,6 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 // The proposal list will show confirmed votes in read-only mode.
                 return .send(.roundTapped(roundId))
 
-            case .viewResultsTapped(let roundId):
-                state.entryIntent = .results(roundId: roundId)
-                if let targetRoundId = resultsEntryRoundId(in: state, requestedRoundId: roundId) {
-                    state.entryIntent = .normal
-                    return openRound(targetRoundId, state: &state)
-                }
-                state.screenStack = [.loading]
-                return .send(.initialize)
-
             case .backToRoundsList:
                 // Cancel per-round effects and re-fetch rounds. allRoundsLoaded
                 // sees the cleared activeSession and re-renders the polls list.
@@ -873,13 +852,6 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 }
                 state.voteRecords = loadedRecords
 
-                if case .results(let requestedRoundId) = state.entryIntent {
-                    state.entryIntent = .normal
-                    if let targetRoundId = resultsEntryRoundId(in: state, requestedRoundId: requestedRoundId) {
-                        return openRound(targetRoundId, state: &state)
-                    }
-                }
-
                 // Always land on the polls list when there are any rounds, so the
                 // user explicitly chooses which one to enter — even if there's only
                 // one. Empty case still shows the noRounds empty state. Guards
@@ -892,7 +864,38 @@ public struct Voting { // swiftlint:disable:this type_body_length
                 return .none
 
             case .roundTapped(let roundId):
-                return openRound(roundId, state: &state)
+                guard let item = state.allRounds.first(where: { $0.id == roundId }) else { return .none }
+                let session = item.session
+                state.activeSession = session
+                state.roundId = session.voteRoundId.hexString
+                state.votingRound = sessionBackedRound(from: session, title: item.title, fallback: state.votingRound)
+                state.voteRecord = Self.loadVoteRecord(walletId: state.walletId, roundId: state.roundId)
+                reconcileProposalState(&state)
+
+                switch session.status {
+                case .active:
+                    // Go straight to proposal list — the witness/proof pipeline
+                    // runs in the background once voting weight is loaded.
+                    state.screenStack = [.pollsList, .proposalList]
+                    return .merge(
+                        .cancel(id: cancelNewRoundPollingId),
+                        .send(.startRoundStatusPolling),
+                        // Defer pipeline start so SwiftUI renders the navigation
+                        // transition before the reducer processes the pipeline action.
+                        .run { send in await send(.startActiveRoundPipeline) }
+                    )
+                case .tallying:
+                    state.screenStack = [.tallying]
+                    return .send(.startRoundStatusPolling)
+                case .finalized:
+                    state.screenStack = [.results]
+                    return .merge(
+                        .send(.fetchTallyResults),
+                        .send(.startNewRoundPolling)
+                    )
+                case .unspecified:
+                    return .none
+                }
 
             // MARK: - Initialization
 
@@ -2787,49 +2790,6 @@ public struct Voting { // swiftlint:disable:this type_body_length
         }
         .ifLet(\.$keystoneScan, action: \.keystoneScan) {
             Scan()
-        }
-    }
-
-    private func resultsEntryRoundId(in state: State, requestedRoundId: String?) -> String? {
-        if let requestedRoundId {
-            return state.allRounds.first { $0.id == requestedRoundId }?.id
-        }
-        return state.allRounds.reversed().first { $0.session.status == .finalized }?.id
-            ?? state.allRounds.reversed().first { $0.session.status == .tallying }?.id
-    }
-
-    private func openRound(_ roundId: String, state: inout State) -> Effect<Action> {
-        guard let item = state.allRounds.first(where: { $0.id == roundId }) else { return .none }
-        let session = item.session
-        state.activeSession = session
-        state.roundId = session.voteRoundId.hexString
-        state.votingRound = sessionBackedRound(from: session, title: item.title, fallback: state.votingRound)
-        state.voteRecord = Self.loadVoteRecord(walletId: state.walletId, roundId: state.roundId)
-        reconcileProposalState(&state)
-
-        switch session.status {
-        case .active:
-            // Go straight to proposal list — the witness/proof pipeline
-            // runs in the background once voting weight is loaded.
-            state.screenStack = [.pollsList, .proposalList]
-            return .merge(
-                .cancel(id: cancelNewRoundPollingId),
-                .send(.startRoundStatusPolling),
-                // Defer pipeline start so SwiftUI renders the navigation
-                // transition before the reducer processes the pipeline action.
-                .run { send in await send(.startActiveRoundPipeline) }
-            )
-        case .tallying:
-            state.screenStack = [.tallying]
-            return .send(.startRoundStatusPolling)
-        case .finalized:
-            state.screenStack = [.results]
-            return .merge(
-                .send(.fetchTallyResults),
-                .send(.startNewRoundPolling)
-            )
-        case .unspecified:
-            return .none
         }
     }
 
