@@ -42,8 +42,12 @@ extension Voting {
             // Cancel per-round effects and re-fetch rounds. allRoundsLoaded
             // sees the cleared activeSession and re-renders the polls list.
             state.screenStack = [.loading]
-            // Clean up persisted drafts for the current round
-            Self.clearPersistedDrafts(walletId: state.walletId, roundId: state.roundId)
+            let hasLockedPendingSubmission = state.voteRecord != nil && !state.draftVotes.isEmpty
+            // Clean up persisted drafts for the current round unless a confirmed
+            // commitment still needs share-delivery retry.
+            if !hasLockedPendingSubmission {
+                Self.clearPersistedDrafts(walletId: state.walletId, roundId: state.roundId)
+            }
             // Reset per-round state
             state.activeSession = nil
             state.votes = [:]
@@ -182,50 +186,42 @@ extension Voting {
 
                 votingLogger.debug("[SharePoll] ready=\(readyShares.count) future=\(futureCount)")
 
-                if let helperURL = voteServers.first?.url {
-                    var newlyConfirmed = 0
-                    for share in readyShares {
-                        let nullifierHex = share.nullifier.map { String(format: "%02x", $0) }.joined()
+                var statusServerURLs = voteServers.map(\.url)
+                var newlyConfirmed = 0
+                for share in readyShares {
+                    let nullifierHex = share.nullifier.map { String(format: "%02x", $0) }.joined()
+                    let lookup = await fetchShareStatusFromAvailableHelpers(
+                        serverURLs: statusServerURLs,
+                        roundIdHex: roundId,
+                        nullifierHex: nullifierHex,
+                        fetchShareStatus: votingAPI.fetchShareStatus
+                    )
+                    statusServerURLs = lookup.remainingServerURLs
+
+                    if lookup.confirmation == .confirmed {
                         do {
-                            let result = try await votingAPI.fetchShareStatus(helperURL, roundId, nullifierHex)
-                            if result == .confirmed {
-                                try await votingCrypto.markShareConfirmed(
-                                    roundId, share.bundleIndex, share.proposalId, share.shareIndex
-                                )
-                                newlyConfirmed += 1
-                            } else if share.submitAt > 0 {
-                                // Adaptive overdue threshold: wait 25% of the share's
-                                // remaining window after submitAt before resubmitting,
-                                // clamped to [30s, 3600s]. Lets resubmission fire within
-                                // a normal round (e.g. 15-min round → 30–200 s) instead of
-                                // a fixed 1 h threshold, which was always past voteEndTime
-                                // and so never saved a round where a helper silently
-                                // dropped shares at its broadcast step.
-                                let remainingAtSubmit = voteEndTime > share.submitAt
-                                    ? voteEndTime - share.submitAt : 0
-                                let overdueThreshold: UInt64 = max(30, min(3600, remainingAtSubmit / 4))
-                                // Skip resubmission if the round is already closing — chain
-                                // rejects MsgRevealShare after voteEndTime, so a resubmit
-                                // would only waste a POST and noise the log.
-                                let resubmitCutoff: UInt64 = 10
-                                if now >= share.submitAt + overdueThreshold,
-                                   voteEndTime > now + resubmitCutoff {
-                                    resubmitQueue.append(ResubmitCandidate(
-                                        share: share,
-                                        proposalId: share.proposalId,
-                                        bundleIndex: share.bundleIndex
-                                    ))
-                                }
-                            }
+                            try await votingCrypto.markShareConfirmed(
+                                roundId, share.bundleIndex, share.proposalId, share.shareIndex
+                            )
+                            newlyConfirmed += 1
                         } catch {
-                            // On error, skip remaining shares this cycle
-                            votingLogger.warning("Share status check failed for share \(share.shareIndex): \(error)")
-                            break
+                            votingLogger.warning("Failed to mark share \(share.shareIndex) confirmed: \(error)")
                         }
+                    } else if shouldResubmitShare(
+                        submitAt: share.submitAt,
+                        createdAt: share.createdAt,
+                        now: now,
+                        voteEndTime: voteEndTime
+                    ) {
+                        resubmitQueue.append(ResubmitCandidate(
+                            share: share,
+                            proposalId: share.proposalId,
+                            bundleIndex: share.bundleIndex
+                        ))
                     }
-                    if !readyShares.isEmpty {
-                        votingLogger.debug("[SharePoll] queried=\(readyShares.count) newlyConfirmed=\(newlyConfirmed)")
-                    }
+                }
+                if !readyShares.isEmpty {
+                    votingLogger.debug("[SharePoll] queried=\(readyShares.count) newlyConfirmed=\(newlyConfirmed)")
                 }
 
                 // Phase 2: Resubmit overdue pending shares
@@ -374,12 +370,14 @@ extension Voting {
             // the session started. `nil` prior draft means "not drafted before
             // edit", so we remove whatever was set during the session.
             if let snapshot = state.editingFromReview {
-                if let prior = snapshot.priorDraft {
-                    state.draftVotes[snapshot.proposalId] = prior
-                } else {
-                    state.draftVotes.removeValue(forKey: snapshot.proposalId)
+                if state.voteRecord == nil {
+                    if let prior = snapshot.priorDraft {
+                        state.draftVotes[snapshot.proposalId] = prior
+                    } else {
+                        state.draftVotes.removeValue(forKey: snapshot.proposalId)
+                    }
+                    Self.persistDrafts(state.draftVotes, walletId: state.walletId, roundId: state.roundId)
                 }
-                Self.persistDrafts(state.draftVotes, walletId: state.walletId, roundId: state.roundId)
                 state.editingFromReview = nil
             }
             if case .proposalDetail = state.currentScreen {
@@ -478,4 +476,60 @@ extension Voting {
             return .none
         }
     }
+}
+
+struct ShareStatusLookupResult: Equatable, Sendable {
+    let confirmation: ShareConfirmationResult?
+    let remainingServerURLs: [String]
+}
+
+func fetchShareStatusFromAvailableHelpers(
+    serverURLs: [String],
+    roundIdHex: String,
+    nullifierHex: String,
+    fetchShareStatus: @Sendable (
+        _ helperBaseURL: String,
+        _ roundIdHex: String,
+        _ nullifierHex: String
+    ) async throws -> ShareConfirmationResult
+) async -> ShareStatusLookupResult {
+    var remainingServerURLs = serverURLs
+    while let helperURL = remainingServerURLs.first {
+        do {
+            let confirmation = try await fetchShareStatus(helperURL, roundIdHex, nullifierHex)
+            return ShareStatusLookupResult(
+                confirmation: confirmation,
+                remainingServerURLs: remainingServerURLs
+            )
+        } catch {
+            votingLogger.warning("Share status check failed via \(helperURL): \(error)")
+            remainingServerURLs.removeAll { $0 == helperURL }
+        }
+    }
+
+    return ShareStatusLookupResult(
+        confirmation: nil,
+        remainingServerURLs: remainingServerURLs
+    )
+}
+
+func shouldResubmitShare(
+    submitAt: UInt64,
+    createdAt: UInt64,
+    now: UInt64,
+    voteEndTime: UInt64
+) -> Bool {
+    let baseline = submitAt > 0 ? submitAt : createdAt
+    guard baseline > 0 else { return false }
+
+    // Adaptive overdue threshold: wait 25% of the share's remaining window
+    // after the scheduled submit time. Immediate shares use their persisted
+    // creation time as the baseline because submitAt is 0.
+    let remainingAtBaseline = voteEndTime > baseline ? voteEndTime - baseline : 0
+    let overdueThreshold: UInt64 = max(30, min(3600, remainingAtBaseline / 4))
+
+    // Skip resubmission if the round is already closing. The chain rejects
+    // MsgRevealShare after voteEndTime, so a resubmit would only waste a POST.
+    let resubmitCutoff: UInt64 = 10
+    return now >= baseline + overdueThreshold && voteEndTime > now + resubmitCutoff
 }
