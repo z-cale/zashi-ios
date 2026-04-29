@@ -10,6 +10,7 @@ extension Voting {
         switch action {
 
         case let .setDraftVote(proposalId, choice):
+            guard state.voteRecord == nil else { return .none }
             guard state.votes[proposalId] == nil else { return .none }
             state.draftVotes[proposalId] = choice
             Self.persistDrafts(state.draftVotes, walletId: state.walletId, roundId: state.roundId)
@@ -20,6 +21,7 @@ extension Voting {
             return .none
 
         case let .clearDraftVote(proposalId):
+            guard state.voteRecord == nil else { return .none }
             state.draftVotes.removeValue(forKey: proposalId)
             Self.persistDrafts(state.draftVotes, walletId: state.walletId, roundId: state.roundId)
             return .none
@@ -43,23 +45,6 @@ extension Voting {
             guard state.canSubmitBatch || state.isBatchSubmitting else { return .none }
             guard state.activeSession != nil else { return .none }
 
-            // Record the moment the user confirmed their vote. Persisted so the
-            // Results screen can show "Voted MMM d - Voting Power X.XXX ZEC"
-            // and the polls list can show "X of Y voted" long after the
-            // active session is gone. Recorded once per round —
-            // re-confirmations (e.g. retry after a partial failure) keep the
-            // original timestamp.
-            if state.voteRecord == nil {
-                let record = VoteRecord(
-                    votedAt: Date(),
-                    votingWeight: state.votingWeight,
-                    proposalCount: state.draftVotes.count
-                )
-                state.voteRecord = record
-                Self.persistVoteRecord(record, walletId: state.walletId, roundId: state.roundId)
-                state.voteRecords[state.roundId] = record
-            }
-
             // Keystone: delegation requires QR signing UI, so route through
             // the delegation signing screen before batch submission.
             if state.isKeystoneUser && !state.isDelegationReady {
@@ -81,6 +66,8 @@ extension Voting {
             let networkId: UInt32 = network.networkType == .mainnet ? 0 : 1
             guard
                 let chainNodeUrl = state.serviceConfig?.voteServers.first?.url,
+                let voteServerURLs = state.serviceConfig?.voteServers.map(\.url),
+                !voteServerURLs.isEmpty,
                 let pirEndpoints = state.serviceConfig?.pirEndpoints.map(\.url),
                 !pirEndpoints.isEmpty,
                 let expectedSnapshotHeight = state.activeSession?.snapshotHeight
@@ -93,6 +80,12 @@ extension Voting {
             let proposals = state.votingRound.proposals
             let cachedNotes = state.walletNotes
             let roundName = state.votingRound.title
+            let shouldPersistVoteRecord = state.voteRecord == nil
+            let voteRecord = VoteRecord(
+                votedAt: Date(),
+                votingWeight: state.votingWeight,
+                proposalCount: state.draftVotes.count
+            )
 
             let submitAtDeadline: Double?
             if singleShare {
@@ -104,6 +97,9 @@ extension Voting {
             }
 
             return .run { [backgroundTask, votingAPI, votingCrypto, mnemonic, walletStorage] send in
+                var shareServerURLs = voteServerURLs
+                var voteRecordPersisted = !shouldPersistVoteRecord
+
                 let bgTaskId = await backgroundTask.beginTask("Batch vote submission")
                 let _ = await backgroundTask.beginContinuedProcessing(
                     "co.zodl.voting.*",
@@ -160,7 +156,7 @@ extension Voting {
                 var successCount = 0
                 var failCount = 0
 
-                for (draftIndex, draft) in drafts.enumerated() {
+                draftLoop: for (draftIndex, draft) in drafts.enumerated() {
                     let proposalId = draft.key
                     let choice = draft.value
                     let proposal = proposals.first { $0.id == proposalId }
@@ -208,7 +204,14 @@ extension Voting {
                                        let vanIdx = UInt32(leafParts[0]),
                                        let vcIdx = UInt64(leafParts[1]) {
                                         try await votingCrypto.storeVanPosition(roundId, bundleIndex, vanIdx)
+                                        if shouldPersistVoteRecord && !voteRecordPersisted {
+                                            await send(.voteRecordPersisted(voteRecord))
+                                            voteRecordPersisted = true
+                                        }
                                         if let savedBundle = try? await votingCrypto.getVoteCommitmentBundle(roundId, bundleIndex, proposalId) {
+                                            try await votingCrypto.storeVoteCommitmentBundle(
+                                                roundId, bundleIndex, proposalId, savedBundle, vcIdx
+                                            )
                                             await send(.voteSubmissionStepUpdated(.sendingShares))
                                             var payloads = try await votingCrypto.buildSharePayloads(
                                                 savedBundle.encShares, savedBundle, choice, numOptions, vcIdx, singleShare
@@ -221,8 +224,14 @@ extension Voting {
                                                     payloads[i].submitAt = 0
                                                 }
                                             }
-                                            let recoveryInfos = try await Self.delegateSharesWithRetry(payloads, roundId: roundId, votingAPI: votingAPI)
-                                            for info in recoveryInfos {
+                                            let recoveryInfos = try await Self.delegateSharesWithFallback(
+                                                payloads,
+                                                roundId: roundId,
+                                                votingAPI: votingAPI,
+                                                serverURLs: shareServerURLs
+                                            )
+                                            shareServerURLs = recoveryInfos.remainingServerURLs
+                                            for info in recoveryInfos.delegatedShares {
                                                 guard let payload = payloads.first(where: {
                                                     $0.encShare.shareIndex == info.shareIndex && $0.proposalId == info.proposalId
                                                 }) else { continue }
@@ -316,8 +325,18 @@ extension Voting {
                                 }
                             }
                             try await votingCrypto.storeVoteCommitmentBundle(roundId, bundleIndex, proposalId, builtBundle, vcIdx)
-                            let batchDelegatedInfos = try await Self.delegateSharesWithRetry(payloads, roundId: roundId, votingAPI: votingAPI)
-                            for info in batchDelegatedInfos {
+                            if shouldPersistVoteRecord && !voteRecordPersisted {
+                                await send(.voteRecordPersisted(voteRecord))
+                                voteRecordPersisted = true
+                            }
+                            let batchDelegatedInfos = try await Self.delegateSharesWithFallback(
+                                payloads,
+                                roundId: roundId,
+                                votingAPI: votingAPI,
+                                serverURLs: shareServerURLs
+                            )
+                            shareServerURLs = batchDelegatedInfos.remainingServerURLs
+                            for info in batchDelegatedInfos.delegatedShares {
                                 guard let payload = payloads.first(where: {
                                     $0.encShare.shareIndex == info.shareIndex && $0.proposalId == info.proposalId
                                 }) else { continue }
@@ -344,15 +363,28 @@ extension Voting {
                         successCount += 1
                         await send(.batchVoteSubmitted(proposalId: proposalId, choice: choice))
                     } catch {
+                        let shouldStopBatch: Bool
+                        if case VotingFlowError.noReachableVoteServers = error {
+                            shareServerURLs = []
+                            shouldStopBatch = true
+                        } else {
+                            shouldStopBatch = false
+                        }
                         failCount += 1
                         votingLogger.error("Batch vote failed for proposal \(proposalId): \(error)")
                         await send(.batchVoteFailed(
                             proposalId: proposalId,
                             error: VotingErrorMapper.userFriendlyMessage(from: error.localizedDescription)
                         ))
+                        if shouldStopBatch {
+                            break draftLoop
+                        }
                     }
                 }
 
+                if successCount > 0 && failCount == 0 && shouldPersistVoteRecord && !voteRecordPersisted {
+                    await send(.voteRecordPersisted(voteRecord))
+                }
                 await send(.batchSubmissionCompleted(successCount: successCount, failCount: failCount))
             } catch: { error, send in
                 votingLogger.error("Batch submission failed at top level: \(error)")
@@ -362,6 +394,13 @@ extension Voting {
                     totalCount: totalCount
                 ))
             }
+
+        case let .voteRecordPersisted(record):
+            guard state.voteRecord == nil else { return .none }
+            state.voteRecord = record
+            Self.persistVoteRecord(record, walletId: state.walletId, roundId: state.roundId)
+            state.voteRecords[state.roundId] = record
+            return .none
 
         case let .batchSubmissionProgress(currentIndex, totalCount, proposalId):
             state.batchSubmissionStatus = .submitting(

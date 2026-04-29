@@ -22,6 +22,18 @@ struct DelegatedShareInfo: Equatable, Sendable {
     }
 }
 
+/// Result from one share delegation batch, including the server set that
+/// remained usable after removing POST failures.
+struct ShareDelegationResult: Equatable, Sendable {
+    let delegatedShares: [DelegatedShareInfo]
+    let remainingServerURLs: [String]
+
+    init(delegatedShares: [DelegatedShareInfo], remainingServerURLs: [String]) {
+        self.delegatedShares = delegatedShares
+        self.remainingServerURLs = remainingServerURLs
+    }
+}
+
 extension DependencyValues {
     var votingAPI: VotingAPIClient {
         get { self[VotingAPIClient.self] }
@@ -41,12 +53,15 @@ struct VotingAPIClient {
     var fetchTallyResults: @Sendable (_ roundIdHex: String) async throws -> [UInt32: TallyResult]
     var submitDelegation: @Sendable (_ registration: DelegationRegistration) async throws -> TxResult
     var submitVoteCommitment: @Sendable (_ bundle: VoteCommitmentBundle, _ signature: CastVoteSignature) async throws -> TxResult
-    /// Distribute shares across available vote servers. Config must be set via `configureURLs` first.
-    /// Returns info about which servers accepted each share.
-    var delegateShares: @Sendable (_ payloads: [SharePayload], _ roundIdHex: String) async throws -> [DelegatedShareInfo]
+    /// Distribute shares across the provided per-submission vote server set.
+    var delegateShares: @Sendable (
+        _ payloads: [SharePayload],
+        _ roundIdHex: String,
+        _ serverURLs: [String]
+    ) async throws -> ShareDelegationResult
     /// Poll a helper server for the confirmation status of a share identified by its nullifier.
     var fetchShareStatus: @Sendable (_ helperBaseURL: String, _ roundIdHex: String, _ nullifierHex: String) async throws -> ShareConfirmationResult
-    /// Resubmit a single share to healthy servers, excluding the given URLs.
+    /// Resubmit a single share to configured servers, excluding the given URLs first.
     /// Returns the list of server URLs that accepted the share (empty if all failed).
     var resubmitShare: @Sendable (_ payload: SharePayload, _ roundIdHex: String, _ excludeURLs: [String]) async throws -> [String]
     var fetchProposalTally: @Sendable (_ roundId: Data, _ proposalId: UInt32) async throws -> TallyResult

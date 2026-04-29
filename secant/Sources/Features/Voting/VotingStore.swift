@@ -13,6 +13,7 @@ enum VotingFlowError: LocalizedError {
     case missingPendingUnsignedPczt
     case invalidDelegationSignature
     case missingVoteCommitmentBundle
+    case noReachableVoteServers
     case delegationTxFailed(code: UInt32, log: String)
     case voteCommitmentTxFailed(code: UInt32, log: String)
 
@@ -30,6 +31,8 @@ enum VotingFlowError: LocalizedError {
             return String(localizable: .coinVoteStoreErrorInvalidDelegationSignature)
         case .missingVoteCommitmentBundle:
             return String(localizable: .coinVoteStoreErrorMissingVoteCommitmentBundle)
+        case .noReachableVoteServers:
+            return "Unable to reach any vote server. Please check your internet connection and try again."
         case .delegationTxFailed(let code, let log):
             let suffix = log.isEmpty ? "" : ": \(log)"
             return String(localizable: .coinVoteStoreErrorDelegationTxFailed(String(code), suffix))
@@ -50,6 +53,9 @@ enum VotingErrorMapper {
         }
         if rawError.contains("vote round not found") {
             return String(localizable: .coinVoteStoreUserErrorRoundNotFound)
+        }
+        if rawError.contains("Unable to reach any vote server") || rawError.contains("no reachable vote servers") {
+            return "Unable to reach any vote server. Please check your internet connection and try again."
         }
         if rawError.contains("PIR server connect failed") || rawError.contains("PIR parallel fetch failed") {
             return String(localizable: .coinVoteStoreUserErrorPirUnavailable)
@@ -776,6 +782,7 @@ struct Voting {
         case clearDraftVote(proposalId: UInt32)
         case submitAllDrafts
         case authenticationSucceeded
+        case voteRecordPersisted(VoteRecord)
         case batchSubmissionProgress(currentIndex: Int, totalCount: Int, proposalId: UInt32)
         case batchVoteSubmitted(proposalId: UInt32, choice: VoteChoice)
         case batchVoteFailed(proposalId: UInt32, error: String)
@@ -923,6 +930,7 @@ struct Voting {
                 .clearDraftVote,
                 .submitAllDrafts,
                 .authenticationSucceeded,
+                .voteRecordPersisted,
                 .batchSubmissionProgress,
                 .batchVoteSubmitted,
                 .batchVoteFailed,
