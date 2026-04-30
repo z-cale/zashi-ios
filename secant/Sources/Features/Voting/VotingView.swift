@@ -125,6 +125,24 @@ struct VotingView: View {
     }
 }
 
+struct VotingBlockingBackdrop: View {
+    let store: StoreOf<Voting>
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                PollsListSkeletonCard()
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
+        }
+        .applyScreenBackground()
+        .screenTitle(String(localizable: .coinVoteCommonScreenTitle))
+        .zashiBack { store.send(.dismissFlow) }
+    }
+}
+
 // MARK: - No Rounds
 
 struct NoRoundsView: View {
@@ -134,34 +152,24 @@ struct NoRoundsView: View {
 
     var body: some View {
         WithPerceptionTracking {
-            ScrollView {
-                VStack(spacing: 16) {
-                    PollsListSkeletonCard()
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 8)
-                .padding(.bottom, 24)
-            }
-            .applyScreenBackground()
-            .screenTitle(String(localizable: .coinVoteCommonScreenTitle))
-            .zashiBack { store.send(.dismissFlow) }
-            .votingSheet(
-                isPresented: noRoundsBinding,
-                title: String(localizable: .coinVotePollsListEmptyTitle),
-                message: String(localizable: .coinVotePollsListEmptyMessage),
-                primary: .init(title: String(localizable: .coinVoteCommonGotIt), style: .primary) {
-                    dismissFlowAfterSheetDismiss = true
-                    noRoundsSheetPresented = false
-                },
-                secondary: .init(title: String(localizable: .coinVoteCommonRefresh), style: .secondary) {
-                    store.send(.retryLoadRounds)
-                },
-                onDismiss: {
-                    guard dismissFlowAfterSheetDismiss else { return }
-                    dismissFlowAfterSheetDismiss = false
-                    store.send(.dismissFlow)
-                }
-            )
+            VotingBlockingBackdrop(store: store)
+                .votingSheet(
+                    isPresented: noRoundsBinding,
+                    title: String(localizable: .coinVotePollsListEmptyTitle),
+                    message: String(localizable: .coinVotePollsListEmptyMessage),
+                    primary: .init(title: String(localizable: .coinVoteCommonGotIt), style: .primary) {
+                        dismissFlowAfterSheetDismiss = true
+                        noRoundsSheetPresented = false
+                    },
+                    secondary: .init(title: String(localizable: .coinVoteCommonRefresh), style: .secondary) {
+                        store.send(.retryLoadRounds)
+                    },
+                    onDismiss: {
+                        guard dismissFlowAfterSheetDismiss else { return }
+                        dismissFlowAfterSheetDismiss = false
+                        store.send(.dismissFlow)
+                    }
+                )
         }
     }
 

@@ -59,10 +59,12 @@ struct PollsListView: View {
             // Drag-dismiss mirrors Go back: exit the voting flow rather than
             // leave the user on a stale/empty list with no action to take.
             set: { newValue in
-                if !newValue && store.pollsLoadError {
+                if newValue {
+                    loadErrorSheetPresented = true
+                } else if store.pollsLoadError {
                     dismissFlowAfterLoadErrorSheetDismiss = true
+                    loadErrorSheetPresented = false
                 }
-                loadErrorSheetPresented = newValue
             }
         )
     }
@@ -187,44 +189,46 @@ struct PollsListView: View {
 
     @ViewBuilder
     private func pollStatusPill(_ state: CardState) -> some View {
-        let (icon, label, fg, bg): (String, String, Color, Color) = {
-            switch state {
-            case .active:
-                return (
-                    "clock",
-                    String(localizable: .coinVotePollsListStatusActive),
-                    Design.Utility.SuccessGreen._700.color(colorScheme),
-                    Design.Utility.SuccessGreen._50.color(colorScheme)
-                )
-            case .voted:
-                return (
-                    "checkmark",
-                    String(localizable: .coinVoteCommonVoted),
-                    Design.Utility.SuccessGreen._700.color(colorScheme),
-                    Design.Utility.SuccessGreen._50.color(colorScheme)
-                )
-            case .closed:
-                return (
-                    "clock",
-                    String(localizable: .coinVotePollsListStatusClosed),
-                    Design.Utility.ErrorRed._700.color(colorScheme),
-                    Design.Utility.ErrorRed._50.color(colorScheme)
-                )
-            }
-        }()
+        let style = pollStatusPillStyle(for: state)
 
         HStack(spacing: 6) {
-            Image(systemName: icon)
+            Image(systemName: style.iconSystemName)
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(fg)
+                .foregroundStyle(style.foregroundColor)
 
-            Text(label)
-                .zFont(.medium, size: 14, color: fg)
+            Text(style.label)
+                .zFont(.medium, size: 14, color: style.foregroundColor)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 4)
-        .background(bg)
+        .background(style.backgroundColor)
         .clipShape(Capsule())
+    }
+
+    private func pollStatusPillStyle(for state: CardState) -> PollStatusPillStyle {
+        switch state {
+        case .active:
+            return PollStatusPillStyle(
+                iconSystemName: "clock",
+                label: String(localizable: .coinVotePollsListStatusActive),
+                foregroundColor: Design.Utility.SuccessGreen._700.color(colorScheme),
+                backgroundColor: Design.Utility.SuccessGreen._50.color(colorScheme)
+            )
+        case .voted:
+            return PollStatusPillStyle(
+                iconSystemName: "checkmark",
+                label: String(localizable: .coinVoteCommonVoted),
+                foregroundColor: Design.Utility.SuccessGreen._700.color(colorScheme),
+                backgroundColor: Design.Utility.SuccessGreen._50.color(colorScheme)
+            )
+        case .closed:
+            return PollStatusPillStyle(
+                iconSystemName: "clock",
+                label: String(localizable: .coinVotePollsListStatusClosed),
+                foregroundColor: Design.Utility.ErrorRed._700.color(colorScheme),
+                backgroundColor: Design.Utility.ErrorRed._50.color(colorScheme)
+            )
+        }
     }
 
     // MARK: - Date Label
@@ -273,7 +277,9 @@ struct PollsListSkeletonCard: View {
             VStack(alignment: .leading, spacing: 10) {
                 RoundedRectangle(cornerRadius: 4).fill(barFill).frame(height: 12)
                 RoundedRectangle(cornerRadius: 4).fill(barFill).frame(height: 12)
-                RoundedRectangle(cornerRadius: 4).fill(barFill).frame(width: 240, height: 12)
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(barFill)
+                    .frame(width: 240, height: 12)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             RoundedRectangle(cornerRadius: 4).fill(barFill).frame(width: 60, height: 12)
@@ -283,4 +289,11 @@ struct PollsListSkeletonCard: View {
         .background(Design.Surfaces.bgPrimary.color(colorScheme))
         .clipShape(RoundedRectangle(cornerRadius: Design.Radius._2xl))
     }
+}
+
+private struct PollStatusPillStyle {
+    let iconSystemName: String
+    let label: String
+    let foregroundColor: Color
+    let backgroundColor: Color
 }
