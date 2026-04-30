@@ -84,6 +84,20 @@ Per ZIP 1244 §"Proposals Hash", the chain's `VoteRound.proposals_hash` is `SHA-
 
 Mismatch routes to `.configError`. This prevents a tampered CDN config from displaying different proposals than what's committed on-chain.
 
+## Round-manifest verification (Phase 2)
+
+After the proposals-hash check, the wallet runs `verifyRoundSignatures(serverEaPK:)` (see [`VotingServiceConfig.swift`](../secant/Sources/Dependencies/VotingModels/VotingServiceConfig.swift)). This authenticates the round's `ea_pk` against ed25519 signatures from operators whose pubkeys are baked into the wallet bundle ([`ManifestTrustAnchor`](../secant/Sources/Dependencies/VotingModels/RoundManifest.swift)).
+
+The verifier hard-fails to `.configError` on any of:
+
+- `manifestSignaturesMissing` — `round_signatures` absent from the CDN config.
+- `manifestRoundIdMismatch` — the manifest's `round_id` doesn't match `vote_round_id`.
+- `manifestMalformed` — bad base64 / hex / wrong field length.
+- `manifestSignatureInvalid` — fewer than `kRequired` distinct signers in `manifest_signers` produced a valid ed25519 signature over the canonical payload.
+- `eaPKMismatch` — the server's `ea_pk` for this round disagrees with the manifest's. This branch is what catches a hijacked vote-server returning a different (attacker-controlled) `ea_pk` than the publisher signed off-chain.
+
+The full spec, schema, and threat model live in [`vote-sdk/docs/config.md`](https://github.com/valargroup/vote-sdk/blob/main/docs/config.md). The reference signer CLI is [`vote-sdk/cmd/manifest-signer`](https://github.com/valargroup/vote-sdk/tree/main/cmd/manifest-signer); the operator-side runbook is [`sign-round-manifest.md`](https://github.com/valargroup/vote-sdk/blob/main/docs/runbooks/sign-round-manifest.md).
+
 **Canonical form:** proposals sorted by `id` ascending, options by `index` ascending, no whitespace, keys emitted in order `id`, `title`, `description`, `options` (and `index`, `label` per option), UTF-8. The Swift implementation uses `JSONEncoder` with `.withoutEscapingSlashes` to match Rust `serde_json::to_string` byte output (verified byte-identical across `/`, U+2028/U+2029, control characters, CJK, emoji). See [`VotingServiceConfig.canonicalProposalsJSON`](../secant/Sources/Dependencies/VotingModels/VotingServiceConfig.swift) and the pinned-hash regression tests in [`VotingServiceConfigTests.swift`](../secantTests/VotingTests/VotingServiceConfigTests.swift).
 
 ## Failure recovery
