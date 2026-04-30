@@ -89,6 +89,47 @@ final class VotingSubmissionTests: XCTestCase {
         XCTAssertNil(state.currentVoteBundleIndex)
     }
 
+    func testPrecomputeCompletionDoesNotMarkDelegationReady() {
+        var state = makeState(walletId: UUID().uuidString, roundId: UUID().uuidString, proposalCount: 1)
+        state.isDelegationProofPrecomputeInFlight = true
+
+        _ = Voting().reduceDelegation(&state, .delegationProofPrecomputationCompleted)
+
+        XCTAssertEqual(state.delegationProofPrecomputeStatus, .complete)
+        XCTAssertEqual(state.delegationProofStatus, .notStarted)
+        XCTAssertFalse(state.isDelegationReady)
+        XCTAssertFalse(state.isDelegationProofPrecomputeInFlight)
+    }
+
+    func testAuthenticationSucceededWaitsForInFlightPrecompute() {
+        var state = makeState(walletId: UUID().uuidString, roundId: UUID().uuidString, proposalCount: 1)
+        state.activeSession = makeSession(proposals: state.votingRound.proposals)
+        state.bundleCount = 1
+        state.draftVotes = [1: .option(0)]
+        state.isDelegationProofPrecomputeInFlight = true
+
+        _ = Voting().reduceSubmission(&state, .authenticationSucceeded)
+
+        XCTAssertTrue(state.pendingBatchSubmission)
+        XCTAssertEqual(state.batchSubmissionStatus, .authorizing)
+        XCTAssertEqual(state.voteSubmissionStep, .authorizingVote)
+    }
+
+    func testAuthenticationSucceededUsesPrecomputedProofProgressWithoutMarkingReady() {
+        var state = makeState(walletId: UUID().uuidString, roundId: UUID().uuidString, proposalCount: 1)
+        state.activeSession = makeSession(proposals: state.votingRound.proposals)
+        state.bundleCount = 1
+        state.draftVotes = [1: .option(0)]
+        state.delegationProofPrecomputeStatus = .complete
+
+        _ = Voting().reduceSubmission(&state, .authenticationSucceeded)
+
+        XCTAssertFalse(state.isDelegationReady)
+        XCTAssertEqual(state.batchSubmissionStatus, .authorizing)
+        XCTAssertEqual(state.voteSubmissionStep, .authorizingVote)
+        XCTAssertEqual(state.delegationProofStatus, .generating(progress: 1))
+    }
+
     func testNativeAbstainIsNotSyntheticAbstain() {
         let proposal = VotingProposal(
             id: 1,
