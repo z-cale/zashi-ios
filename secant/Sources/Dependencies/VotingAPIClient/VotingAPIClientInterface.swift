@@ -31,7 +31,7 @@ extension DependencyValues {
 
 @DependencyClient
 struct VotingAPIClient {
-    /// Fetch service config: tries local override first, then CDN, then falls back to defaults.
+    /// Fetch service config: tries the Debug-only local override first, then the CDN config.
     var fetchServiceConfig: @Sendable () async throws -> VotingServiceConfig
     /// Configure the API client to use URLs from the resolved service config.
     var configureURLs: @Sendable (_ config: VotingServiceConfig) async -> Void

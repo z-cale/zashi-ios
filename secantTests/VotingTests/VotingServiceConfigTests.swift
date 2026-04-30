@@ -1,5 +1,5 @@
 import XCTest
-import VotingModels
+@testable import secant_testnet
 
 // Test fixtures contain pinned canonical JSON strings that intentionally exceed
 // the project's line-length limit — keeping them single-line makes the expected
@@ -163,19 +163,148 @@ final class VotingServiceConfigTests: XCTestCase {
         )
     }
 
+    // MARK: - CDN config request
+
+    func testRemoteConfigRequestBypassesLocalCache() throws {
+        let request = VotingServiceConfig.remoteConfigRequest()
+
+        XCTAssertEqual(request.url, VotingServiceConfig.configURL)
+        XCTAssertEqual(request.cachePolicy, .reloadIgnoringLocalCacheData)
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Cache-Control"), "no-cache")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Pragma"), "no-cache")
+    }
+
+    // MARK: - Chain binding
+
+    func testChainBindingMismatchReportsActiveRoundNotFirstHistoricalRound() throws {
+        let configRoundId = String(repeating: "c", count: 64)
+        let finalizedRoundId = String(repeating: "f", count: 64)
+        let activeRoundId = String(repeating: "a", count: 64)
+        let config = makeConfig(voteRoundId: configRoundId)
+
+        let error = config.chainBindingError(
+            in: [
+                makeSession(roundIdHex: finalizedRoundId, status: .finalized),
+                makeSession(roundIdHex: activeRoundId, status: .active),
+            ]
+        )
+
+        XCTAssertEqual(
+            error,
+            .roundIdMismatch(configRoundId: configRoundId, activeRoundId: activeRoundId)
+        )
+        XCTAssertFalse(
+            try XCTUnwrap(error?.errorDescription).contains(String(finalizedRoundId.prefix(16)))
+        )
+    }
+
+    func testChainBindingMismatchReportsNoActiveRoundWhenOnlyFinalizedOrPendingRoundsExist() throws {
+        let configRoundId = String(repeating: "c", count: 64)
+        let config = makeConfig(voteRoundId: configRoundId)
+
+        let error = config.chainBindingError(
+            in: [
+                makeSession(roundIdHex: String(repeating: "f", count: 64), status: .finalized),
+                makeSession(roundIdHex: String(repeating: "0", count: 64), status: .unspecified),
+            ]
+        )
+
+        XCTAssertEqual(error, .noActiveRound(configRoundId: configRoundId))
+        XCTAssertTrue(try XCTUnwrap(error?.errorDescription).contains("there is no active round"))
+    }
+
+    func testChainBindingAcceptsMatchingRoundWithMatchingProposalsHash() {
+        let configRoundId = String(repeating: "a", count: 64)
+        let config = makeConfig(voteRoundId: configRoundId)
+        let session = makeSession(
+            roundIdHex: configRoundId,
+            status: .finalized,
+            proposalsHash: VotingServiceConfig.computeProposalsHash(config.proposals)
+        )
+
+        XCTAssertNil(config.chainBindingError(in: [session]))
+    }
+
+    func testChainBindingRejectsMatchingRoundWithMismatchedProposalsHash() {
+        let configRoundId = String(repeating: "a", count: 64)
+        let config = makeConfig(voteRoundId: configRoundId)
+        let expectedHash = Data(repeating: 0xFF, count: 32)
+        let session = makeSession(
+            roundIdHex: configRoundId,
+            status: .active,
+            proposalsHash: expectedHash
+        )
+
+        let error = config.chainBindingError(in: [session])
+
+        XCTAssertEqual(
+            error,
+            .proposalsHashMismatch(
+                expected: expectedHash,
+                actual: VotingServiceConfig.computeProposalsHash(config.proposals)
+            )
+        )
+    }
+
     // MARK: - validate() — supported_versions enforcement
 
-    private func makeConfig(supportedVersions: VotingServiceConfig.SupportedVersions) -> VotingServiceConfig {
+    private func makeConfig(
+        voteRoundId: String = String(repeating: "a", count: 64),
+        proposals: [VotingServiceConfig.Proposal]? = nil,
+        supportedVersions: VotingServiceConfig.SupportedVersions = .init(
+            pir: ["v0"],
+            voteProtocol: "v0",
+            tally: "v0",
+            voteServer: "v1"
+        )
+    ) -> VotingServiceConfig {
         VotingServiceConfig(
             configVersion: 1,
-            voteRoundId: String(repeating: "a", count: 64),
+            voteRoundId: voteRoundId,
             voteServers: [.init(url: "https://x", label: "a")],
             pirEndpoints: [.init(url: "https://y", label: "b")],
             snapshotHeight: 1,
             voteEndTime: 1,
-            proposals: [Self.zipExampleProposal],
+            proposals: proposals ?? [Self.zipExampleProposal],
             supportedVersions: supportedVersions
         )
+    }
+
+    private func makeSession(
+        roundIdHex: String,
+        status: SessionStatus,
+        proposalsHash: Data = Data(repeating: 0x02, count: 32)
+    ) -> VotingSession {
+        VotingSession(
+            voteRoundId: data(hexString: roundIdHex),
+            snapshotHeight: 1,
+            snapshotBlockhash: Data(repeating: 0x01, count: 32),
+            proposalsHash: proposalsHash,
+            voteEndTime: Date(timeIntervalSince1970: 1),
+            ceremonyStart: Date(timeIntervalSince1970: 0),
+            eaPK: Data(repeating: 0x03, count: 32),
+            vkZkp1: Data(repeating: 0x04, count: 32),
+            vkZkp2: Data(repeating: 0x05, count: 32),
+            vkZkp3: Data(repeating: 0x06, count: 32),
+            ncRoot: Data(repeating: 0x07, count: 32),
+            nullifierIMTRoot: Data(repeating: 0x08, count: 32),
+            creator: "creator",
+            proposals: [],
+            status: status
+        )
+    }
+
+    private func data(hexString: String) -> Data {
+        var data = Data()
+        var hex = hexString
+        while hex.count >= 2 {
+            let byteString = String(hex.prefix(2))
+            hex = String(hex.dropFirst(2))
+            if let byte = UInt8(byteString, radix: 16) {
+                data.append(byte)
+            }
+        }
+        return data
     }
 
     func testValidateAcceptsCurrentWalletCapabilities() throws {

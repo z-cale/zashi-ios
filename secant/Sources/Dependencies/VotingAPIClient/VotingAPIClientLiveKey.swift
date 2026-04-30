@@ -322,11 +322,11 @@ extension VotingAPIClient: DependencyKey {
 
                 // 2. Fetch and decode the CDN config. Any failure (transport, HTTP, decode,
                 //    or version-validation) surfaces as a VotingConfigError — no silent fallback.
-                let configURL = VotingServiceConfig.configURL
+                let request = VotingServiceConfig.remoteConfigRequest()
                 let data: Data
                 let response: URLResponse
                 do {
-                    (data, response) = try await httpSession.data(from: configURL)
+                    (data, response) = try await httpSession.data(for: request)
                 } catch {
                     throw VotingConfigError.decodeFailed("CDN fetch failed: \(error.localizedDescription)")
                 }
@@ -748,4 +748,3 @@ extension VotingAPIClient: DependencyKey {
         )
     }
 }
-
