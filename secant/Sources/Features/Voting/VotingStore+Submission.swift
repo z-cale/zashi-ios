@@ -157,7 +157,6 @@ extension Voting {
                     // There's no on-chain option to submit for that fallback, so
                     // count it as done for UX/progress and skip ZKP #2/cast-vote.
                     if Self.isSyntheticAbstain(choice: choice, proposal: proposal) {
-                        await send(.voteSubmissionStepUpdated(.recordingAbstain))
                         successCount += 1
                         await send(.batchVoteSubmitted(proposalId: proposalId, choice: choice))
                         continue

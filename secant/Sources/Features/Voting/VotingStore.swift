@@ -188,7 +188,6 @@ struct Voting {
 
         enum VoteSubmissionStep: Equatable {
             case authorizingVote    // delegation proof (ZKP #1)
-            case recordingAbstain   // client-synthesized abstain; no on-chain vote
             case preparingProof     // syncVoteTree + generateVanWitness + buildVoteCommitment + signCastVote + submitVoteCommitment
             case confirming         // fetchTxConfirmation poll
             case sendingShares      // buildSharePayloads + delegateShares
@@ -196,7 +195,6 @@ struct Voting {
             var label: String {
                 switch self {
                 case .authorizingVote: return String(localizable: .coinVoteStoreSubmissionAuthorizingVote)
-                case .recordingAbstain: return String(localizable: .coinVoteStoreSubmissionRecordingAbstain)
                 case .preparingProof: return String(localizable: .coinVoteStoreSubmissionPreparingProof)
                 case .confirming: return String(localizable: .coinVoteStoreSubmissionWaitingForConfirmation)
                 case .sendingShares: return String(localizable: .coinVoteStoreSubmissionSendingShares)
@@ -206,7 +204,6 @@ struct Voting {
             var stepNumber: Int {
                 switch self {
                 case .authorizingVote: return 1
-                case .recordingAbstain: return 2
                 case .preparingProof: return 2
                 case .confirming: return 3
                 case .sendingShares: return 4
@@ -415,7 +412,6 @@ struct Voting {
             if bundleCount > 1, let idx = currentVoteBundleIndex {
                 switch step {
                 case .authorizingVote: return step.label
-                case .recordingAbstain: return step.label
                 case .preparingProof:
                     return String(localizable: .coinVoteStoreSubmissionPreparingProofProgress(String(idx + 1), String(bundleCount)))
                 case .confirming:

@@ -89,18 +89,6 @@ final class VotingSubmissionTests: XCTestCase {
         XCTAssertNil(state.currentVoteBundleIndex)
     }
 
-    func testRecordingAbstainLabelIgnoresStaleBundleProgress() {
-        var state = makeState(walletId: UUID().uuidString, roundId: UUID().uuidString, proposalCount: 1)
-        state.bundleCount = 2
-        state.currentVoteBundleIndex = 1
-        state.voteSubmissionStep = .recordingAbstain
-
-        XCTAssertEqual(
-            state.voteSubmissionStepLabel,
-            String(localizable: .coinVoteStoreSubmissionRecordingAbstain)
-        )
-    }
-
     func testNativeAbstainIsNotSyntheticAbstain() {
         let proposal = VotingProposal(
             id: 1,
