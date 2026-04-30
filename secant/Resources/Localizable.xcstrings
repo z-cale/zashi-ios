@@ -3161,7 +3161,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The voting period closed. Your responses cannot be saved."
+            "value" : "The voting period closed. Your responses cannot be submitted."
           }
         }
       }
