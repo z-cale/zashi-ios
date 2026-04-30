@@ -2781,6 +2781,17 @@
         }
       }
     },
+    "coinVote.store.submissionRecordingAbstain" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recording abstain..."
+          }
+        }
+      }
+    },
     "coinVote.store.submissionSendingShares" : {
       "extractionState" : "manual",
       "localizations" : {

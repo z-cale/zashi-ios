@@ -235,13 +235,19 @@ struct ConfirmSubmissionView: View {
             case .complete: p = 1.0
             default: p = 0
             }
-            return (p * delegationWeight, String(localizable: .coinVoteConfirmSubmissionProgressAuthorizing))
+            return (
+                p * delegationWeight,
+                store.voteSubmissionStepLabel ?? String(localizable: .coinVoteConfirmSubmissionProgressAuthorizing)
+            )
 
         case let .submitting(currentIndex, totalCount, _):
             let offset = store.delegationProofStatus == .complete ? delegationWeight : 0.0
             let fraction = Double(currentIndex + 1) / Double(max(totalCount, 1))
             let overall = min(1.0, offset + fraction * (1.0 - offset))
-            return (overall, String(localizable: .coinVoteConfirmSubmissionProgressSubmittingVotes))
+            return (
+                overall,
+                store.voteSubmissionStepLabel ?? String(localizable: .coinVoteConfirmSubmissionProgressSubmittingVotes)
+            )
 
         case .authorizationFailed:
             return (0, String(localizable: .coinVoteConfirmSubmissionProgressAuthorizing))
