@@ -1599,7 +1599,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The voting transaction couldn't be authorized. Check your connection and try again."
+            "value" : "The authorization transaction failed. Check your connection and try again."
           }
         }
       }
