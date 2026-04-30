@@ -421,6 +421,15 @@ extension VotingAPIClient: DependencyKey {
                         throw VotingConfigError.decodeFailed("local override: \(error.localizedDescription)")
                     }
                     try config.validate()
+                    logger.info(
+                        """
+                        [VOTING_CONFIG] source=local_override \
+                        round=\(String(config.voteRoundId.prefix(16)), privacy: .public) \
+                        snapshot_height=\(config.snapshotHeight, privacy: .public) \
+                        vote_servers=\(config.voteServers.count, privacy: .public) \
+                        pir_endpoints=\(config.pirEndpoints.count, privacy: .public)
+                        """
+                    )
                     print("[VotingAPI] Using local override config: \(config.voteServers.count) vote servers")
                     return config
                 }
@@ -456,6 +465,15 @@ extension VotingAPIClient: DependencyKey {
                     throw VotingConfigError.decodeFailed("CDN decode failed: \(error.localizedDescription)")
                 }
                 try config.validate()
+                logger.info(
+                    """
+                    [VOTING_CONFIG] source=cdn \
+                    round=\(String(config.voteRoundId.prefix(16)), privacy: .public) \
+                    snapshot_height=\(config.snapshotHeight, privacy: .public) \
+                    vote_servers=\(config.voteServers.count, privacy: .public) \
+                    pir_endpoints=\(config.pirEndpoints.count, privacy: .public)
+                    """
+                )
                 print("[VotingAPI] Loaded config from CDN: \(config.voteServers.count) vote servers")
                 return config
             },
@@ -466,6 +484,12 @@ extension VotingAPIClient: DependencyKey {
                 )
                 let base = await SvAPIConfigStore.shared.baseURL
                 let pir = await SvAPIConfigStore.shared.pirServerURL
+                logger.info(
+                    """
+                    [VOTING_CONFIG] configured base=\(base, privacy: .public) \
+                    servers=\(config.voteServers.count, privacy: .public) pir=\(pir, privacy: .public)
+                    """
+                )
                 print("[VotingAPI] URLs configured: base=\(base), servers=\(config.voteServers.count), pir=\(pir)")
             },
             fetchActiveVotingSession: {

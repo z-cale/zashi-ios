@@ -697,25 +697,61 @@ extension Voting {
                         let bundleNotes = noteChunks[bundleIndex]
                         votingLogger.info("Keystone batch: proving bundle \(bundleIndex + 1)/\(signedCount)")
 
-                        for try await event in votingCrypto.buildAndProveDelegation(
-                            roundId,
-                            bundleIdx,
-                            bundleNotes,
-                            senderSeed,
-                            hotkeySeed,
-                            networkId,
-                            accountIndex,
-                            pirEndpoints,
-                            expectedSnapshotHeight
-                        ) {
-                            switch event {
-                            case .progress(let progress):
-                                let overallProgress = (Double(bundleIndex) + progress) / Double(signedCount)
-                                votingLogger.debug("ZKP #1 bundle \(bundleIdx) progress: \(Int(progress * 100))%")
-                                await send(.delegationProofProgress(overallProgress))
-                            case .completed(let proof):
-                                votingLogger.info("ZKP #1 bundle \(bundleIdx) COMPLETE — proof size: \(proof.count) bytes")
+                        let proofStart = ContinuousClock.now
+                        var proofBytes: Int?
+                        Self.logZKPProofTimingStart(
+                            proof: "zkp1",
+                            source: "keystone_submit",
+                            bundleIndex: bundleIdx,
+                            bundleCount: UInt32(signedCount),
+                            noteCount: bundleNotes.count
+                        )
+                        do {
+                            for try await event in votingCrypto.buildAndProveDelegation(
+                                roundId,
+                                bundleIdx,
+                                bundleNotes,
+                                senderSeed,
+                                hotkeySeed,
+                                networkId,
+                                accountIndex,
+                                pirEndpoints,
+                                expectedSnapshotHeight
+                            ) {
+                                switch event {
+                                case .progress(let progress):
+                                    let overallProgress = (Double(bundleIndex) + progress) / Double(signedCount)
+                                    votingLogger.debug("ZKP #1 bundle \(bundleIdx) progress: \(Int(progress * 100))%")
+                                    await send(.delegationProofProgress(overallProgress))
+                                case .completed(let proof):
+                                    proofBytes = proof.count
+                                    votingLogger.info(
+                                        "ZKP #1 bundle \(bundleIdx) COMPLETE — proof size: \(proof.count) bytes"
+                                    )
+                                }
                             }
+                            Self.logZKPProofTimingFinish(
+                                proof: "zkp1",
+                                source: "keystone_submit",
+                                outcome: "success",
+                                bundleIndex: bundleIdx,
+                                bundleCount: UInt32(signedCount),
+                                noteCount: bundleNotes.count,
+                                durationMs: Self.proofTimingMilliseconds(since: proofStart),
+                                proofBytes: proofBytes
+                            )
+                        } catch {
+                            Self.logZKPProofTimingFinish(
+                                proof: "zkp1",
+                                source: "keystone_submit",
+                                outcome: "failure",
+                                bundleIndex: bundleIdx,
+                                bundleCount: UInt32(signedCount),
+                                noteCount: bundleNotes.count,
+                                durationMs: Self.proofTimingMilliseconds(since: proofStart),
+                                error: error
+                            )
+                            throw error
                         }
 
                         // Submit delegation TX using the stored Keystone signature
@@ -983,6 +1019,14 @@ extension Voting {
                 votingLogger.debug(
                     "Delegation proof precompute: bundle \(bundleIndex + 1)/\(bundleCount) already cached, skipping"
                 )
+                let cachedBundleNotes = noteChunks[Int(bundleIndex)]
+                Self.logZKPProofTimingCacheHit(
+                    proof: "zkp1",
+                    source: "software_precompute",
+                    bundleIndex: bundleIndex,
+                    bundleCount: bundleCount,
+                    noteCount: cachedBundleNotes.count
+                )
                 await send(.delegationProofPrecomputationProgress(Double(bundleIndex + 1) / Double(bundleCount)))
                 continue
             }
@@ -998,21 +1042,55 @@ extension Voting {
                 nil, nil
             )
 
-            for try await event in votingCrypto.buildAndProveDelegation(
-                roundId, bundleIndex, bundleNotes,
-                senderSeed, hotkeySeed, networkId, accountIndex,
-                pirEndpoints, expectedSnapshotHeight
-            ) {
-                switch event {
-                case .progress(let progress):
-                    let overallProgress = (Double(bundleIndex) + progress) / Double(bundleCount)
-                    votingLogger.debug("ZKP #1 precompute bundle \(bundleIndex) progress: \(Int(progress * 100))%")
-                    await send(.delegationProofPrecomputationProgress(overallProgress))
-                case .completed(let proof):
-                    votingLogger.info(
-                        "ZKP #1 precompute bundle \(bundleIndex) COMPLETE — proof size: \(proof.count) bytes"
-                    )
+            let proofStart = ContinuousClock.now
+            var proofBytes: Int?
+            Self.logZKPProofTimingStart(
+                proof: "zkp1",
+                source: "software_precompute",
+                bundleIndex: bundleIndex,
+                bundleCount: bundleCount,
+                noteCount: bundleNotes.count
+            )
+            do {
+                for try await event in votingCrypto.buildAndProveDelegation(
+                    roundId, bundleIndex, bundleNotes,
+                    senderSeed, hotkeySeed, networkId, accountIndex,
+                    pirEndpoints, expectedSnapshotHeight
+                ) {
+                    switch event {
+                    case .progress(let progress):
+                        let overallProgress = (Double(bundleIndex) + progress) / Double(bundleCount)
+                        votingLogger.debug("ZKP #1 precompute bundle \(bundleIndex) progress: \(Int(progress * 100))%")
+                        await send(.delegationProofPrecomputationProgress(overallProgress))
+                    case .completed(let proof):
+                        proofBytes = proof.count
+                        votingLogger.info(
+                            "ZKP #1 precompute bundle \(bundleIndex) COMPLETE — proof size: \(proof.count) bytes"
+                        )
+                    }
                 }
+                Self.logZKPProofTimingFinish(
+                    proof: "zkp1",
+                    source: "software_precompute",
+                    outcome: "success",
+                    bundleIndex: bundleIndex,
+                    bundleCount: bundleCount,
+                    noteCount: bundleNotes.count,
+                    durationMs: Self.proofTimingMilliseconds(since: proofStart),
+                    proofBytes: proofBytes
+                )
+            } catch {
+                Self.logZKPProofTimingFinish(
+                    proof: "zkp1",
+                    source: "software_precompute",
+                    outcome: "failure",
+                    bundleIndex: bundleIndex,
+                    bundleCount: bundleCount,
+                    noteCount: bundleNotes.count,
+                    durationMs: Self.proofTimingMilliseconds(since: proofStart),
+                    error: error
+                )
+                throw error
             }
         }
     }
@@ -1061,6 +1139,13 @@ extension Voting {
                 roundId, bundleIndex, senderSeed, networkId, accountIndex
             ) {
                 votingLogger.debug("Delegation bundle \(bundleIndex + 1)/\(bundleCount) using cached ZKP #1 proof")
+                Self.logZKPProofTimingCacheHit(
+                    proof: "zkp1",
+                    source: "software_submit",
+                    bundleIndex: bundleIndex,
+                    bundleCount: bundleCount,
+                    noteCount: bundleNotes.count
+                )
                 registration = cachedRegistration
             } else {
                 _ = try await votingCrypto.buildVotingPczt(
@@ -1069,19 +1154,55 @@ extension Voting {
                     nil, nil
                 )
 
-                for try await event in votingCrypto.buildAndProveDelegation(
-                    roundId, bundleIndex, bundleNotes,
-                    senderSeed, hotkeySeed, networkId, accountIndex,
-                    pirEndpoints, expectedSnapshotHeight
-                ) {
-                    switch event {
-                    case .progress(let progress):
-                        let overallProgress = (Double(bundleIndex) + progress) / Double(bundleCount)
-                        votingLogger.debug("ZKP #1 bundle \(bundleIndex) progress: \(Int(progress * 100))%")
-                        await send(.delegationProofProgress(overallProgress))
-                    case .completed(let proof):
-                        votingLogger.info("ZKP #1 bundle \(bundleIndex) COMPLETE — proof size: \(proof.count) bytes")
+                let proofStart = ContinuousClock.now
+                var proofBytes: Int?
+                Self.logZKPProofTimingStart(
+                    proof: "zkp1",
+                    source: "software_submit",
+                    bundleIndex: bundleIndex,
+                    bundleCount: bundleCount,
+                    noteCount: bundleNotes.count
+                )
+                do {
+                    for try await event in votingCrypto.buildAndProveDelegation(
+                        roundId, bundleIndex, bundleNotes,
+                        senderSeed, hotkeySeed, networkId, accountIndex,
+                        pirEndpoints, expectedSnapshotHeight
+                    ) {
+                        switch event {
+                        case .progress(let progress):
+                            let overallProgress = (Double(bundleIndex) + progress) / Double(bundleCount)
+                            votingLogger.debug("ZKP #1 bundle \(bundleIndex) progress: \(Int(progress * 100))%")
+                            await send(.delegationProofProgress(overallProgress))
+                        case .completed(let proof):
+                            proofBytes = proof.count
+                            votingLogger.info(
+                                "ZKP #1 bundle \(bundleIndex) COMPLETE — proof size: \(proof.count) bytes"
+                            )
+                        }
                     }
+                    Self.logZKPProofTimingFinish(
+                        proof: "zkp1",
+                        source: "software_submit",
+                        outcome: "success",
+                        bundleIndex: bundleIndex,
+                        bundleCount: bundleCount,
+                        noteCount: bundleNotes.count,
+                        durationMs: Self.proofTimingMilliseconds(since: proofStart),
+                        proofBytes: proofBytes
+                    )
+                } catch {
+                    Self.logZKPProofTimingFinish(
+                        proof: "zkp1",
+                        source: "software_submit",
+                        outcome: "failure",
+                        bundleIndex: bundleIndex,
+                        bundleCount: bundleCount,
+                        noteCount: bundleNotes.count,
+                        durationMs: Self.proofTimingMilliseconds(since: proofStart),
+                        error: error
+                    )
+                    throw error
                 }
 
                 registration = try await votingCrypto.getDelegationSubmission(

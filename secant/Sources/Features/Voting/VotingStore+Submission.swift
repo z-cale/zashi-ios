@@ -155,6 +155,7 @@ extension Voting {
 
                 var successCount = 0
                 var failCount = 0
+                let noteChunks = cachedNotes.smartBundles().bundles
 
                 for (draftIndex, draft) in drafts.enumerated() {
                     let proposalId = draft.key
@@ -247,13 +248,52 @@ extension Voting {
                             let vanWitness = try await votingCrypto.generateVanWitness(roundId, bundleIndex, anchorHeight)
 
                             var builtBundle: VoteCommitmentBundle?
-                            for try await event in votingCrypto.buildVoteCommitment(
-                                roundId, bundleIndex, hotkeySeed, networkId, proposalId, choice,
-                                numOptions, vanWitness.authPath, vanWitness.position, vanWitness.anchorHeight, singleShare
-                            ) {
-                                if case .completed(let bundle) = event {
-                                    builtBundle = bundle
+                            let bundleNoteCount = Int(bundleIndex) < noteChunks.count
+                                ? noteChunks[Int(bundleIndex)].count
+                                : 0
+                            let proofStart = ContinuousClock.now
+                            Self.logZKPProofTimingStart(
+                                proof: "zkp2",
+                                source: "vote_submission",
+                                bundleIndex: bundleIndex,
+                                bundleCount: bundleCount,
+                                noteCount: bundleNoteCount,
+                                proposalId: proposalId
+                            )
+                            do {
+                                for try await event in votingCrypto.buildVoteCommitment(
+                                    roundId, bundleIndex, hotkeySeed, networkId, proposalId, choice,
+                                    numOptions, vanWitness.authPath, vanWitness.position,
+                                    vanWitness.anchorHeight, singleShare
+                                ) {
+                                    if case .completed(let bundle) = event {
+                                        builtBundle = bundle
+                                    }
                                 }
+                                Self.logZKPProofTimingFinish(
+                                    proof: "zkp2",
+                                    source: "vote_submission",
+                                    outcome: "success",
+                                    bundleIndex: bundleIndex,
+                                    bundleCount: bundleCount,
+                                    noteCount: bundleNoteCount,
+                                    durationMs: Self.proofTimingMilliseconds(since: proofStart),
+                                    proofBytes: builtBundle?.proof.count,
+                                    proposalId: proposalId
+                                )
+                            } catch {
+                                Self.logZKPProofTimingFinish(
+                                    proof: "zkp2",
+                                    source: "vote_submission",
+                                    outcome: "failure",
+                                    bundleIndex: bundleIndex,
+                                    bundleCount: bundleCount,
+                                    noteCount: bundleNoteCount,
+                                    durationMs: Self.proofTimingMilliseconds(since: proofStart),
+                                    proposalId: proposalId,
+                                    error: error
+                                )
+                                throw error
                             }
                             guard let builtBundle else {
                                 throw VotingFlowError.missingVoteCommitmentBundle

@@ -958,6 +958,76 @@ struct Voting {
         }
     }
 
+    static func proofTimingMilliseconds(since start: ContinuousClock.Instant) -> UInt64 {
+        let components = start.duration(to: ContinuousClock.now).components
+        return UInt64(components.seconds * 1_000)
+            + UInt64(components.attoseconds / 1_000_000_000_000_000)
+    }
+
+    static func logZKPProofTimingStart(
+        proof: String,
+        source: String,
+        bundleIndex: UInt32,
+        bundleCount: UInt32,
+        noteCount: Int,
+        proposalId: UInt32? = nil
+    ) {
+        let proposalValue = proposalId.map(String.init) ?? "n/a"
+        votingLogger.info(
+            """
+            [ZKP_TIMING] event=start proof=\(proof, privacy: .public) source=\(source, privacy: .public) \
+            bundle=\(bundleIndex + 1, privacy: .public)/\(bundleCount, privacy: .public) \
+            notes=\(noteCount, privacy: .public) proposal_id=\(proposalValue, privacy: .public)
+            """
+        )
+    }
+
+    static func logZKPProofTimingFinish(
+        proof: String,
+        source: String,
+        outcome: String,
+        bundleIndex: UInt32,
+        bundleCount: UInt32,
+        noteCount: Int,
+        durationMs: UInt64,
+        proofBytes: Int? = nil,
+        proposalId: UInt32? = nil,
+        error: Error? = nil
+    ) {
+        let proposalValue = proposalId.map(String.init) ?? "n/a"
+        let proofBytesValue = proofBytes.map(String.init) ?? "n/a"
+        let errorValue = error.map { String(describing: type(of: $0)) } ?? "n/a"
+        votingLogger.info(
+            """
+            [ZKP_TIMING] event=finish proof=\(proof, privacy: .public) source=\(source, privacy: .public) \
+            outcome=\(outcome, privacy: .public) \
+            bundle=\(bundleIndex + 1, privacy: .public)/\(bundleCount, privacy: .public) \
+            notes=\(noteCount, privacy: .public) proposal_id=\(proposalValue, privacy: .public) \
+            duration_ms=\(durationMs, privacy: .public) proof_bytes=\(proofBytesValue, privacy: .public) \
+            error_type=\(errorValue, privacy: .public)
+            """
+        )
+    }
+
+    static func logZKPProofTimingCacheHit(
+        proof: String,
+        source: String,
+        bundleIndex: UInt32,
+        bundleCount: UInt32,
+        noteCount: Int,
+        proposalId: UInt32? = nil
+    ) {
+        let proposalValue = proposalId.map(String.init) ?? "n/a"
+        votingLogger.info(
+            """
+            [ZKP_TIMING] event=cache_hit proof=\(proof, privacy: .public) \
+            source=\(source, privacy: .public) \
+            bundle=\(bundleIndex + 1, privacy: .public)/\(bundleCount, privacy: .public) \
+            notes=\(noteCount, privacy: .public) proposal_id=\(proposalValue, privacy: .public)
+            """
+        )
+    }
+
     func sessionBackedRound(from session: VotingSession, title: String, fallback: VotingRound) -> VotingRound {
         let proposals = session.proposals.isEmpty ? fallback.proposals : session.proposals
         // Prefer the on-chain title, then the caller-provided title, then the fallback
