@@ -104,6 +104,13 @@ struct VotingServiceConfig: Codable, Equatable, Sendable {
     /// Config URL served via GitHub Pages CDN.
     public static let configURL = URL(string: "https://valargroup.github.io/token-holder-voting-config/voting-config.json")!
 
+    static func remoteConfigRequest() -> URLRequest {
+        var request = URLRequest(url: configURL, cachePolicy: .reloadIgnoringLocalCacheData)
+        request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
+        request.setValue("no-cache", forHTTPHeaderField: "Pragma")
+        return request
+    }
+
     /// Filename for a local override bundled in the app (debug-only).
     static let localOverrideFilename = "voting-config-local.json"
 
@@ -146,7 +153,8 @@ enum VotingConfigError: Error, Equatable, LocalizedError {
     case decodeFailed(String)
     case unsupportedVersion(component: String, advertised: String)
     case proposalsHashMismatch(expected: Data, actual: Data)
-    case roundIdMismatch(configRoundId: String, chainRoundId: String)
+    case roundIdMismatch(configRoundId: String, activeRoundId: String)
+    case noActiveRound(configRoundId: String)
 
     var errorDescription: String? {
         switch self {
@@ -156,13 +164,15 @@ enum VotingConfigError: Error, Equatable, LocalizedError {
             return String(localizable: .coinVoteConfigErrorUnsupportedVersion(component, advertised))
         case .proposalsHashMismatch:
             return String(localizable: .coinVoteConfigErrorProposalsHashMismatch)
-        case .roundIdMismatch(let configRoundId, let chainRoundId):
+        case .roundIdMismatch(let configRoundId, let activeRoundId):
             return String(
                 localizable: .coinVoteConfigErrorRoundIdMismatch(
                     String(configRoundId.prefix(16)),
-                    String(chainRoundId.prefix(16))
+                    String(activeRoundId.prefix(16))
                 )
             )
+        case .noActiveRound(let configRoundId):
+            return String(localizable: .coinVoteConfigErrorNoActiveRound(String(configRoundId.prefix(16))))
         }
     }
 }
@@ -196,6 +206,48 @@ extension VotingServiceConfig {
                 advertised: supportedVersions.pir.joined(separator: ",")
             )
         }
+    }
+}
+
+// MARK: - Chain binding
+
+extension VotingServiceConfig {
+    func hasMatchingRound(in sessions: [VotingSession]) -> Bool {
+        matchingSession(in: sessions) != nil
+    }
+
+    func chainBindingError(in sessions: [VotingSession]) -> VotingConfigError? {
+        guard !sessions.isEmpty else { return nil }
+
+        if let matchingSession = matchingSession(in: sessions) {
+            let computed = Self.computeProposalsHash(proposals)
+            if computed != matchingSession.proposalsHash {
+                return .proposalsHashMismatch(
+                    expected: matchingSession.proposalsHash,
+                    actual: computed
+                )
+            }
+            return nil
+        }
+
+        let configRoundId = voteRoundId.lowercased()
+        if let activeSession = sessions.first(where: { $0.status == .active }) {
+            return .roundIdMismatch(
+                configRoundId: configRoundId,
+                activeRoundId: Self.hexString(activeSession.voteRoundId)
+            )
+        }
+
+        return .noActiveRound(configRoundId: configRoundId)
+    }
+
+    private func matchingSession(in sessions: [VotingSession]) -> VotingSession? {
+        let configRoundId = voteRoundId.lowercased()
+        return sessions.first { Self.hexString($0.voteRoundId) == configRoundId }
+    }
+
+    private static func hexString(_ data: Data) -> String {
+        data.map { String(format: "%02x", $0) }.joined()
     }
 }
 
