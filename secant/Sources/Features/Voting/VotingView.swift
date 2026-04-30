@@ -129,31 +129,52 @@ struct VotingView: View {
 
 struct NoRoundsView: View {
     let store: StoreOf<Voting>
+    @State private var noRoundsSheetPresented = true
+    @State private var dismissFlowAfterSheetDismiss = false
 
     var body: some View {
-        VStack(spacing: 12) {
-            Spacer()
-            Image(systemName: "rectangle.slash")
-                .font(.system(size: 28))
-                .foregroundStyle(.secondary)
-            Text(localizable: .coinVoteVotingViewNoRoundsTitle)
-                .font(.headline)
-            Text(localizable: .coinVoteVotingViewNoRoundsMessage)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-            Spacer()
-        }
-        .navigationTitle(String(localizable: .coinVoteCommonGovernanceTitle))
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button { store.send(.dismissFlow) } label: {
-                    Image(systemName: "xmark")
+        WithPerceptionTracking {
+            ScrollView {
+                VStack(spacing: 16) {
+                    PollsListSkeletonCard()
                 }
+                .padding(.horizontal, 24)
+                .padding(.top, 8)
+                .padding(.bottom, 24)
             }
+            .applyScreenBackground()
+            .screenTitle(String(localizable: .coinVoteCommonScreenTitle))
+            .zashiBack { store.send(.dismissFlow) }
+            .votingSheet(
+                isPresented: noRoundsBinding,
+                title: String(localizable: .coinVotePollsListEmptyTitle),
+                message: String(localizable: .coinVotePollsListEmptyMessage),
+                primary: .init(title: String(localizable: .coinVoteCommonGotIt), style: .primary) {
+                    dismissFlowAfterSheetDismiss = true
+                    noRoundsSheetPresented = false
+                },
+                secondary: .init(title: String(localizable: .coinVoteCommonRefresh), style: .secondary) {
+                    store.send(.retryLoadRounds)
+                },
+                onDismiss: {
+                    guard dismissFlowAfterSheetDismiss else { return }
+                    dismissFlowAfterSheetDismiss = false
+                    store.send(.dismissFlow)
+                }
+            )
         }
+    }
+
+    private var noRoundsBinding: Binding<Bool> {
+        Binding(
+            get: { noRoundsSheetPresented && store.currentScreen == .noRounds },
+            set: { newValue in
+                if !newValue && store.currentScreen == .noRounds {
+                    dismissFlowAfterSheetDismiss = true
+                }
+                noRoundsSheetPresented = newValue
+            }
+        )
     }
 }
 

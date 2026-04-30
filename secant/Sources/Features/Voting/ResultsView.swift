@@ -29,6 +29,8 @@ private func tallyEntryColor(
 struct ResultsView: View {
     @Environment(\.colorScheme)
     var colorScheme
+    @State private var loadErrorSheetPresented = true
+    @State private var dismissFlowAfterLoadErrorSheetDismiss = false
 
     let store: StoreOf<Voting>
 
@@ -82,6 +84,12 @@ struct ResultsView: View {
                     store.send(.retryLoadTallyResults)
                 },
                 secondary: .init(title: String(localizable: .coinVoteCommonGoBack), style: .secondary) {
+                    dismissFlowAfterLoadErrorSheetDismiss = true
+                    loadErrorSheetPresented = false
+                },
+                onDismiss: {
+                    guard dismissFlowAfterLoadErrorSheetDismiss else { return }
+                    dismissFlowAfterLoadErrorSheetDismiss = false
                     store.send(.dismissFlow)
                 }
             )
@@ -90,10 +98,13 @@ struct ResultsView: View {
 
     private var loadErrorBinding: Binding<Bool> {
         Binding(
-            get: { store.resultsLoadError },
+            get: { loadErrorSheetPresented && store.resultsLoadError },
             // Drag-dismiss mirrors Go back for the same reason as PollsListView.
             set: { newValue in
-                if !newValue { store.send(.dismissFlow) }
+                if !newValue && store.resultsLoadError {
+                    dismissFlowAfterLoadErrorSheetDismiss = true
+                }
+                loadErrorSheetPresented = newValue
             }
         )
     }

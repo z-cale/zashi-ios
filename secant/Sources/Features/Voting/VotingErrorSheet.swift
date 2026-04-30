@@ -83,9 +83,10 @@ extension View {
         title: String,
         message: String,
         primary: VotingSheetContent.ButtonConfig,
-        secondary: VotingSheetContent.ButtonConfig? = nil
+        secondary: VotingSheetContent.ButtonConfig? = nil,
+        onDismiss: (() -> Void)? = nil
     ) -> some View {
-        zashiSheet(isPresented: isPresented) {
+        zashiSheet(isPresented: isPresented, onDismiss: onDismiss) {
             VotingSheetContent(
                 iconSystemName: iconSystemName,
                 iconStyle: iconStyle,

@@ -4,6 +4,8 @@ import ComposableArchitecture
 struct PollsListView: View {
     @Environment(\.colorScheme)
     var colorScheme
+    @State private var loadErrorSheetPresented = true
+    @State private var dismissFlowAfterLoadErrorSheetDismiss = false
 
     let store: StoreOf<Voting>
 
@@ -11,11 +13,8 @@ struct PollsListView: View {
         WithPerceptionTracking {
             ScrollView {
                 VStack(spacing: 16) {
-                    if store.pollsLoadError {
-                        // Skeleton placeholder behind the "Couldn't load polls"
-                        // sheet, per the Figma. Single card with gray bars so
-                        // the surface doesn't read as empty.
-                        pollsSkeletonCard
+                    if store.pollsLoadError || store.allRounds.isEmpty {
+                        PollsListSkeletonCard()
                     } else {
                         // Newest polls first. allRounds is stored ascending so the
                         // assigned round numbers stay sane (round 1 = oldest), but
@@ -40,39 +39,30 @@ struct PollsListView: View {
                     store.send(.retryLoadRounds)
                 },
                 secondary: .init(title: String(localizable: .coinVoteCommonGoBack), style: .secondary) {
+                    dismissFlowAfterLoadErrorSheetDismiss = true
+                    loadErrorSheetPresented = false
+                },
+                onDismiss: {
+                    guard dismissFlowAfterLoadErrorSheetDismiss else { return }
+                    dismissFlowAfterLoadErrorSheetDismiss = false
                     store.send(.dismissFlow)
                 }
             )
         }
     }
 
-    // MARK: - Skeleton Placeholder
-
-    private var pollsSkeletonCard: some View {
-        let barFill = Design.Surfaces.bgTertiary.color(colorScheme)
-        return VStack(alignment: .leading, spacing: 14) {
-            RoundedRectangle(cornerRadius: 4).fill(barFill).frame(width: 80, height: 12)
-            VStack(alignment: .leading, spacing: 10) {
-                RoundedRectangle(cornerRadius: 4).fill(barFill).frame(height: 12)
-                RoundedRectangle(cornerRadius: 4).fill(barFill).frame(height: 12)
-                RoundedRectangle(cornerRadius: 4).fill(barFill).frame(width: 240, height: 12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            RoundedRectangle(cornerRadius: 4).fill(barFill).frame(width: 60, height: 12)
-        }
-        .padding(Design.Spacing._xl)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Design.Surfaces.bgPrimary.color(colorScheme))
-        .clipShape(RoundedRectangle(cornerRadius: Design.Radius._2xl))
-    }
+    // MARK: - Load Error Sheet
 
     private var loadErrorBinding: Binding<Bool> {
         Binding(
-            get: { store.pollsLoadError },
+            get: { loadErrorSheetPresented && store.pollsLoadError },
             // Drag-dismiss mirrors Go back: exit the voting flow rather than
             // leave the user on a stale/empty list with no action to take.
             set: { newValue in
-                if !newValue { store.send(.dismissFlow) }
+                if !newValue && store.pollsLoadError {
+                    dismissFlowAfterLoadErrorSheetDismiss = true
+                }
+                loadErrorSheetPresented = newValue
             }
         )
     }
@@ -269,5 +259,28 @@ struct PollsListView: View {
                 store.send(.roundTapped(item.id))
             }
         }
+    }
+}
+
+struct PollsListSkeletonCard: View {
+    @Environment(\.colorScheme)
+    var colorScheme
+
+    var body: some View {
+        let barFill = Design.Surfaces.bgTertiary.color(colorScheme)
+        return VStack(alignment: .leading, spacing: 14) {
+            RoundedRectangle(cornerRadius: 4).fill(barFill).frame(width: 80, height: 12)
+            VStack(alignment: .leading, spacing: 10) {
+                RoundedRectangle(cornerRadius: 4).fill(barFill).frame(height: 12)
+                RoundedRectangle(cornerRadius: 4).fill(barFill).frame(height: 12)
+                RoundedRectangle(cornerRadius: 4).fill(barFill).frame(width: 240, height: 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            RoundedRectangle(cornerRadius: 4).fill(barFill).frame(width: 60, height: 12)
+        }
+        .padding(Design.Spacing._xl)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Design.Surfaces.bgPrimary.color(colorScheme))
+        .clipShape(RoundedRectangle(cornerRadius: Design.Radius._2xl))
     }
 }
