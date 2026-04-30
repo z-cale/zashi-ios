@@ -859,8 +859,10 @@ extension Voting {
             return .none
 
         case .delegationProofPrecomputationProgress(let progress):
-            state.delegationProofPrecomputeStatus = .generating(progress: progress)
-            if state.isBatchSubmitting {
+            if state.delegationProofPrecomputeStatus != .complete {
+                state.delegationProofPrecomputeStatus = .generating(progress: progress)
+            }
+            if state.isBatchSubmitting && state.delegationProofStatus != .complete {
                 state.delegationProofStatus = .generating(progress: progress)
             }
             return .none
@@ -868,7 +870,7 @@ extension Voting {
         case .delegationProofPrecomputationCompleted:
             state.delegationProofPrecomputeStatus = .complete
             state.isDelegationProofPrecomputeInFlight = false
-            if state.isBatchSubmitting {
+            if state.isBatchSubmitting && state.delegationProofStatus != .complete {
                 state.delegationProofStatus = .generating(progress: 1)
             }
             if state.pendingBatchSubmission {
@@ -931,6 +933,8 @@ extension Voting {
 
         case .delegationProofPrecomputationFailed(let error):
             state.isDelegationProofPrecomputeInFlight = false
+            // Keep the failed state sticky so background precompute does not retry
+            // in a loop; foreground submission still falls back to fresh delegation.
             state.delegationProofPrecomputeStatus = .failed(
                 VotingErrorMapper.userFriendlyMessage(from: error)
             )

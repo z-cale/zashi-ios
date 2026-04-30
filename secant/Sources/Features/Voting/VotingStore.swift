@@ -355,7 +355,8 @@ struct Voting {
         /// `.retryLoadTallyResults` (on success) or by dismissing the flow.
         var resultsLoadError: Bool = false
 
-        /// Signals that batch submission should resume after delegation completes (Keystone path).
+        /// Signals that batch submission should resume after deferred delegation work
+        /// finishes, either Keystone signing or software proof precomputation.
         var pendingBatchSubmission: Bool = false
 
         // Witness verification results
