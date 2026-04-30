@@ -83,6 +83,24 @@ extension Voting {
                 }
                 votingLogger.info("Config round \(configRoundId.prefix(16))... matched chain round with proposals_hash=\(matchingSession.proposalsHash.base64EncodedString())")
 
+                // Phase 2: round-manifest verification.
+                // Refuses to vote if the off-chain attestation is missing,
+                // signatures don't verify against pinned wallet trust anchor,
+                // or the chain server's ea_pk diverges from the attested one.
+                // See vote-sdk/docs/config.md §"Wallet verification decision tree".
+                do {
+                    try config.verifyRoundSignatures(serverEaPK: matchingSession.eaPK)
+                    votingLogger.info("round_signatures verified for round=\(configRoundId.prefix(16))...")
+                } catch let error as VotingConfigError {
+                    votingLogger.error("round-manifest verification failed: \(error.errorDescription ?? "unknown")")
+                    state.screenStack = [.configError(error.errorDescription ?? "Could not authenticate this round.")]
+                    return .none
+                } catch {
+                    votingLogger.error("round-manifest verification threw unexpected error: \(error)")
+                    state.screenStack = [.configError("Could not authenticate this round.")]
+                    return .none
+                }
+
                 // Binding succeeded. Reset the one-shot retry flag so a later round
                 // transition in this session can still get its own auto-retry attempt.
                 state.hasAttemptedConfigRefresh = false

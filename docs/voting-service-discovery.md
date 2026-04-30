@@ -33,11 +33,20 @@ Per ZIP 1244 §"Vote Configuration Format":
     "vote_protocol": "v0",
     "tally": "v0",
     "vote_server": "v1"
+  },
+  "round_signatures": {
+    "round_id": "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899",
+    "ea_pk": "base64-encoded-32-byte-key",
+    "valset_hash": "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+    "signed_payload_hash": null,
+    "signatures": [
+      {"signer": "valarg-poc", "alg": "ed25519", "signature": "base64-encoded-signature"}
+    ]
   }
 }
 ```
 
-All fields are required. `JSONDecoder` throws on any missing field, which surfaces as a `.configError` with `VotingConfigError.decodeFailed`.
+`JSONDecoder` throws on any missing required field, which surfaces as a `.configError` with `VotingConfigError.decodeFailed`. Phase 2 wallets decode configs without `round_signatures` so they can surface `manifestSignaturesMissing`, but they hard-fail before voting.
 
 | Field                | Purpose                                                                                                                                                                     |
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -48,6 +57,7 @@ All fields are required. `JSONDecoder` throws on any missing field, which surfac
 | `snapshot_height`    | Zcash block height the Orchard-pool voting snapshot was taken at. Informational in config; voting uses chain round data.                                                    |
 | `vote_end_time`      | Unix timestamp after which votes are no longer accepted. Informational in config; voting uses chain round data.                                                             |
 | `supported_versions` | What versions of each component the server speaks. See "Version handling" below.                                                                                            |
+| `round_signatures`   | Off-chain attestation over `round_id`, `ea_pk`, and `valset_hash`, signed by pinned manifest operators. See "Round-manifest verification" below.                            |
 
 ## Version handling
 
@@ -74,6 +84,20 @@ The CDN config does not carry proposals. After each config fetch, the wallet con
 `VoteRound.proposals` is the authoritative source for proposal IDs, titles, descriptions, options, forum links, and result labels. `VoteRound.proposals_hash` remains chain state and can be shown/debugged, but the wallet no longer recomputes it from CDN JSON because the CDN no longer publishes proposal JSON.
 
 On `.allRoundsLoaded`, the wallet still checks that `config.vote_round_id` exists in the chain rounds. A missing match triggers one fresh CDN fetch to recover from a stale config before surfacing `.configError`.
+
+## Round-manifest verification (Phase 2)
+
+After the round-id binding check, the wallet runs `verifyRoundSignatures(serverEaPK:)` against the matched chain round's `ea_pk` (see [`VotingServiceConfig.swift`](../secant/Sources/Dependencies/VotingModels/VotingServiceConfig.swift)). This authenticates the round's `ea_pk` against ed25519 signatures from operators whose pubkeys are baked into the wallet bundle ([`ManifestTrustAnchor`](../secant/Sources/Dependencies/VotingModels/RoundManifest.swift)).
+
+The verifier hard-fails to `.configError` on any of:
+
+- `manifestSignaturesMissing` — `round_signatures` absent from the CDN config.
+- `manifestRoundIdMismatch` — the manifest's `round_id` doesn't match `vote_round_id`.
+- `manifestMalformed` — bad base64 / hex / wrong field length.
+- `manifestSignatureInvalid` — fewer than `kRequired` distinct signers in `manifest_signers` produced a valid ed25519 signature over the canonical payload.
+- `eaPKMismatch` — the server's `ea_pk` for this round disagrees with the manifest's. This branch is what catches a hijacked vote-server returning a different (attacker-controlled) `ea_pk` than the publisher signed off-chain.
+
+The full spec, schema, and threat model live in [`vote-sdk/docs/config.md`](https://github.com/valargroup/vote-sdk/blob/main/docs/config.md). The reference signer CLI is [`vote-sdk/cmd/manifest-signer`](https://github.com/valargroup/vote-sdk/tree/main/cmd/manifest-signer); the operator-side runbook is [`sign-round-manifest.md`](https://github.com/valargroup/vote-sdk/blob/main/docs/runbooks/sign-round-manifest.md).
 
 ## Failure recovery
 
