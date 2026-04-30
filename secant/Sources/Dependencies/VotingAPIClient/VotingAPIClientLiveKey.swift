@@ -36,6 +36,7 @@ private enum SvAPIError: LocalizedError {
     case invalidResponse(String)
     case noActiveVotingSession
     case txFailed(code: UInt32, log: String)
+    case noReachableVoteServers
 
     var errorDescription: String? {
         switch self {
@@ -47,6 +48,8 @@ private enum SvAPIError: LocalizedError {
             return "No active voting round"
         case .txFailed(let code, let log):
             return "Transaction failed (code \(code)): \(log)"
+        case .noReachableVoteServers:
+            return "Unable to reach any vote server. Please check your internet connection and try again."
         }
     }
 }
@@ -254,6 +257,110 @@ private func postServerJSON(_ serverURL: String, _ path: String, body: [String: 
         throw SvAPIError.httpError(statusCode: http.statusCode, message: body)
     }
     return try SvAPIResponseParser.parseJSONObject(data, response: http, context: "POST \(path)")
+}
+
+typealias SharePost = @Sendable (_ serverURL: String, _ body: [String: Any]) async throws -> Void
+typealias ShareTargetSelector = @Sendable (_ serverURLs: [String], _ targetCount: Int) -> [String]
+
+func delegateSharePayloads(
+    _ payloads: [SharePayload],
+    roundIdHex: String,
+    initialServerURLs: [String],
+    postShare: @escaping SharePost,
+    selectTargets: @escaping ShareTargetSelector = { Array($0.shuffled().prefix($1)) }
+) async throws -> ShareDelegationResult {
+    var availableServers = initialServerURLs
+    var lastError: Error?
+    var results: [DelegatedShareInfo] = []
+
+    for (shareOffset, payload) in payloads.enumerated() {
+        let body: [String: Any] = [
+            "shares_hash": payload.sharesHash.base64EncodedString(),
+            "proposal_id": payload.proposalId,
+            "vote_decision": payload.voteDecision,
+            "enc_share": [
+                "c1": payload.encShare.c1.base64EncodedString(),
+                "c2": payload.encShare.c2.base64EncodedString(),
+                "share_index": payload.encShare.shareIndex
+            ],
+            "share_index": payload.encShare.shareIndex,
+            "tree_position": payload.treePosition,
+            "vote_round_id": roundIdHex,
+            "all_enc_shares": payload.allEncShares.map { share -> [String: Any] in
+                [
+                    "c1": share.c1.base64EncodedString(),
+                    "c2": share.c2.base64EncodedString(),
+                    "share_index": share.shareIndex
+                ]
+            },
+            "share_comms": payload.shareComms.map { $0.base64EncodedString() },
+            "primary_blind": payload.primaryBlind.base64EncodedString(),
+            "submit_at": payload.submitAt
+        ]
+
+        let targetCount = max(1, (availableServers.count + 1) / 2)
+        var acceptedServers: [String] = []
+        var triedServers = Set<String>()
+
+        while acceptedServers.count < targetCount {
+            let candidates = availableServers.filter { !triedServers.contains($0) }
+            guard !candidates.isEmpty else { break }
+
+            let needed = max(1, targetCount - acceptedServers.count)
+            let targets = selectTargets(candidates, needed).filter { candidates.contains($0) }
+            guard !targets.isEmpty else { break }
+
+            triedServers.formUnion(targets)
+            var failedServers = Set<String>()
+
+            await withTaskGroup(of: (String, Bool).self) { group in
+                for server in targets {
+                    group.addTask {
+                        do {
+                            try await postShare(server, body)
+                            return (server, true)
+                        } catch {
+                            return (server, false)
+                        }
+                    }
+                }
+
+                for await (server, ok) in group {
+                    if ok {
+                        acceptedServers.append(server)
+                    } else {
+                        print("[VotingAPI] Share \(shareOffset) failed on \(server)")
+                        failedServers.insert(server)
+                    }
+                }
+            }
+
+            if !failedServers.isEmpty {
+                availableServers.removeAll { failedServers.contains($0) }
+            }
+        }
+
+        if acceptedServers.isEmpty {
+            print("[VotingAPI] Share \(shareOffset) failed on all configured vote servers")
+            lastError = SvAPIError.noReachableVoteServers
+            break
+        }
+
+        results.append(DelegatedShareInfo(
+            shareIndex: payload.encShare.shareIndex,
+            proposalId: payload.proposalId,
+            acceptedByServers: acceptedServers
+        ))
+    }
+
+    if let lastError {
+        throw lastError
+    }
+
+    return ShareDelegationResult(
+        delegatedShares: results,
+        remainingServerURLs: availableServers
+    )
 }
 
 /// Parse a broadcast TX response into TxResult. Throws on non-zero code.
@@ -551,111 +658,18 @@ extension VotingAPIClient: DependencyKey {
                     return try parseTxResult(json)
                 }
             },
-            delegateShares: { payloads, roundIdHex in
-                // Send each share to ceil(s/2) healthy helpers, balancing
-                // censorship resistance (redundancy) against amount privacy
-                // (limiting servers that see each share's ciphertext).
-                // The chain deduplicates via share nullifiers — only the first
-                // MsgRevealShare per nullifier is accepted.
-                let tracker = ServerHealthTracker.shared
-                let healthy = await tracker.healthyServers()
-                let quorum = max(1, (healthy.count + 1) / 2)
-
-                var lastError: Error?
-                var results: [DelegatedShareInfo] = []
-                for (i, payload) in payloads.enumerated() {
-                    let body: [String: Any] = [
-                        "shares_hash": payload.sharesHash.base64EncodedString(),
-                        "proposal_id": payload.proposalId,
-                        "vote_decision": payload.voteDecision,
-                        "enc_share": [
-                            "c1": payload.encShare.c1.base64EncodedString(),
-                            "c2": payload.encShare.c2.base64EncodedString(),
-                            "share_index": payload.encShare.shareIndex
-                        ],
-                        "share_index": payload.encShare.shareIndex,
-                        "tree_position": payload.treePosition,
-                        "vote_round_id": roundIdHex,
-                        "all_enc_shares": payload.allEncShares.map { share -> [String: Any] in
-                            [
-                                "c1": share.c1.base64EncodedString(),
-                                "c2": share.c2.base64EncodedString(),
-                                "share_index": share.shareIndex
-                            ]
-                        },
-                        "share_comms": payload.shareComms.map { $0.base64EncodedString() },
-                        "primary_blind": payload.primaryBlind.base64EncodedString(),
-                        "submit_at": payload.submitAt
-                    ]
-
-                    // Pick `quorum` distinct servers uniformly at random for each
-                    // share independently, so no single server sees a correlated
-                    // subset of the voter's shares.
-                    let targets = Array(healthy.shuffled().prefix(quorum))
-
-                    // Send to all targets concurrently; the share is "delegated" if
-                    // at least one server accepted it.
-                    var accepted = false
-                    var acceptedServers: [String] = []
-                    var shareError: Error?
-                    await withTaskGroup(of: (String, Bool).self) { group in
-                        for server in targets {
-                            group.addTask {
-                                do {
-                                    _ = try await postServerJSON(server, "/shielded-vote/v1/shares", body: body)
-                                    await tracker.recordSuccess(for: server)
-                                    return (server, true)
-                                } catch {
-                                    await tracker.recordFailure(for: server)
-                                    return (server, false)
-                                }
-                            }
-                        }
-                        for await (server, ok) in group {
-                            if ok {
-                                accepted = true
-                                acceptedServers.append(server)
-                            } else {
-                                print("[VotingAPI] Share \(i) failed on \(server)")
-                            }
-                        }
+            delegateShares: { payloads, roundIdHex, serverURLs in
+                // Active foreground delivery uses the submission-local server set.
+                // POST failures prune that local set immediately; cached helper
+                // health and /status probes are intentionally not consulted here.
+                try await delegateSharePayloads(
+                    payloads,
+                    roundIdHex: roundIdHex,
+                    initialServerURLs: serverURLs,
+                    postShare: { server, body in
+                        _ = try await postServerJSON(server, "/shielded-vote/v1/shares", body: body)
                     }
-
-                    if !accepted {
-                        // All quorum servers failed — try remaining healthy servers as fallback.
-                        let targetSet = Set(targets)
-                        let fallbacks = await tracker.healthyServers().filter { !targetSet.contains($0) }.shuffled()
-                        for fallback in fallbacks {
-                            do {
-                                _ = try await postServerJSON(fallback, "/shielded-vote/v1/shares", body: body)
-                                await tracker.recordSuccess(for: fallback)
-                                accepted = true
-                                acceptedServers.append(fallback)
-                                print("[VotingAPI] Share \(i) succeeded on fallback \(fallback)")
-                                break
-                            } catch {
-                                await tracker.recordFailure(for: fallback)
-                                shareError = error
-                            }
-                        }
-                    }
-
-                    if accepted {
-                        results.append(DelegatedShareInfo(
-                            shareIndex: payload.encShare.shareIndex,
-                            proposalId: payload.proposalId,
-                            acceptedByServers: acceptedServers
-                        ))
-                    } else {
-                        print("[VotingAPI] Share \(i) failed on all servers")
-                        lastError = shareError ?? SvAPIError.invalidResponse("all servers rejected share \(i)")
-                    }
-                }
-
-                if let lastError {
-                    throw lastError
-                }
-                return results
+                )
             },
             fetchShareStatus: { helperBaseURL, roundIdHex, nullifierHex in
                 let path = "/shielded-vote/v1/share-status/\(roundIdHex)/\(nullifierHex)"

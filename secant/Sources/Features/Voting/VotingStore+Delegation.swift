@@ -920,25 +920,22 @@ extension Voting {
         await send(.delegationProofCompleted)
     }
 
-    /// Retry share delegation up to 3 times with 2-second backoff.
+    /// Delegate shares using the supplied active-submission server candidates.
     @discardableResult
-    static func delegateSharesWithRetry(
+    static func delegateSharesWithFallback(
         _ payloads: [SharePayload],
         roundId: String,
-        votingAPI: VotingAPIClient
-    ) async throws -> [DelegatedShareInfo] {
-        var lastShareError: Error?
-        for attempt in 1...3 {
-            do {
-                return try await votingAPI.delegateShares(payloads, roundId)
-            } catch {
-                lastShareError = error
-                votingLogger.warning("delegateShares attempt \(attempt)/3 failed: \(error)")
-                if attempt < 3 {
-                    try await Task.sleep(for: .seconds(2))
-                }
-            }
+        votingAPI: VotingAPIClient,
+        serverURLs: [String]
+    ) async throws -> ShareDelegationResult {
+        guard !serverURLs.isEmpty else {
+            throw VotingFlowError.noReachableVoteServers
         }
-        throw lastShareError!
+        do {
+            return try await votingAPI.delegateShares(payloads, roundId, serverURLs)
+        } catch {
+            votingLogger.warning("delegateShares failed: \(error)")
+            throw VotingFlowError.noReachableVoteServers
+        }
     }
 }
