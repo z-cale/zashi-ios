@@ -147,42 +147,28 @@ struct VotingBlockingBackdrop: View {
 
 struct NoRoundsView: View {
     let store: StoreOf<Voting>
-    @State private var noRoundsSheetPresented = true
-    @State private var dismissFlowAfterSheetDismiss = false
 
     var body: some View {
         WithPerceptionTracking {
             VotingBlockingBackdrop(store: store)
-                .votingSheet(
-                    isPresented: noRoundsBinding,
-                    title: String(localizable: .coinVotePollsListEmptyTitle),
-                    message: String(localizable: .coinVotePollsListEmptyMessage),
-                    primary: .init(title: String(localizable: .coinVoteCommonGotIt), style: .primary) {
-                        dismissFlowAfterSheetDismiss = true
-                        noRoundsSheetPresented = false
-                    },
-                    secondary: .init(title: String(localizable: .coinVoteCommonRefresh), style: .secondary) {
-                        store.send(.retryLoadRounds)
-                    },
-                    onDismiss: {
-                        guard dismissFlowAfterSheetDismiss else { return }
-                        dismissFlowAfterSheetDismiss = false
-                        store.send(.dismissFlow)
-                    }
-                )
-        }
-    }
-
-    private var noRoundsBinding: Binding<Bool> {
-        Binding(
-            get: { noRoundsSheetPresented && store.currentScreen == .noRounds },
-            set: { newValue in
-                if !newValue && store.currentScreen == .noRounds {
-                    dismissFlowAfterSheetDismiss = true
+                .votingBlockingSheet(
+                    isActive: { store.currentScreen == .noRounds },
+                    onExit: { store.send(.dismissFlow) }
+                ) { dismiss in
+                    VotingSheetContent(
+                        iconSystemName: "exclamationmark.circle",
+                        iconStyle: Design.Utility.ErrorRed._500,
+                        title: String(localizable: .coinVotePollsListEmptyTitle),
+                        message: String(localizable: .coinVotePollsListEmptyMessage),
+                        primary: .init(title: String(localizable: .coinVoteCommonGotIt), style: .primary) {
+                            dismiss()
+                        },
+                        secondary: .init(title: String(localizable: .coinVoteCommonRefresh), style: .secondary) {
+                            store.send(.retryLoadRounds)
+                        }
+                    )
                 }
-                noRoundsSheetPresented = newValue
-            }
-        )
+        }
     }
 }
 

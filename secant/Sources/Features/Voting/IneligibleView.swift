@@ -6,45 +6,23 @@ struct IneligibleView: View {
     var colorScheme
 
     let store: StoreOf<Voting>
-    @State private var sheetPresented = true
-    @State private var dismissFlowAfterSheetDismiss = false
 
     var body: some View {
         WithPerceptionTracking {
             VotingBlockingBackdrop(store: store)
-                .zashiSheet(isPresented: sheetBinding, onDismiss: dismissFlowIfNeeded) {
-                    sheetContent()
+                .votingBlockingSheet(
+                    isActive: { store.currentScreen == .ineligible },
+                    onExit: { store.send(.dismissFlow) }
+                ) { dismiss in
+                    sheetContent(dismiss: dismiss)
                 }
         }
     }
 
     // MARK: - Sheet
 
-    private var sheetBinding: Binding<Bool> {
-        Binding(
-            get: { sheetPresented && store.currentScreen == .ineligible },
-            set: { newValue in
-                if !newValue && store.currentScreen == .ineligible {
-                    dismissFlowAfterSheetDismiss = true
-                }
-                sheetPresented = newValue
-            }
-        )
-    }
-
-    private func dismissSheetAndFlow() {
-        dismissFlowAfterSheetDismiss = true
-        sheetPresented = false
-    }
-
-    private func dismissFlowIfNeeded() {
-        guard dismissFlowAfterSheetDismiss else { return }
-        dismissFlowAfterSheetDismiss = false
-        store.send(.dismissFlow)
-    }
-
     @ViewBuilder
-    private func sheetContent() -> some View {
+    private func sheetContent(dismiss: @escaping () -> Void) -> some View {
         VStack(spacing: 0) {
             sheetIcon()
                 .padding(.top, 16)
@@ -62,7 +40,7 @@ struct IneligibleView: View {
                 .padding(.bottom, 24)
 
             ZashiButton(String(localizable: .coinVoteCommonClose)) {
-                dismissSheetAndFlow()
+                dismiss()
             }
             .padding(.bottom, Design.Spacing.sheetBottomSpace)
         }
