@@ -101,6 +101,25 @@ final class VotingSubmissionTests: XCTestCase {
         XCTAssertFalse(state.isDelegationProofPrecomputeInFlight)
     }
 
+    func testPrecomputeProgressAndCompletionDoNotDowngradeCompletedDelegation() {
+        var state = makeState(walletId: UUID().uuidString, roundId: UUID().uuidString, proposalCount: 1)
+        state.batchSubmissionStatus = .authorizing
+        state.delegationProofStatus = .complete
+        state.delegationProofPrecomputeStatus = .complete
+        state.isDelegationProofPrecomputeInFlight = true
+
+        _ = Voting().reduceDelegation(&state, .delegationProofPrecomputationProgress(0.42))
+
+        XCTAssertEqual(state.delegationProofStatus, .complete)
+        XCTAssertEqual(state.delegationProofPrecomputeStatus, .complete)
+
+        _ = Voting().reduceDelegation(&state, .delegationProofPrecomputationCompleted)
+
+        XCTAssertEqual(state.delegationProofStatus, .complete)
+        XCTAssertEqual(state.delegationProofPrecomputeStatus, .complete)
+        XCTAssertFalse(state.isDelegationProofPrecomputeInFlight)
+    }
+
     func testAuthenticationSucceededWaitsForInFlightPrecompute() {
         var state = makeState(walletId: UUID().uuidString, roundId: UUID().uuidString, proposalCount: 1)
         state.activeSession = makeSession(proposals: state.votingRound.proposals)
