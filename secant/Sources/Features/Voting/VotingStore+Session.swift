@@ -55,7 +55,7 @@ extension Voting {
                 state.hasAttemptedConfigRefresh = false
                 #else
                 let configRoundId = config.voteRoundId.lowercased()
-                let hasMatch = sessions.contains { $0.voteRoundId.hexString == configRoundId }
+                let hasMatch = config.hasMatchingRound(in: sessions)
 
                 // Stale-config recovery: if the cached config doesn't match any on-chain
                 // round (e.g. a new round activated while the wallet was open), attempt
@@ -73,23 +73,14 @@ extension Voting {
                     }
                 }
 
-                guard let matchingSession = sessions.first(where: { $0.voteRoundId.hexString == configRoundId }) else {
-                    let chainIds = sessions.map { $0.voteRoundId.hexString.prefix(16) }.joined(separator: ", ")
-                    votingLogger.error("Config round \(configRoundId.prefix(16))... not found in chain rounds [\(chainIds)] after refresh")
-                    let error = VotingConfigError.roundIdMismatch(
-                        configRoundId: configRoundId,
-                        chainRoundId: sessions.first?.voteRoundId.hexString ?? ""
-                    )
-                    state.screenStack = [.configError(error.errorDescription ?? String(localizable: .coinVoteConfigErrorInvalidConfig))]
-                    return .none
-                }
-                let computed = VotingServiceConfig.computeProposalsHash(config.proposals)
-                if computed != matchingSession.proposalsHash {
-                    votingLogger.error("proposals_hash mismatch: expected=\(matchingSession.proposalsHash.base64EncodedString()) got=\(computed.base64EncodedString())")
-                    let error = VotingConfigError.proposalsHashMismatch(
-                        expected: matchingSession.proposalsHash,
-                        actual: computed
-                    )
+                if let error = config.chainBindingError(in: sessions) {
+                    switch error {
+                    case .proposalsHashMismatch(let expected, let actual):
+                        votingLogger.error("proposals_hash mismatch: expected=\(expected.base64EncodedString()) got=\(actual.base64EncodedString())")
+                    default:
+                        let chainIds = sessions.map { $0.voteRoundId.hexString.prefix(16) }.joined(separator: ", ")
+                        votingLogger.error("Config round \(configRoundId.prefix(16))... not found in chain rounds [\(chainIds)] after refresh")
+                    }
                     state.screenStack = [.configError(error.errorDescription ?? String(localizable: .coinVoteConfigErrorInvalidConfig))]
                     return .none
                 }

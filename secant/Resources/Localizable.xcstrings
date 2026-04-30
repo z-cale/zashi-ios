@@ -1527,6 +1527,17 @@
         }
       }
     },
+    "coinVote.configError.noActiveRound" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voting config is for round %@… but there is no active round. Please update the wallet."
+          }
+        }
+      }
+    },
     "coinVote.configError.proposalsHashMismatch" : {
       "extractionState" : "manual",
       "localizations" : {

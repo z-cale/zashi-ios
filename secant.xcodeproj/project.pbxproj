@@ -2210,6 +2210,10 @@
 		34B967652F8CC48700823B20 /* Atomics in Frameworks */ = {isa = PBXBuildFile; productRef = 34B967642F8CC48700823B20 /* Atomics */; };
 		34B967672F8CC48B00823B20 /* Atomics in Frameworks */ = {isa = PBXBuildFile; productRef = 34B967662F8CC48B00823B20 /* Atomics */; };
 		34B967692F8CC49100823B20 /* Atomics in Frameworks */ = {isa = PBXBuildFile; productRef = 34B967682F8CC49100823B20 /* Atomics */; };
+		AD4841542F869F5F00D0649B /* ZcashLightClientKit in Frameworks */ = {isa = PBXBuildFile; productRef = 9E4841522F869F5F00D0649B /* ZcashLightClientKit */; };
+		AD4841552F869F5F00D0649B /* ZcashLightClientKit in Frameworks */ = {isa = PBXBuildFile; productRef = 9E4841522F869F5F00D0649B /* ZcashLightClientKit */; };
+		AD4841562F869F5F00D0649B /* ZcashLightClientKit in Frameworks */ = {isa = PBXBuildFile; productRef = 9E4841522F869F5F00D0649B /* ZcashLightClientKit */; };
+		AD4841572F869F5F00D0649B /* ZcashLightClientKit in Frameworks */ = {isa = PBXBuildFile; productRef = 9E4841522F869F5F00D0649B /* ZcashLightClientKit */; };
 		37BTC00000000000000INT02 /* BackgroundTaskClientInterface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37BTC00000000000000INT01 /* BackgroundTaskClientInterface.swift */; };
 		37BTC00000000000000INT03 /* BackgroundTaskClientInterface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37BTC00000000000000INT01 /* BackgroundTaskClientInterface.swift */; };
 		37BTC00000000000000INT04 /* BackgroundTaskClientInterface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37BTC00000000000000INT01 /* BackgroundTaskClientInterface.swift */; };
@@ -3108,6 +3112,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AD4841542F869F5F00D0649B /* ZcashLightClientKit in Frameworks */,
 				34AA777D2F8582DD00D244E2 /* ZcashPaymentURI in Frameworks */,
 				34AA77452F85813300D244E2 /* URLRouting in Frameworks */,
 				34B967632F8CC48000823B20 /* Atomics in Frameworks */,
@@ -3128,6 +3133,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AD4841552F869F5F00D0649B /* ZcashLightClientKit in Frameworks */,
 				34AA777B2F8582CC00D244E2 /* ZcashPaymentURI in Frameworks */,
 				34AA77432F85812500D244E2 /* URLRouting in Frameworks */,
 				34B9675C2F8CC47200823B20 /* Atomics in Frameworks */,
@@ -3162,6 +3168,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AD4841562F869F5F00D0649B /* ZcashLightClientKit in Frameworks */,
 				34AA77832F8582F100D244E2 /* ZcashPaymentURI in Frameworks */,
 				34AA774B2F85815200D244E2 /* URLRouting in Frameworks */,
 				34B967692F8CC49100823B20 /* Atomics in Frameworks */,
@@ -3182,6 +3189,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AD4841572F869F5F00D0649B /* ZcashLightClientKit in Frameworks */,
 				34AA777F2F8582E600D244E2 /* ZcashPaymentURI in Frameworks */,
 				34AA77472F85814600D244E2 /* URLRouting in Frameworks */,
 				34B967652F8CC48700823B20 /* Atomics in Frameworks */,
@@ -5276,6 +5284,7 @@
 				34AA77922F85836400D244E2 /* KeystoneSDK */,
 				34AA779D2F8583B400D244E2 /* BigDecimal */,
 				34AA77B92F85861300D244E2 /* UInt128 */,
+				9E4841522F869F5F00D0649B /* ZcashLightClientKit */,
 				34B967622F8CC48000823B20 /* Atomics */,
 			);
 			productName = secant;
@@ -5313,6 +5322,7 @@
 				34AA77902F85835B00D244E2 /* KeystoneSDK */,
 				34AA779B2F8583A500D244E2 /* BigDecimal */,
 				34AA77B72F85860300D244E2 /* UInt128 */,
+				9E4841522F869F5F00D0649B /* ZcashLightClientKit */,
 				34B9675B2F8CC47200823B20 /* Atomics */,
 			);
 			productName = secant;
@@ -5388,6 +5398,7 @@
 				34AA77982F85837400D244E2 /* KeystoneSDK */,
 				34AA77A32F8583C300D244E2 /* BigDecimal */,
 				34AA77BF2F85862200D244E2 /* UInt128 */,
+				9E4841522F869F5F00D0649B /* ZcashLightClientKit */,
 				34B967682F8CC49100823B20 /* Atomics */,
 			);
 			productName = secant;
@@ -5425,6 +5436,7 @@
 				34AA77942F85836900D244E2 /* KeystoneSDK */,
 				34AA779F2F8583BA00D244E2 /* BigDecimal */,
 				34AA77BB2F85861800D244E2 /* UInt128 */,
+				9E4841522F869F5F00D0649B /* ZcashLightClientKit */,
 				34B967642F8CC48700823B20 /* Atomics */,
 			);
 			productName = secant;
