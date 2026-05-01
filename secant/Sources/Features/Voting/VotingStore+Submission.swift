@@ -193,6 +193,9 @@ extension Voting {
                                        let vcIdx = UInt64(leafParts[1]) {
                                         try await votingCrypto.storeVanPosition(roundId, bundleIndex, vanIdx)
                                         if let savedBundle = try? await votingCrypto.getVoteCommitmentBundle(roundId, bundleIndex, proposalId) {
+                                            try await votingCrypto.storeVoteCommitmentBundle(
+                                                roundId, bundleIndex, proposalId, savedBundle, vcIdx
+                                            )
                                             await send(.voteSubmissionStepUpdated(.sendingShares))
                                             var payloads = try await votingCrypto.buildSharePayloads(
                                                 savedBundle.encShares, savedBundle, choice, numOptions, vcIdx, singleShare

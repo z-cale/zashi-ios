@@ -1,5 +1,6 @@
 import XCTest
 import ComposableArchitecture
+import ZcashLightClientKit
 @testable import secant_testnet
 
 final class VotingServiceConfigTests: XCTestCase {
@@ -169,7 +170,237 @@ private actor ShareServerURLRecorder {
     }
 }
 
+private actor RecoveryOrderRecorder {
+    private var recordedEvents: [String] = []
+
+    func record(_ event: String) {
+        recordedEvents.append(event)
+    }
+
+    func events() -> [String] {
+        recordedEvents
+    }
+}
+
 private struct SharePostFailure: Error {}
+
+private func makeShareDelegation(
+    roundId: String = "aabb",
+    bundleIndex: UInt32 = 0,
+    proposalId: UInt32 = 1,
+    shareIndex: UInt32 = 0,
+    sentToURLs: [String],
+    confirmed: Bool = false,
+    submitAt: UInt64,
+    createdAt: UInt64,
+    nullifier: [UInt8] = Array(repeating: 0x0A, count: 32)
+) throws -> VotingShareDelegation {
+    let object: [String: Any] = [
+        "round_id": roundId,
+        "bundle_index": bundleIndex,
+        "proposal_id": proposalId,
+        "share_index": shareIndex,
+        "sent_to_urls": sentToURLs,
+        "nullifier": nullifier,
+        "confirmed": confirmed,
+        "submit_at": submitAt,
+        "created_at": createdAt
+    ]
+    let data = try JSONSerialization.data(withJSONObject: object)
+    return try JSONDecoder().decode(VotingShareDelegation.self, from: data)
+}
+
+private func makeRecoverySharePayload(index: UInt32 = 0) -> SharePayload {
+    let share = EncryptedShare(
+        c1: Data(repeating: UInt8(index + 1), count: 32),
+        c2: Data(repeating: UInt8(index + 2), count: 32),
+        shareIndex: index
+    )
+    return SharePayload(
+        sharesHash: Data(repeating: 0x01, count: 32),
+        proposalId: 1,
+        voteDecision: 0,
+        encShare: share,
+        treePosition: 10,
+        allEncShares: [share],
+        shareComms: [Data(repeating: 0x03, count: 32)],
+        primaryBlind: Data(repeating: 0x04, count: 32),
+        submitAt: 99
+    )
+}
+
+final class ShareRecoveryPollingTests: XCTestCase {
+    func testPollingConfirmsFromRecordedHelperInsteadOfFirstConfiguredHelper() async throws {
+        let recorder = SharePostRecorder()
+        let share = try makeShareDelegation(
+            sentToURLs: [
+                "https://helper-3.example.com",
+                "https://helper-4.example.com",
+                "https://helper-5.example.com"
+            ],
+            submitAt: 0,
+            createdAt: 100
+        )
+
+        let result = await pollShareStatusesForRecovery(
+            readyShares: [share],
+            roundId: "aabb",
+            now: 200,
+            voteEndTime: 1_000,
+            fetchShareStatus: { helperURL, _, _ in
+                await recorder.record(helperURL)
+                return helperURL == "https://helper-3.example.com" ? .confirmed : .pending
+            }
+        )
+
+        let queriedServers = await recorder.servers()
+        XCTAssertEqual(queriedServers, ["https://helper-3.example.com"])
+        XCTAssertEqual(result.confirmedShares, [
+            ShareDelegationKey(bundleIndex: 0, proposalId: 1, shareIndex: 0)
+        ])
+        XCTAssertTrue(result.resubmissionShares.isEmpty)
+    }
+
+    func testPollingContinuesAfterOneRecordedHelperErrors() async throws {
+        let recorder = SharePostRecorder()
+        let share = try makeShareDelegation(
+            sentToURLs: [
+                "https://helper-3.example.com",
+                "https://helper-4.example.com"
+            ],
+            submitAt: 0,
+            createdAt: 100
+        )
+
+        let result = await pollShareStatusesForRecovery(
+            readyShares: [share],
+            roundId: "aabb",
+            now: 200,
+            voteEndTime: 1_000,
+            fetchShareStatus: { helperURL, _, _ in
+                await recorder.record(helperURL)
+                if helperURL == "https://helper-3.example.com" {
+                    throw SharePostFailure()
+                }
+                return .confirmed
+            }
+        )
+
+        let queriedServers = await recorder.servers()
+        XCTAssertEqual(queriedServers, [
+            "https://helper-3.example.com",
+            "https://helper-4.example.com"
+        ])
+        XCTAssertEqual(result.confirmedShares, [
+            ShareDelegationKey(bundleIndex: 0, proposalId: 1, shareIndex: 0)
+        ])
+        XCTAssertTrue(result.resubmissionShares.isEmpty)
+    }
+
+    func testImmediateSharesUseCreatedAtForReadinessAndResubmission() throws {
+        let share = try makeShareDelegation(
+            sentToURLs: ["https://helper.example.com"],
+            submitAt: 0,
+            createdAt: 100
+        )
+
+        XCTAssertFalse(isShareReadyForStatusCheck(share, now: 109, checkGrace: 10))
+        XCTAssertTrue(isShareReadyForStatusCheck(share, now: 110, checkGrace: 10))
+        XCTAssertFalse(shouldResubmitShare(share, now: 129, voteEndTime: 200))
+        XCTAssertTrue(shouldResubmitShare(share, now: 130, voteEndTime: 200))
+    }
+
+    func testDelayedSharesUseSubmitAtForReadinessAndResubmission() throws {
+        let share = try makeShareDelegation(
+            sentToURLs: ["https://helper.example.com"],
+            submitAt: 200,
+            createdAt: 100
+        )
+
+        XCTAssertFalse(isShareReadyForStatusCheck(share, now: 209, checkGrace: 10))
+        XCTAssertTrue(isShareReadyForStatusCheck(share, now: 210, checkGrace: 10))
+        XCTAssertFalse(shouldResubmitShare(share, now: 229, voteEndTime: 320))
+        XCTAssertTrue(shouldResubmitShare(share, now: 230, voteEndTime: 320))
+    }
+}
+
+final class ShareResubmissionFallbackTests: XCTestCase {
+    func testResubmissionTriesUntriedHelpersFirst() async {
+        let recorder = SharePostRecorder()
+
+        let acceptedServers = await resubmitSharePayload(
+            makeRecoverySharePayload(),
+            roundIdHex: "aabb",
+            configuredServerURLs: [
+                "https://already-sent.example.com",
+                "https://untried.example.com"
+            ],
+            sentToURLs: ["https://already-sent.example.com"],
+            postShare: { server, _ in
+                await recorder.record(server)
+            },
+            orderServers: { $0 }
+        )
+
+        XCTAssertEqual(acceptedServers, ["https://untried.example.com"])
+        let postedServers = await recorder.servers()
+        XCTAssertEqual(postedServers, ["https://untried.example.com"])
+    }
+
+    func testResubmissionFallsBackToAlreadySentHelperWhenUntriedFails() async {
+        let recorder = SharePostRecorder()
+
+        let acceptedServers = await resubmitSharePayload(
+            makeRecoverySharePayload(),
+            roundIdHex: "aabb",
+            configuredServerURLs: [
+                "https://already-sent.example.com",
+                "https://untried.example.com"
+            ],
+            sentToURLs: ["https://already-sent.example.com"],
+            postShare: { server, _ in
+                await recorder.record(server)
+                if server == "https://untried.example.com" {
+                    throw SharePostFailure()
+                }
+            },
+            orderServers: { $0 }
+        )
+
+        XCTAssertEqual(acceptedServers, ["https://already-sent.example.com"])
+        let postedServers = await recorder.servers()
+        XCTAssertEqual(postedServers, [
+            "https://untried.example.com",
+            "https://already-sent.example.com"
+        ])
+    }
+
+    func testResubmissionReturnsEmptyWhenAllHelpersFail() async {
+        let recorder = SharePostRecorder()
+
+        let acceptedServers = await resubmitSharePayload(
+            makeRecoverySharePayload(),
+            roundIdHex: "aabb",
+            configuredServerURLs: [
+                "https://already-sent.example.com",
+                "https://untried.example.com"
+            ],
+            sentToURLs: ["https://already-sent.example.com"],
+            postShare: { server, _ in
+                await recorder.record(server)
+                throw SharePostFailure()
+            },
+            orderServers: { $0 }
+        )
+
+        XCTAssertTrue(acceptedServers.isEmpty)
+        let postedServers = await recorder.servers()
+        XCTAssertEqual(postedServers, [
+            "https://untried.example.com",
+            "https://already-sent.example.com"
+        ])
+    }
+}
 
 final class ShareDelegationPostFallbackTests: XCTestCase {
     func testSelectedHelperFailureBackfillsSameShareAndPrunesFailedHelper() async throws {
@@ -391,10 +622,90 @@ final class VotingSubmissionPostFallbackTests: XCTestCase {
         }
     }
 
+    func testCachedTxRecoveryStoresRecoveredVCPositionBeforeShareRetry() async {
+        let round = Self.makeVotingRound()
+        var initialState = Self.makeReadySubmissionState(round: round)
+        initialState.draftVotes = [1: .option(0)]
+
+        let orderRecorder = RecoveryOrderRecorder()
+        let submittedRecorder = VoteSubmissionRecorder()
+        let savedBundle = Self.makeVoteCommitmentBundle(
+            proposalId: 1,
+            roundId: initialState.roundId,
+            anchorHeight: 1
+        )
+        let store = Self.makeSubmissionStore(
+            initialState: initialState,
+            submittedRecorder: submittedRecorder,
+            delegateShares: { payloads, _, serverURLs in
+                await orderRecorder.record("delegate:\(payloads.first?.treePosition ?? 0)")
+                return ShareDelegationResult(
+                    delegatedShares: payloads.map {
+                        DelegatedShareInfo(
+                            shareIndex: $0.encShare.shareIndex,
+                            proposalId: $0.proposalId,
+                            acceptedByServers: [serverURLs[0]]
+                        )
+                    },
+                    remainingServerURLs: serverURLs
+                )
+            },
+            getVoteTxHash: { _, _, _ in .present("cached-tx") },
+            fetchTxConfirmation: { _ in
+                TxConfirmation(
+                    height: 1,
+                    code: 0,
+                    events: [
+                        TxEvent(
+                            type: "cast_vote",
+                            attributes: [.init(key: "leaf_index", value: "0,7")]
+                        )
+                    ]
+                )
+            },
+            getVoteCommitmentBundle: { _, _, _ in savedBundle },
+            storeVoteCommitmentBundle: { _, _, _, _, vcTreePosition in
+                await orderRecorder.record("store:\(vcTreePosition)")
+            }
+        )
+
+        await store.send(.authenticationSucceeded)
+        await store.finish()
+        await store.skipReceivedActions()
+
+        let events = await orderRecorder.events()
+        XCTAssertEqual(events, ["store:7", "delegate:7"])
+    }
+
     private static func makeSubmissionStore(
         initialState: Voting.State,
         submittedRecorder: VoteSubmissionRecorder,
-        delegateShares: @escaping @Sendable ([SharePayload], String, [String]) async throws -> ShareDelegationResult
+        delegateShares: @escaping @Sendable ([SharePayload], String, [String]) async throws -> ShareDelegationResult,
+        getVoteTxHash: @escaping @Sendable (String, UInt32, UInt32) async throws -> VotingTxHashLookup = { _, _, _ in
+            throw SharePostFailure()
+        },
+        fetchTxConfirmation: @escaping @Sendable (String) async throws -> TxConfirmation? = { _ in
+            TxConfirmation(
+                height: 1,
+                code: 0,
+                events: [
+                    TxEvent(
+                        type: "cast_vote",
+                        attributes: [.init(key: "leaf_index", value: "0,0")]
+                    )
+                ]
+            )
+        },
+        getVoteCommitmentBundle: @escaping @Sendable (String, UInt32, UInt32) async throws -> VoteCommitmentBundle? = { _, _, _ in
+            nil
+        },
+        storeVoteCommitmentBundle: @escaping @Sendable (
+            String,
+            UInt32,
+            UInt32,
+            VoteCommitmentBundle,
+            UInt64
+        ) async throws -> Void = { _, _, _, _, _ in }
     ) -> TestStore<Voting.State, Voting.Action> {
         let store = TestStore(initialState: initialState) {
             Voting()
@@ -409,24 +720,13 @@ final class VotingSubmissionPostFallbackTests: XCTestCase {
             await submittedRecorder.recordSubmittedProposal(bundle.proposalId)
             return TxResult(txHash: "tx-\(bundle.proposalId)", code: 0)
         }
-        votingAPI.fetchTxConfirmation = { _ in
-            TxConfirmation(
-                height: 1,
-                code: 0,
-                events: [
-                    TxEvent(
-                        type: "cast_vote",
-                        attributes: [.init(key: "leaf_index", value: "0,0")]
-                    )
-                ]
-            )
-        }
+        votingAPI.fetchTxConfirmation = fetchTxConfirmation
         votingAPI.delegateShares = delegateShares
         store.dependencies.votingAPI = votingAPI
 
         var votingCrypto = VotingCryptoClient()
         votingCrypto.getVotes = { _ in [] }
-        votingCrypto.getVoteTxHash = { _, _, _ in throw SharePostFailure() }
+        votingCrypto.getVoteTxHash = getVoteTxHash
         votingCrypto.syncVoteTree = { _, _ in 1 }
         votingCrypto.generateVanWitness = { _, _, anchorHeight in
             VanWitness(authPath: [], position: 0, anchorHeight: anchorHeight)
@@ -444,7 +744,8 @@ final class VotingSubmissionPostFallbackTests: XCTestCase {
                 continuation.finish()
             }
         }
-        votingCrypto.storeVoteCommitmentBundle = { _, _, _, _, _ in }
+        votingCrypto.storeVoteCommitmentBundle = storeVoteCommitmentBundle
+        votingCrypto.getVoteCommitmentBundle = getVoteCommitmentBundle
         votingCrypto.signCastVote = { _, _, _ in CastVoteSignature(voteAuthSig: Data([0x01])) }
         votingCrypto.storeVoteTxHash = { _, _, _, _ in }
         votingCrypto.storeVanPosition = { _, _, _ in }
