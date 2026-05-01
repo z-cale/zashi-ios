@@ -1123,16 +1123,29 @@ extension Voting {
         _ payloads: [SharePayload],
         roundId: String,
         votingAPI: VotingAPIClient,
-        serverURLs: [String]
+        serverURLs: [String],
+        retryDelay: Duration = .seconds(2)
     ) async throws -> ShareDelegationResult {
         guard !serverURLs.isEmpty else {
-            throw VotingFlowError.noReachableVoteServers
+            throw ShareDelegationError.noReachableVoteServers
         }
-        do {
-            return try await votingAPI.delegateShares(payloads, roundId, serverURLs)
-        } catch {
-            votingLogger.warning("delegateShares failed: \(error)")
-            throw VotingFlowError.noReachableVoteServers
+
+        var lastExhaustionError: ShareDelegationError?
+        for attempt in 1...3 {
+            do {
+                return try await votingAPI.delegateShares(payloads, roundId, serverURLs)
+            } catch let error as ShareDelegationError where error == .noReachableVoteServers {
+                lastExhaustionError = error
+                votingLogger.warning("delegateShares attempt \(attempt)/3 exhausted vote servers")
+                if attempt < 3 {
+                    try await Task.sleep(for: retryDelay)
+                }
+            } catch {
+                votingLogger.warning("delegateShares failed with non-exhaustion error: \(error)")
+                throw error
+            }
         }
+
+        throw lastExhaustionError ?? ShareDelegationError.noReachableVoteServers
     }
 }

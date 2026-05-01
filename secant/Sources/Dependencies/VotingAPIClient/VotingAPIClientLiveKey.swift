@@ -36,7 +36,6 @@ private enum SvAPIError: LocalizedError {
     case invalidResponse(String)
     case noActiveVotingSession
     case txFailed(code: UInt32, log: String)
-    case noReachableVoteServers
 
     var errorDescription: String? {
         switch self {
@@ -48,8 +47,6 @@ private enum SvAPIError: LocalizedError {
             return "No active voting round"
         case .txFailed(let code, let log):
             return "Transaction failed (code \(code)): \(log)"
-        case .noReachableVoteServers:
-            return "Unable to reach any vote server. Please check your internet connection and try again."
         }
     }
 }
@@ -350,7 +347,7 @@ func delegateSharePayloads(
 
         if acceptedServers.isEmpty {
             print("[VotingAPI] Share \(shareOffset) failed on all configured vote servers")
-            lastError = SvAPIError.noReachableVoteServers
+            lastError = ShareDelegationError.noReachableVoteServers
             break
         }
 

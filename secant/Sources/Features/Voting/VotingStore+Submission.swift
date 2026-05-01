@@ -357,17 +357,13 @@ extension Voting {
                     } catch {
                         failCount += 1
                         votingLogger.error("Batch vote failed for proposal \(proposalId): \(error)")
-                        let shouldStopBatch: Bool
-                        switch error as? VotingFlowError {
-                        case .noReachableVoteServers?:
+                        let shouldStopBatch = error as? ShareDelegationError == .noReachableVoteServers
+                        if shouldStopBatch {
                             shareServerURLs = []
-                            shouldStopBatch = true
-                        default:
-                            shouldStopBatch = false
                         }
                         await send(.batchVoteFailed(
                             proposalId: proposalId,
-                            error: VotingErrorMapper.userFriendlyMessage(from: error.localizedDescription)
+                            error: VotingErrorMapper.userFriendlyMessage(from: error)
                         ))
                         if shouldStopBatch {
                             break draftLoop

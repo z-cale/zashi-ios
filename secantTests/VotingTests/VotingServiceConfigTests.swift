@@ -182,6 +182,19 @@ private actor RecoveryOrderRecorder {
     }
 }
 
+private actor AttemptCounter {
+    private var count = 0
+
+    func increment() -> Int {
+        count += 1
+        return count
+    }
+
+    func value() -> Int {
+        count
+    }
+}
+
 private struct SharePostFailure: Error {}
 
 private func makeShareDelegation(
@@ -522,10 +535,7 @@ final class ShareDelegationPostFallbackTests: XCTestCase {
             )
             XCTFail("Expected share delegation to fail")
         } catch {
-            XCTAssertEqual(
-                error.localizedDescription,
-                "Unable to reach any vote server. Please check your internet connection and try again."
-            )
+            XCTAssertEqual(error as? ShareDelegationError, .noReachableVoteServers)
         }
     }
 
@@ -551,6 +561,52 @@ final class ShareDelegationPostFallbackTests: XCTestCase {
 
 @MainActor
 final class VotingSubmissionPostFallbackTests: XCTestCase {
+    func testDelegateSharesWithFallbackRetriesReachabilityExhaustion() async throws {
+        let attempts = AttemptCounter()
+        var votingAPI = VotingAPIClient()
+        votingAPI.delegateShares = { _, _, serverURLs in
+            let attempt = await attempts.increment()
+            if attempt < 3 {
+                throw ShareDelegationError.noReachableVoteServers
+            }
+            return ShareDelegationResult(delegatedShares: [], remainingServerURLs: serverURLs)
+        }
+
+        let result = try await Voting.delegateSharesWithFallback(
+            [],
+            roundId: "aabb",
+            votingAPI: votingAPI,
+            serverURLs: ["https://vote.example.com"],
+            retryDelay: .zero
+        )
+
+        XCTAssertEqual(await attempts.value(), 3)
+        XCTAssertEqual(result.remainingServerURLs, ["https://vote.example.com"])
+    }
+
+    func testDelegateSharesWithFallbackRethrowsUnexpectedErrorWithoutRetry() async {
+        let attempts = AttemptCounter()
+        var votingAPI = VotingAPIClient()
+        votingAPI.delegateShares = { _, _, _ in
+            _ = await attempts.increment()
+            throw SharePostFailure()
+        }
+
+        do {
+            _ = try await Voting.delegateSharesWithFallback(
+                [],
+                roundId: "aabb",
+                votingAPI: votingAPI,
+                serverURLs: ["https://vote.example.com"],
+                retryDelay: .zero
+            )
+            XCTFail("Expected unexpected share delegation error")
+        } catch {
+            XCTAssertTrue(error is SharePostFailure)
+        }
+        XCTAssertEqual(await attempts.value(), 1)
+    }
+
     func testFailureInFirstProposalRemovesHelperForSecondProposalInSameSubmission() async {
         let round = Self.makeVotingRound(proposalCount: 2)
         var initialState = Self.makeReadySubmissionState(round: round)
@@ -602,7 +658,7 @@ final class VotingSubmissionPostFallbackTests: XCTestCase {
             initialState: initialState,
             submittedRecorder: submittedRecorder,
             delegateShares: { _, _, _ in
-                throw VotingFlowError.noReachableVoteServers
+                throw ShareDelegationError.noReachableVoteServers
             }
         )
 

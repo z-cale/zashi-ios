@@ -34,6 +34,17 @@ struct ShareDelegationResult: Equatable, Sendable {
     }
 }
 
+enum ShareDelegationError: LocalizedError, Equatable, Sendable {
+    case noReachableVoteServers
+
+    var errorDescription: String? {
+        switch self {
+        case .noReachableVoteServers:
+            return String(localizable: .coinVoteStoreUserErrorNoReachableVoteServers)
+        }
+    }
+}
+
 extension DependencyValues {
     var votingAPI: VotingAPIClient {
         get { self[VotingAPIClient.self] }
