@@ -17,6 +17,11 @@ func votingAccountIndex(for account: WalletAccount?) -> UInt32 {
     account.flatMap(\.zip32AccountIndex).map { UInt32($0.index) } ?? 0
 }
 
+/// `senderSeed` is unused in seedless PCZT prep — when an Orchard FVK override and a
+/// seed fingerprint are supplied, `buildVotingPczt` derives `ak` from the FVK directly
+/// and never touches the seed. Pass this at those call sites instead of a bare `[]`.
+let emptySenderSeed: [UInt8] = []
+
 extension Voting {
     func reduceDelegation(_ state: inout State, _ action: Action) -> Effect<Action> {
         switch action {
@@ -387,7 +392,7 @@ extension Voting {
                         roundId,
                         bundleIndex,
                         bundleNotes,
-                        [],
+                        emptySenderSeed,
                         hotkeySeed,
                         networkId,
                         accountIndex,
@@ -546,7 +551,7 @@ extension Voting {
                                 roundId,
                                 keystoneBundleIndex,
                                 bundleNotes,
-                                [],
+                                emptySenderSeed,
                                 hotkeySeed,
                                 networkId,
                                 accountIndex,
