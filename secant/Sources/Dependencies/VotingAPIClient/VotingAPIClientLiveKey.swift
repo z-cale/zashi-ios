@@ -334,7 +334,7 @@ func delegateSharePayloads(
                     if ok {
                         acceptedServers.append(server)
                     } else {
-                        print("[VotingAPI] Share \(shareOffset) failed on \(server)")
+                        logger.warning("Share \(shareOffset) failed on \(server, privacy: .public)")
                         failedServers.insert(server)
                     }
                 }
@@ -346,7 +346,7 @@ func delegateSharePayloads(
         }
 
         if acceptedServers.isEmpty {
-            print("[VotingAPI] Share \(shareOffset) failed on all configured vote servers")
+            logger.warning("Share \(shareOffset) failed on all configured vote servers")
             lastError = ShareDelegationError.noReachableVoteServers
             break
         }
@@ -386,7 +386,9 @@ func resubmitSharePayload(
             try await postShare(server, body)
             return [server]
         } catch {
-            print("[VotingAPI] Share resubmission failed on \(server): \(error)")
+            logger.warning(
+                "Share resubmission failed on \(server, privacy: .public): \(error.localizedDescription, privacy: .public)"
+            )
         }
     }
 
@@ -427,7 +429,12 @@ private func retryWithBackoff<T>(
         } catch {
             let isLast = attempt == maxAttempts
             if isLast || !isRetryable(error) { throw error }
-            print("[shielded-vote-api] broadcast attempt \(attempt)/\(maxAttempts) failed (\(error.localizedDescription)), retrying in \(delay)s")
+            logger.warning(
+                """
+                Broadcast attempt \(attempt)/\(maxAttempts) failed \
+                (\(error.localizedDescription, privacy: .public)); retrying in \(delay)s
+                """
+            )
             try await Task.sleep(for: .seconds(delay))
             delay *= factor
         }
@@ -558,7 +565,7 @@ extension VotingAPIClient: DependencyKey {
                         throw VotingConfigError.decodeFailed("local override: \(error.localizedDescription)")
                     }
                     try config.validate()
-                    print("[VotingAPI] Using local override config: \(config.voteServers.count) vote servers")
+                    logger.info("Using local override config: \(config.voteServers.count) vote servers")
                     return config
                 }
                 #endif
@@ -593,7 +600,7 @@ extension VotingAPIClient: DependencyKey {
                     throw VotingConfigError.decodeFailed("CDN decode failed: \(error.localizedDescription)")
                 }
                 try config.validate()
-                print("[VotingAPI] Loaded config from CDN: \(config.voteServers.count) vote servers")
+                logger.info("Loaded config from CDN: \(config.voteServers.count) vote servers")
                 return config
             },
             configureURLs: { config in
@@ -603,7 +610,12 @@ extension VotingAPIClient: DependencyKey {
                 )
                 let base = await SvAPIConfigStore.shared.baseURL
                 let pir = await SvAPIConfigStore.shared.pirServerURL
-                print("[VotingAPI] URLs configured: base=\(base), servers=\(config.voteServers.count), pir=\(pir)")
+                logger.info(
+                    """
+                    URLs configured: base=\(base, privacy: .public), \
+                    servers=\(config.voteServers.count), pir=\(pir, privacy: .public)
+                    """
+                )
             },
             fetchActiveVotingSession: {
                 let json: [String: Any]
@@ -692,12 +704,21 @@ extension VotingAPIClient: DependencyKey {
                 // Active foreground delivery uses the submission-local server set.
                 // POST failures prune that local set immediately; cached helper
                 // health and /status probes are intentionally not consulted here.
-                try await delegateSharePayloads(
+                // Successful/failed foreground POSTs still update the tracker for
+                // later background recovery decisions.
+                let tracker = ServerHealthTracker.shared
+                return try await delegateSharePayloads(
                     payloads,
                     roundIdHex: roundIdHex,
                     initialServerURLs: serverURLs,
                     postShare: { server, body in
-                        _ = try await postServerJSON(server, "/shielded-vote/v1/shares", body: body)
+                        do {
+                            _ = try await postServerJSON(server, "/shielded-vote/v1/shares", body: body)
+                            await tracker.recordSuccess(for: server)
+                        } catch {
+                            await tracker.recordFailure(for: server)
+                            throw error
+                        }
                     }
                 )
             },
@@ -733,13 +754,20 @@ extension VotingAPIClient: DependencyKey {
             },
             resubmitShare: { payload, roundIdHex, excludeURLs in
                 let configuredServerURLs = await SvAPIConfigStore.shared.voteServerURLs
+                let tracker = ServerHealthTracker.shared
                 return await resubmitSharePayload(
                     payload,
                     roundIdHex: roundIdHex,
                     configuredServerURLs: configuredServerURLs,
                     sentToURLs: excludeURLs,
                     postShare: { server, body in
-                        _ = try await postServerJSON(server, "/shielded-vote/v1/shares", body: body)
+                        do {
+                            _ = try await postServerJSON(server, "/shielded-vote/v1/shares", body: body)
+                            await tracker.recordSuccess(for: server)
+                        } catch {
+                            await tracker.recordFailure(for: server)
+                            throw error
+                        }
                     }
                 )
             },
