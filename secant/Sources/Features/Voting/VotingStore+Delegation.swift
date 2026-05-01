@@ -957,6 +957,7 @@ extension Voting {
 
         case .delegationProofFailed(let roundId, let error):
             guard state.roundId == roundId else { return .none }
+            votingLogger.error("Delegation proof failed (raw): \(error)")
             state.currentKeystoneBundleIndex = 0
             state.keystoneBundleSignatures = []
             let userMessage: String

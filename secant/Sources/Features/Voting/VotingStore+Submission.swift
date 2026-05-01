@@ -147,6 +147,7 @@ extension Voting {
                             send: send
                         )
                     } catch {
+                        votingLogger.error("Delegation pipeline failed (raw): \(error.localizedDescription)")
                         await send(.batchAuthorizationFailed(
                             error: VotingErrorMapper.userFriendlyMessage(from: error.localizedDescription)
                         ))
