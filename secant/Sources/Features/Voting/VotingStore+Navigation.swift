@@ -104,6 +104,7 @@ extension Voting {
                 .cancel(id: cancelStateStreamId),
                 .cancel(id: cancelStatusPollingId),
                 .cancel(id: cancelPipelineId),
+                .cancel(id: cancelDelegationProofId),
                 .cancel(id: cancelNewRoundPollingId),
                 .cancel(id: cancelShareTrackingId),
                 .cancel(id: cancelDelegationProofPrecomputeId)
@@ -144,13 +145,18 @@ extension Voting {
             state.isDelegationProofInFlight = false
             state.delegationProofPrecomputeStatus = .notStarted
             state.isDelegationProofPrecomputeInFlight = false
+            state.pendingBatchSubmission = false
+            state.currentKeystoneBundleIndex = 0
+            state.keystoneBundleSignatures = []
+            state.pendingVotingPczt = nil
+            state.pendingUnsignedDelegationPczt = nil
+            state.keystoneSigningStatus = .idle
             state.hotkeyAddress = nil
             state.isSubmittingVote = false
             state.submittingProposalId = nil
             state.voteSubmissionStep = nil
             state.currentVoteBundleIndex = nil
             state.draftVotes = [:]
-            state.pendingBatchSubmission = false
             state.batchSubmissionStatus = .idle
             state.batchVoteErrors = [:]
             state.tallyResults = [:]
@@ -165,6 +171,7 @@ extension Voting {
                 .cancel(id: cancelStateStreamId),
                 .cancel(id: cancelStatusPollingId),
                 .cancel(id: cancelPipelineId),
+                .cancel(id: cancelDelegationProofId),
                 .cancel(id: cancelNewRoundPollingId),
                 .cancel(id: cancelShareTrackingId),
                 .cancel(id: cancelDelegationProofPrecomputeId),

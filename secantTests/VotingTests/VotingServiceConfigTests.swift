@@ -561,6 +561,83 @@ final class ShareDelegationPostFallbackTests: XCTestCase {
 
 @MainActor
 final class VotingSubmissionPostFallbackTests: XCTestCase {
+    func testRoundTappedResetsDelegationStateWhenSwitchingRounds() async {
+        let round = Self.makeVotingRound()
+        let newSession = Self.makeVotingSession(
+            proposals: round.proposals,
+            roundByte: 0xBB,
+            status: .unspecified
+        )
+        var initialState = Self.makeReadySubmissionState(round: round)
+        initialState.allRounds = [
+            Voting.State.RoundListItem(roundNumber: 2, session: newSession)
+        ]
+        initialState.delegationProofStatus = .complete
+        initialState.isDelegationProofInFlight = true
+        initialState.pendingBatchSubmission = true
+        initialState.currentKeystoneBundleIndex = 1
+        initialState.keystoneBundleSignatures = [
+            .init(sig: Data([0x01]), sighash: Data([0x02]), rk: Data([0x03]))
+        ]
+        initialState.keystoneSigningStatus = .preparingRequest
+
+        let store = TestStore(initialState: initialState) {
+            Voting()
+        }
+        store.exhaustivity = .off
+
+        await store.send(.roundTapped(newSession.voteRoundId.hexString))
+
+        XCTAssertEqual(store.state.roundId, newSession.voteRoundId.hexString)
+        XCTAssertEqual(store.state.delegationProofStatus, .notStarted)
+        XCTAssertFalse(store.state.isDelegationProofInFlight)
+        XCTAssertFalse(store.state.pendingBatchSubmission)
+        XCTAssertEqual(store.state.currentKeystoneBundleIndex, 0)
+        XCTAssertEqual(store.state.keystoneBundleSignatures, [])
+        XCTAssertEqual(store.state.keystoneSigningStatus, .idle)
+    }
+
+    func testBackToRoundsListClearsPendingKeystoneBatch() async {
+        let round = Self.makeVotingRound()
+        var initialState = Self.makeReadySubmissionState(round: round)
+        initialState.pendingBatchSubmission = true
+        initialState.currentKeystoneBundleIndex = 1
+        initialState.keystoneBundleSignatures = [
+            .init(sig: Data([0x01]), sighash: Data([0x02]), rk: Data([0x03]))
+        ]
+        initialState.keystoneSigningStatus = .awaitingSignature
+
+        let store = TestStore(initialState: initialState) {
+            Voting()
+        }
+        store.exhaustivity = .off
+        store.dependencies.votingAPI.fetchAllRounds = { [] }
+
+        await store.send(.backToRoundsList)
+
+        XCTAssertFalse(store.state.pendingBatchSubmission)
+        XCTAssertEqual(store.state.currentKeystoneBundleIndex, 0)
+        XCTAssertEqual(store.state.keystoneBundleSignatures, [])
+        XCTAssertEqual(store.state.keystoneSigningStatus, .idle)
+    }
+
+    func testStaleDelegationCompletionDoesNotMutateSelectedRound() async {
+        let round = Self.makeVotingRound()
+        var initialState = Self.makeReadySubmissionState(round: round)
+        initialState.delegationProofStatus = .notStarted
+        initialState.isDelegationProofInFlight = true
+
+        let store = TestStore(initialState: initialState) {
+            Voting()
+        }
+        store.exhaustivity = .off
+
+        await store.send(.delegationProofCompleted(roundId: String(repeating: "b", count: 64)))
+
+        XCTAssertEqual(store.state.delegationProofStatus, .notStarted)
+        XCTAssertTrue(store.state.isDelegationProofInFlight)
+    }
+
     func testDelegateSharesWithFallbackRetriesReachabilityExhaustion() async throws {
         let attempts = AttemptCounter()
         var votingAPI = VotingAPIClient()
@@ -908,9 +985,13 @@ final class VotingSubmissionPostFallbackTests: XCTestCase {
         )
     }
 
-    private static func makeVotingSession(proposals: [VotingProposal]) -> VotingSession {
+    private static func makeVotingSession(
+        proposals: [VotingProposal],
+        roundByte: UInt8 = 0xAA,
+        status: SessionStatus = .active
+    ) -> VotingSession {
         VotingSession(
-            voteRoundId: Data(repeating: 0xAA, count: 32),
+            voteRoundId: Data(repeating: roundByte, count: 32),
             snapshotHeight: 1,
             snapshotBlockhash: Data(repeating: 0x01, count: 32),
             proposalsHash: Data(repeating: 0x02, count: 32),
@@ -924,7 +1005,7 @@ final class VotingSubmissionPostFallbackTests: XCTestCase {
             nullifierIMTRoot: Data(repeating: 0x08, count: 32),
             creator: "creator",
             proposals: proposals,
-            status: .active
+            status: status
         )
     }
 

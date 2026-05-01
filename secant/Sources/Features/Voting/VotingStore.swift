@@ -673,6 +673,7 @@ struct Voting {
     let cancelStateStreamId = UUID()
     let cancelStatusPollingId = UUID()
     let cancelPipelineId = UUID()
+    let cancelDelegationProofId = UUID()
     let cancelNewRoundPollingId = UUID()
     let cancelShareTrackingId = UUID()
     let cancelDelegationProofPrecomputeId = UUID()
@@ -723,8 +724,8 @@ struct Voting {
         case copyHotkeyAddress
         case delegationApproved
         case delegationRejected
-        case keystoneSigningPrepared(VotingPcztResult, Pczt)
-        case keystoneSigningFailed(String)
+        case keystoneSigningPrepared(roundId: String, VotingPcztResult, Pczt)
+        case keystoneSigningFailed(roundId: String, error: String)
         case openKeystoneSignatureScan
         case retryKeystoneSigning
         case spendAuthSignatureExtracted(Data, Data)
@@ -742,12 +743,12 @@ struct Voting {
         // Background ZKP delegation
         case startDelegationProof
         case startDelegationProofPrecomputation
-        case delegationProofPrecomputationProgress(Double)
-        case delegationProofPrecomputationCompleted
-        case delegationProofPrecomputationFailed(String)
-        case delegationProofProgress(Double)
-        case delegationProofCompleted
-        case delegationProofFailed(String)
+        case delegationProofPrecomputationProgress(roundId: String, progress: Double)
+        case delegationProofPrecomputationCompleted(roundId: String)
+        case delegationProofPrecomputationFailed(roundId: String, error: String)
+        case delegationProofProgress(roundId: String, progress: Double)
+        case delegationProofCompleted(roundId: String)
+        case delegationProofFailed(roundId: String, error: String)
 
         // Proposal list
         case proposalTapped(UInt32)
