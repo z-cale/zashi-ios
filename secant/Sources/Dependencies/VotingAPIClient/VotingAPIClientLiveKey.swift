@@ -262,6 +262,36 @@ private func postServerJSON(_ serverURL: String, _ path: String, body: [String: 
 typealias SharePost = @Sendable (_ serverURL: String, _ body: [String: Any]) async throws -> Void
 typealias ShareTargetSelector = @Sendable (_ serverURLs: [String], _ targetCount: Int) -> [String]
 
+func sharePostBody(
+    for payload: SharePayload,
+    roundIdHex: String,
+    submitAt: UInt64? = nil
+) -> [String: Any] {
+    [
+        "shares_hash": payload.sharesHash.base64EncodedString(),
+        "proposal_id": payload.proposalId,
+        "vote_decision": payload.voteDecision,
+        "enc_share": [
+            "c1": payload.encShare.c1.base64EncodedString(),
+            "c2": payload.encShare.c2.base64EncodedString(),
+            "share_index": payload.encShare.shareIndex
+        ],
+        "share_index": payload.encShare.shareIndex,
+        "tree_position": payload.treePosition,
+        "vote_round_id": roundIdHex,
+        "all_enc_shares": payload.allEncShares.map { share -> [String: Any] in
+            [
+                "c1": share.c1.base64EncodedString(),
+                "c2": share.c2.base64EncodedString(),
+                "share_index": share.shareIndex
+            ]
+        },
+        "share_comms": payload.shareComms.map { $0.base64EncodedString() },
+        "primary_blind": payload.primaryBlind.base64EncodedString(),
+        "submit_at": submitAt ?? payload.submitAt
+    ]
+}
+
 func delegateSharePayloads(
     _ payloads: [SharePayload],
     roundIdHex: String,
@@ -274,29 +304,7 @@ func delegateSharePayloads(
     var results: [DelegatedShareInfo] = []
 
     for (shareOffset, payload) in payloads.enumerated() {
-        let body: [String: Any] = [
-            "shares_hash": payload.sharesHash.base64EncodedString(),
-            "proposal_id": payload.proposalId,
-            "vote_decision": payload.voteDecision,
-            "enc_share": [
-                "c1": payload.encShare.c1.base64EncodedString(),
-                "c2": payload.encShare.c2.base64EncodedString(),
-                "share_index": payload.encShare.shareIndex
-            ],
-            "share_index": payload.encShare.shareIndex,
-            "tree_position": payload.treePosition,
-            "vote_round_id": roundIdHex,
-            "all_enc_shares": payload.allEncShares.map { share -> [String: Any] in
-                [
-                    "c1": share.c1.base64EncodedString(),
-                    "c2": share.c2.base64EncodedString(),
-                    "share_index": share.shareIndex
-                ]
-            },
-            "share_comms": payload.shareComms.map { $0.base64EncodedString() },
-            "primary_blind": payload.primaryBlind.base64EncodedString(),
-            "submit_at": payload.submitAt
-        ]
+        let body = sharePostBody(for: payload, roundIdHex: roundIdHex)
 
         let targetCount = max(1, (availableServers.count + 1) / 2)
         var acceptedServers: [String] = []
@@ -361,6 +369,31 @@ func delegateSharePayloads(
         delegatedShares: results,
         remainingServerURLs: availableServers
     )
+}
+
+func resubmitSharePayload(
+    _ payload: SharePayload,
+    roundIdHex: String,
+    configuredServerURLs: [String],
+    sentToURLs: [String],
+    postShare: @escaping SharePost,
+    orderServers: @escaping @Sendable ([String]) -> [String] = { $0.shuffled() }
+) async -> [String] {
+    let sentSet = Set(sentToURLs)
+    let untried = orderServers(configuredServerURLs.filter { !sentSet.contains($0) })
+    let alreadySent = orderServers(configuredServerURLs.filter { sentSet.contains($0) })
+    let body = sharePostBody(for: payload, roundIdHex: roundIdHex, submitAt: 0)
+
+    for server in untried + alreadySent {
+        do {
+            try await postShare(server, body)
+            return [server]
+        } catch {
+            print("[VotingAPI] Share resubmission failed on \(server): \(error)")
+        }
+    }
+
+    return []
 }
 
 /// Parse a broadcast TX response into TxResult. Throws on non-zero code.
@@ -702,99 +735,16 @@ extension VotingAPIClient: DependencyKey {
                 }
             },
             resubmitShare: { payload, roundIdHex, excludeURLs in
-                let tracker = ServerHealthTracker.shared
-                let excludeSet = Set(excludeURLs)
-                let candidates = await tracker.healthyServers().filter { !excludeSet.contains($0) }
-                guard !candidates.isEmpty else {
-                    // No new servers available — try all servers as a last resort
-                    // (original servers may have recovered)
-                    let allHealthy = await tracker.healthyServers()
-                    guard !allHealthy.isEmpty else { return [] }
-                    // Fall through to attempt with all healthy
-                    var accepted: [String] = []
-                    for server in allHealthy.shuffled() {
-                        let body: [String: Any] = [
-                            "shares_hash": payload.sharesHash.base64EncodedString(),
-                            "proposal_id": payload.proposalId,
-                            "vote_decision": payload.voteDecision,
-                            "enc_share": [
-                                "c1": payload.encShare.c1.base64EncodedString(),
-                                "c2": payload.encShare.c2.base64EncodedString(),
-                                "share_index": payload.encShare.shareIndex
-                            ],
-                            "share_index": payload.encShare.shareIndex,
-                            "tree_position": payload.treePosition,
-                            "vote_round_id": roundIdHex,
-                            "all_enc_shares": payload.allEncShares.map { share -> [String: Any] in
-                                [
-                                    "c1": share.c1.base64EncodedString(),
-                                    "c2": share.c2.base64EncodedString(),
-                                    "share_index": share.shareIndex
-                                ]
-                            },
-                            "share_comms": payload.shareComms.map { $0.base64EncodedString() },
-                            "primary_blind": payload.primaryBlind.base64EncodedString(),
-                            "submit_at": 0  // immediate for resubmission
-                        ]
-                        do {
-                            _ = try await postServerJSON(server, "/shielded-vote/v1/shares", body: body)
-                            await tracker.recordSuccess(for: server)
-                            accepted.append(server)
-                            break  // one acceptance is enough
-                        } catch {
-                            await tracker.recordFailure(for: server)
-                        }
+                let configuredServerURLs = await SvAPIConfigStore.shared.voteServerURLs
+                return await resubmitSharePayload(
+                    payload,
+                    roundIdHex: roundIdHex,
+                    configuredServerURLs: configuredServerURLs,
+                    sentToURLs: excludeURLs,
+                    postShare: { server, body in
+                        _ = try await postServerJSON(server, "/shielded-vote/v1/shares", body: body)
                     }
-                    return accepted
-                }
-
-                // Send to a subset of new servers
-                let quorum = max(1, (candidates.count + 1) / 2)
-                let targets = Array(candidates.shuffled().prefix(quorum))
-
-                let body: [String: Any] = [
-                    "shares_hash": payload.sharesHash.base64EncodedString(),
-                    "proposal_id": payload.proposalId,
-                    "vote_decision": payload.voteDecision,
-                    "enc_share": [
-                        "c1": payload.encShare.c1.base64EncodedString(),
-                        "c2": payload.encShare.c2.base64EncodedString(),
-                        "share_index": payload.encShare.shareIndex
-                    ],
-                    "share_index": payload.encShare.shareIndex,
-                    "tree_position": payload.treePosition,
-                    "vote_round_id": roundIdHex,
-                    "all_enc_shares": payload.allEncShares.map { share -> [String: Any] in
-                        [
-                            "c1": share.c1.base64EncodedString(),
-                            "c2": share.c2.base64EncodedString(),
-                            "share_index": share.shareIndex
-                        ]
-                    },
-                    "share_comms": payload.shareComms.map { $0.base64EncodedString() },
-                    "primary_blind": payload.primaryBlind.base64EncodedString(),
-                    "submit_at": 0  // immediate for resubmission
-                ]
-
-                var accepted: [String] = []
-                await withTaskGroup(of: (String, Bool).self) { group in
-                    for server in targets {
-                        group.addTask {
-                            do {
-                                _ = try await postServerJSON(server, "/shielded-vote/v1/shares", body: body)
-                                await tracker.recordSuccess(for: server)
-                                return (server, true)
-                            } catch {
-                                await tracker.recordFailure(for: server)
-                                return (server, false)
-                            }
-                        }
-                    }
-                    for await (server, ok) in group {
-                        if ok { accepted.append(server) }
-                    }
-                }
-                return accepted
+                )
             },
             fetchProposalTally: { roundId, proposalId in
                 let roundIdHex = roundId.map { String(format: "%02x", $0) }.joined()

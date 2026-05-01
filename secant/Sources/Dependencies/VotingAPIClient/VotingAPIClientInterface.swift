@@ -61,7 +61,7 @@ struct VotingAPIClient {
     ) async throws -> ShareDelegationResult
     /// Poll a helper server for the confirmation status of a share identified by its nullifier.
     var fetchShareStatus: @Sendable (_ helperBaseURL: String, _ roundIdHex: String, _ nullifierHex: String) async throws -> ShareConfirmationResult
-    /// Resubmit a single share to healthy servers, excluding the given URLs.
+    /// Resubmit a single share to configured vote servers, preferring URLs that have not already accepted it.
     /// Returns the list of server URLs that accepted the share (empty if all failed).
     var resubmitShare: @Sendable (_ payload: SharePayload, _ roundIdHex: String, _ excludeURLs: [String]) async throws -> [String]
     var fetchProposalTally: @Sendable (_ roundId: Data, _ proposalId: UInt32) async throws -> TallyResult
