@@ -197,7 +197,7 @@ private func shouldTryNextVoteServer(after error: Error) -> Bool {
     if error is URLError { return true }
     if let error = error as? SvAPIError,
        case SvAPIError.httpError(let statusCode, _) = error {
-        return statusCode >= 500
+        return statusCode >= 400
     }
     if let error = error as? SvAPIError,
        case SvAPIError.invalidResponse = error {
