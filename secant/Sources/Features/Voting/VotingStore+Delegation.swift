@@ -6,11 +6,11 @@ import os
 
 // MARK: - Delegation (Witness Verification, Round Resume, Delegation Signing, ZKP)
 
-func votingSeedFingerprint(for account: WalletAccount?) -> Data {
+func votingSeedFingerprint(for account: WalletAccount?) -> Data? {
     if let seedFingerprint = account?.seedFingerprint, seedFingerprint.count == 32 {
         return Data(seedFingerprint)
     }
-    return Data(repeating: 0, count: 32)
+    return nil
 }
 
 func votingAccountIndex(for account: WalletAccount?) -> UInt32 {
@@ -357,7 +357,10 @@ extension Voting {
             let network = zcashSDKEnvironment.network
             let networkId: UInt32 = network.networkType == .mainnet ? 0 : 1
             let accountIndex = votingAccountIndex(for: state.selectedWalletAccount)
-            let seedFingerprint = votingSeedFingerprint(for: state.selectedWalletAccount)
+            guard let seedFingerprint = votingSeedFingerprint(for: state.selectedWalletAccount) else {
+                votingLogger.debug("Skipping delegation PIR precompute: missing selected-account seed fingerprint")
+                return .none
+            }
             let roundName = state.votingRound.title
 
             return .run { [votingCrypto, mnemonic, walletStorage] send in
@@ -487,7 +490,7 @@ extension Voting {
                 : votingAccountIndex(for: state.selectedWalletAccount)
             let keystoneSeedFingerprint = keystoneMetadata?.seedFingerprint
             let pcztSeedFingerprint = isKeystoneUser
-                ? keystoneSeedFingerprint ?? Data(repeating: 0, count: 32)
+                ? keystoneSeedFingerprint
                 : votingSeedFingerprint(for: state.selectedWalletAccount)
             let roundName = state.votingRound.title
             // serviceConfig is guaranteed loaded by the time the user reaches any voting
@@ -987,7 +990,7 @@ extension Voting {
         pirEndpoints: [String],
         expectedSnapshotHeight: UInt64,
         delegationPrepared: Bool = false,
-        seedFingerprint: Data = Data(repeating: 0, count: 32),
+        seedFingerprint: Data? = nil,
         votingCrypto: VotingCryptoClient,
         votingAPI: VotingAPIClient,
         send: Send<Action>
@@ -1019,7 +1022,9 @@ extension Voting {
                 if delegationPrepared {
                     votingLogger.debug("Delegation bundle \(bundleIndex + 1)/\(bundleCount) using precomputed PIR data")
                 } else {
-                    let orchardFvk = try votingCrypto.extractOrchardFvkFromUfvk(bundleNotes[0].ufvkStr, networkId)
+                    let orchardFvk = try seedFingerprint.map { _ in
+                        try votingCrypto.extractOrchardFvkFromUfvk(bundleNotes[0].ufvkStr, networkId)
+                    }
                     _ = try await votingCrypto.buildVotingPczt(
                         roundId, bundleIndex, bundleNotes,
                         senderSeed, hotkeySeed, networkId, accountIndex, roundName,
