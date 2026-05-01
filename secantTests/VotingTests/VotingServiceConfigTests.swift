@@ -1,5 +1,5 @@
 import XCTest
-import VotingModels
+@testable import secant_testnet
 
 final class VotingServiceConfigTests: XCTestCase {
 
