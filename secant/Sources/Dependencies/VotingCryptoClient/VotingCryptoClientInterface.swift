@@ -87,7 +87,8 @@ struct VotingCryptoClient {
         _ bundleIndex: UInt32,
         _ bundleNotes: [NoteInfo],
         _ pirEndpoints: [String],
-        _ expectedSnapshotHeight: UInt64
+        _ expectedSnapshotHeight: UInt64,
+        _ networkId: UInt32
     ) async throws -> DelegationPirPrecomputeResult
     /// Build and prove the real delegation ZKP (#1). Long-running.
     /// Loads data from voting DB and wallet DB, fetches IMT proofs from server,

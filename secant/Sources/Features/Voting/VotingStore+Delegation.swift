@@ -406,7 +406,8 @@ extension Voting {
                         bundleIndex,
                         bundleNotes,
                         pirEndpoints,
-                        expectedSnapshotHeight
+                        expectedSnapshotHeight,
+                        networkId
                     )
                     totalCached += result.cachedCount
                     totalFetched += result.fetchedCount
