@@ -346,6 +346,10 @@ extension Voting {
             else {
                 return .none
             }
+            guard let seedFingerprint = votingSeedFingerprint(for: state.selectedWalletAccount) else {
+                votingLogger.debug("Skipping delegation PIR precompute: missing selected-account seed fingerprint")
+                return .none
+            }
 
             state.delegationPrecomputeStatus = .inProgress
             state.isDelegationPrecomputeInFlight = true
@@ -357,10 +361,6 @@ extension Voting {
             let network = zcashSDKEnvironment.network
             let networkId: UInt32 = network.networkType == .mainnet ? 0 : 1
             let accountIndex = votingAccountIndex(for: state.selectedWalletAccount)
-            guard let seedFingerprint = votingSeedFingerprint(for: state.selectedWalletAccount) else {
-                votingLogger.debug("Skipping delegation PIR precompute: missing selected-account seed fingerprint")
-                return .none
-            }
             let roundName = state.votingRound.title
 
             return .run { [votingCrypto, mnemonic, walletStorage] send in
