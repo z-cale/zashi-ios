@@ -229,7 +229,6 @@ extension Voting {
                     .appendingPathComponent("voting.sqlite3").path
                 try await votingCrypto.openDatabase(dbPath)
                 try await votingCrypto.setWalletId(walletId)
-                try await Self.migrateLegacyDrafts(votingCrypto: votingCrypto, activeWalletId: walletId)
 
                 // 4. Fetch all rounds and populate the list. Kept in its own
                 //    do/catch so transient network failures surface as the

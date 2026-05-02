@@ -511,7 +511,7 @@ extension Root {
                 // Wipe persisted per-round vote records written by the Voting module.
                 let standardDefaults = UserDefaults.standard
                 for key in standardDefaults.dictionaryRepresentation().keys
-                    where key.hasPrefix("voting.voteRecord.") || key.hasPrefix("voting.draftVotes.") {
+                    where key.hasPrefix("voting.voteRecord.") {
                     standardDefaults.removeObject(forKey: key)
                 }
                 let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
