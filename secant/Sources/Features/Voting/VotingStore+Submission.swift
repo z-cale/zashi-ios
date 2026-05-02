@@ -425,20 +425,16 @@ extension Voting {
                 // proposal in the batch has completed. Until then, the user
                 // must still be able to re-enter the round and edit/retry any
                 // outstanding drafts.
-                if state.voteRecord == nil {
-                    let record = CompletedVoteRecord(
-                        votedAt: Date(),
-                        votingWeight: state.votingWeight,
-                        proposalCount: state.totalProposals
-                    )
-                    state.voteRecord = record
-                    state.voteRecords[state.roundId] = record
-                    state.draftVotes = [:]
-                    state.batchSubmissionStatus = .completed(successCount: successCount)
-                    return completeVoteRoundEffect(record, roundId: state.roundId)
-                }
+                let record = state.voteRecord ?? CompletedVoteRecord(
+                    votedAt: Date(),
+                    votingWeight: state.votingWeight,
+                    proposalCount: state.totalProposals
+                )
+                state.voteRecord = record
+                state.voteRecords[state.roundId] = record
+                state.draftVotes = [:]
                 state.batchSubmissionStatus = .completed(successCount: successCount)
-                return clearDraftsEffect(roundId: state.roundId)
+                return completeVoteRoundEffect(record, roundId: state.roundId)
             }
             return .none
 

@@ -49,7 +49,7 @@ extension Voting {
                 votingLogger.error("Failed to persist completed voting record: \(error)")
             }
         }
-        .cancellable(id: cancelDraftPersistenceId, cancelInFlight: true)
+        .cancellable(id: cancelCompletionPersistenceId, cancelInFlight: true)
     }
 }
 

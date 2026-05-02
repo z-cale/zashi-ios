@@ -67,6 +67,32 @@ final class VotingSubmissionTests: XCTestCase {
         XCTAssertEqual(successCount, 2)
     }
 
+    func testBatchSubmissionCompletedReusesExistingVoteRecordAndClearsDrafts() {
+        let roundId = UUID().uuidString
+        let record = CompletedVoteRecord(
+            votedAt: Date(timeIntervalSince1970: 1_234),
+            votingWeight: ballotDivisor * 3,
+            proposalCount: 2
+        )
+        var state = makeState(walletId: UUID().uuidString, roundId: roundId, proposalCount: 2)
+        state.voteRecord = record
+        state.draftVotes = [
+            1: .option(0),
+            2: .option(1)
+        ]
+
+        _ = Voting().reduceSubmission(&state, .batchSubmissionCompleted(successCount: 2, failCount: 0))
+
+        XCTAssertEqual(state.voteRecord, record)
+        XCTAssertEqual(state.voteRecords[roundId], record)
+        XCTAssertTrue(state.draftVotes.isEmpty)
+
+        guard case .completed(let successCount) = state.batchSubmissionStatus else {
+            return XCTFail("Expected completed batch submission status")
+        }
+        XCTAssertEqual(successCount, 2)
+    }
+
     func testDraftRecordConversionIsStableAndSorted() {
         let records = Voting.draftRecords(from: [
             2: .option(1),

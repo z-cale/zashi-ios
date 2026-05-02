@@ -689,6 +689,7 @@ struct Voting {
     let cancelNewRoundPollingId = UUID()
     let cancelShareTrackingId = UUID()
     let cancelDraftPersistenceId = UUID()
+    let cancelCompletionPersistenceId = UUID()
 
     enum Action: Equatable {
         // Navigation
