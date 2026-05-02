@@ -107,6 +107,18 @@ extension VotingCryptoClient: DependencyKey {
                 let backend = try await dbActor.backend()
                 try backend.clearDraftVotes(roundId: roundId)
             },
+            completeVoteRound: { roundId, record in
+                let backend = try await dbActor.backend()
+                try backend.completeVoteRound(roundId: roundId, record: record.toSDK())
+            },
+            getCompletedVoteRecord: { roundId in
+                let backend = try await dbActor.backend()
+                return try backend.getCompletedVoteRecord(roundId: roundId)?.toModel()
+            },
+            clearCompletedVoteRecord: { roundId in
+                let backend = try await dbActor.backend()
+                try backend.clearCompletedVoteRecord(roundId: roundId)
+            },
             deleteSkippedBundles: { roundId, keepCount in
                 let backend = try await dbActor.backend()
                 _ = try backend.deleteSkippedBundles(roundId: roundId, keepCount: keepCount)
@@ -837,6 +849,26 @@ private extension VotingDraftVote {
             proposalId: proposalId,
             choice: .option(choice),
             updatedAt: updatedAt
+        )
+    }
+}
+
+private extension CompletedVoteRecord {
+    func toSDK() -> VotingCompletedVoteRecord {
+        VotingCompletedVoteRecord(
+            votedAt: UInt64(votedAt.timeIntervalSince1970),
+            votingWeight: votingWeight,
+            proposalCount: UInt32(proposalCount)
+        )
+    }
+}
+
+private extension VotingCompletedVoteRecord {
+    func toModel() -> CompletedVoteRecord {
+        CompletedVoteRecord(
+            votedAt: Date(timeIntervalSince1970: TimeInterval(votedAt)),
+            votingWeight: votingWeight,
+            proposalCount: Int(proposalCount)
         )
     }
 }

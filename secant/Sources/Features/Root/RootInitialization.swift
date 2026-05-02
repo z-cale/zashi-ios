@@ -508,12 +508,6 @@ extension Root {
                 userDefaults.remove(Constants.udIsResyncingWallet)
                 userDefaults.remove(Constants.udLeavesScreenOpen)
                 userDefaults.remove(.hasSeenHowToVote)
-                // Wipe persisted per-round vote records written by the Voting module.
-                let standardDefaults = UserDefaults.standard
-                for key in standardDefaults.dictionaryRepresentation().keys
-                    where key.hasPrefix("voting.voteRecord.") {
-                    standardDefaults.removeObject(forKey: key)
-                }
                 let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
                 for fileName in ["voting.sqlite3", "voting.sqlite3-wal", "voting.sqlite3-shm"] {
                     try? FileManager.default.removeItem(at: documentsURL.appendingPathComponent(fileName))

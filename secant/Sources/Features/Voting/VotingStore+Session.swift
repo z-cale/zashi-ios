@@ -41,9 +41,7 @@ extension Voting {
                 State.RoundListItem(roundNumber: index + 1, session: session)
             }
 
-            // Vote records stay in UserDefaults for this issue, but DB-backed
-            // drafts decide whether a record is complete enough to show.
-            let walletId = state.walletId
+            // DB-backed drafts decide whether a completed record is safe to show.
             state.voteRecords = [:]
 
             // Always land on the polls list when there are any rounds, so the
@@ -56,16 +54,14 @@ extension Voting {
                 state.screenStack = [.pollsList]
             }
             let roundIds = state.allRounds.map(\.id)
-            return .run { [votingCrypto, walletId] send in
-                var loadedRecords: [String: VoteRecord] = [:]
+            return .run { [votingCrypto] send in
+                var loadedRecords: [String: CompletedVoteRecord] = [:]
                 for roundId in roundIds {
                     do {
                         let drafts = try await votingCrypto.getDraftVotes(roundId)
-                        if let record = Self.loadCompletedVoteRecord(
-                            walletId: walletId,
-                            roundId: roundId,
-                            hasDrafts: !drafts.isEmpty
-                        ) {
+                        if !drafts.isEmpty {
+                            try? await votingCrypto.clearCompletedVoteRecord(roundId)
+                        } else if let record = try await votingCrypto.getCompletedVoteRecord(roundId) {
                             loadedRecords[roundId] = record
                         }
                     } catch {
@@ -107,16 +103,17 @@ extension Voting {
             let cancelStalePrecompute: Effect<Action> = isSwitchingRounds
                 ? .cancel(id: cancelDelegationPrecomputeId)
                 : .none
-            let walletId = state.walletId
             let selectedRoundId = state.roundId
             let loadDraftState: Effect<Action> = .run { [votingCrypto] send in
                 let records = try await votingCrypto.getDraftVotes(selectedRoundId)
                 let drafts = Self.draftDictionary(from: records)
-                let voteRecord = Self.loadCompletedVoteRecord(
-                    walletId: walletId,
-                    roundId: selectedRoundId,
-                    hasDrafts: !drafts.isEmpty
-                )
+                let voteRecord: CompletedVoteRecord?
+                if drafts.isEmpty {
+                    voteRecord = try await votingCrypto.getCompletedVoteRecord(selectedRoundId)
+                } else {
+                    try? await votingCrypto.clearCompletedVoteRecord(selectedRoundId)
+                    voteRecord = nil
+                }
                 await send(.roundDraftStateLoaded(
                     roundId: selectedRoundId,
                     drafts: drafts,

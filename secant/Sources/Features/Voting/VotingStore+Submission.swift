@@ -426,14 +426,16 @@ extension Voting {
                 // must still be able to re-enter the round and edit/retry any
                 // outstanding drafts.
                 if state.voteRecord == nil {
-                    let record = VoteRecord(
+                    let record = CompletedVoteRecord(
                         votedAt: Date(),
                         votingWeight: state.votingWeight,
                         proposalCount: state.totalProposals
                     )
                     state.voteRecord = record
-                    Self.persistVoteRecord(record, walletId: state.walletId, roundId: state.roundId)
                     state.voteRecords[state.roundId] = record
+                    state.draftVotes = [:]
+                    state.batchSubmissionStatus = .completed(successCount: successCount)
+                    return completeVoteRoundEffect(record, roundId: state.roundId)
                 }
                 state.batchSubmissionStatus = .completed(successCount: successCount)
                 return clearDraftsEffect(roundId: state.roundId)

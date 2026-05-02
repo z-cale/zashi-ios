@@ -1223,6 +1223,7 @@ final class VotingSubmissionPostFallbackTests: XCTestCase {
         votingCrypto.markVoteSubmitted = { _, _, _ in }
         votingCrypto.replaceDraftVotes = { _, _ in }
         votingCrypto.clearDraftVotes = { _ in }
+        votingCrypto.completeVoteRound = { _, _ in }
         store.dependencies.votingCrypto = votingCrypto
 
         return store

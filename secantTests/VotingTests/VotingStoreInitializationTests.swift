@@ -31,6 +31,7 @@ final class VotingStoreInitializationTests: XCTestCase {
         store.dependencies.votingCrypto.openDatabase = { _ in }
         store.dependencies.votingCrypto.setWalletId = { _ in }
         store.dependencies.votingCrypto.getDraftVotes = { _ in [] }
+        store.dependencies.votingCrypto.getCompletedVoteRecord = { _ in nil }
 
         await store.send(.initialize) {
             $0.votingRound = VotingRound(
@@ -115,7 +116,7 @@ final class VotingStoreInitializationTests: XCTestCase {
         )
         initialState.votes = [1: .option(0)]
         initialState.voteRecords = [
-            staleRound.id: VoteRecord(
+            staleRound.id: CompletedVoteRecord(
                 votedAt: Date(timeIntervalSince1970: 1),
                 votingWeight: 1,
                 proposalCount: 1

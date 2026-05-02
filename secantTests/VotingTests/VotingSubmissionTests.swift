@@ -19,14 +19,10 @@ final class VotingSubmissionTests: XCTestCase {
         XCTAssertEqual(message, String(localizable: .coinVoteStoreUserErrorPirInvalidProofData))
     }
 
-    func testAuthenticationSucceededDoesNotPersistVoteRecordBeforeSubmission() {
-        let walletId = UUID().uuidString
+    func testAuthenticationSucceededDoesNotMarkVoteRecordBeforeSubmission() {
         let roundId = UUID().uuidString
-        defer {
-            Voting.clearPersistedVoteRecord(walletId: walletId, roundId: roundId)
-        }
 
-        var state = makeState(walletId: walletId, roundId: roundId, proposalCount: 1, isKeystoneUser: true)
+        var state = makeState(walletId: UUID().uuidString, roundId: roundId, proposalCount: 1, isKeystoneUser: true)
         state.activeSession = makeSession(proposals: state.votingRound.proposals)
         state.bundleCount = 1
         state.draftVotes = [1: .option(0)]
@@ -35,7 +31,6 @@ final class VotingSubmissionTests: XCTestCase {
         _ = Voting().reduceSubmission(&state, .authenticationSucceeded)
 
         XCTAssertNil(state.voteRecord)
-        XCTAssertNil(Voting.loadVoteRecord(walletId: walletId, roundId: roundId))
         XCTAssertTrue(state.pendingBatchSubmission)
         XCTAssertEqual(state.screenStack.last, .delegationSigning)
     }
@@ -43,9 +38,6 @@ final class VotingSubmissionTests: XCTestCase {
     func testBatchSubmissionCompletedPersistsVoteRecordOnlyAfterFullSuccess() {
         let walletId = UUID().uuidString
         let roundId = UUID().uuidString
-        defer {
-            Voting.clearPersistedVoteRecord(walletId: walletId, roundId: roundId)
-        }
 
         var state = makeState(walletId: walletId, roundId: roundId, proposalCount: 2)
         state.votingWeight = ballotDivisor * 5
@@ -53,6 +45,11 @@ final class VotingSubmissionTests: XCTestCase {
             1: .option(0),
             2: .option(1)
         ]
+        state.draftVotes = [
+            1: .option(0),
+            2: .option(1)
+        ]
+
         _ = Voting().reduceSubmission(&state, .batchSubmissionCompleted(successCount: 2, failCount: 0))
 
         guard let record = state.voteRecord else {
@@ -62,26 +59,12 @@ final class VotingSubmissionTests: XCTestCase {
         XCTAssertEqual(record.votingWeight, ballotDivisor * 5)
         XCTAssertEqual(record.proposalCount, 2)
         XCTAssertEqual(state.voteRecords[roundId], record)
-        XCTAssertEqual(Voting.loadVoteRecord(walletId: walletId, roundId: roundId), record)
+        XCTAssertTrue(state.draftVotes.isEmpty)
 
         guard case .completed(let successCount) = state.batchSubmissionStatus else {
             return XCTFail("Expected completed batch submission status")
         }
         XCTAssertEqual(successCount, 2)
-    }
-
-    func testLoadCompletedVoteRecordClearsStaleRecordWhenDraftsRemain() {
-        let walletId = UUID().uuidString
-        let roundId = UUID().uuidString
-        defer {
-            Voting.clearPersistedVoteRecord(walletId: walletId, roundId: roundId)
-        }
-
-        let record = Voting.VoteRecord(votedAt: Date(timeIntervalSince1970: 1_700_000_000), votingWeight: ballotDivisor, proposalCount: 1)
-        Voting.persistVoteRecord(record, walletId: walletId, roundId: roundId)
-
-        XCTAssertNil(Voting.loadCompletedVoteRecord(walletId: walletId, roundId: roundId, hasDrafts: true))
-        XCTAssertNil(Voting.loadVoteRecord(walletId: walletId, roundId: roundId))
     }
 
     func testDraftRecordConversionIsStableAndSorted() {

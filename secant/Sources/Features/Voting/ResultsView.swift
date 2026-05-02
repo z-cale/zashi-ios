@@ -134,7 +134,7 @@ struct ResultsView: View {
         }
     }
 
-    private func metaLine(for record: Voting.VoteRecord) -> String {
+    private func metaLine(for record: CompletedVoteRecord) -> String {
         let dateString = record.votedAt.formatted(.dateTime.month(.abbreviated).day())
         return String(
             localizable: .coinVoteResultsMetaLine(

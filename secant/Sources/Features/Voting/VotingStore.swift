@@ -301,18 +301,17 @@ struct Voting {
         @Shared(.appStorage(.hasSeenHowToVote))
         var hasSeenHowToVote: Bool = false
 
-        /// Persisted record of when the current round finished submitting,
-        /// loaded from UserDefaults in `roundTapped`. Used by Results to
+        /// Persisted record of when the current round finished submitting.
+        /// Loaded from the voting DB in `roundTapped` and used by Results to
         /// render "Voted MMM d - Voting Power X.XXX ZEC" days after submission.
-        var voteRecord: VoteRecord?
+        var voteRecord: CompletedVoteRecord?
 
-        /// Per-round persisted vote records keyed by round ID, populated by a
-        /// one-time scan of UserDefaults during `allRoundsLoaded`. The polls
-        /// list uses this to render the Voted pill on active-round cards and
-        /// the "X of Y voted" indicator on closed cards without re-querying
-        /// UserDefaults from the view. A record exists only once the round has
-        /// no remaining draft votes to edit or retry.
-        var voteRecords: [String: VoteRecord] = [:]
+        /// Per-round completed vote records keyed by round ID, populated from
+        /// the voting DB during `allRoundsLoaded`. The polls list uses this to
+        /// render the Voted pill on active-round cards and the "X of Y voted"
+        /// indicator on closed cards. A record is trusted only once the round
+        /// has no remaining draft votes to edit or retry.
+        var voteRecords: [String: CompletedVoteRecord] = [:]
 
         var selectedProposalId: UInt32?
 
@@ -701,9 +700,9 @@ struct Voting {
 
         // Rounds list
         case allRoundsLoaded([VotingSession])
-        case voteRecordsLoaded([String: VoteRecord])
+        case voteRecordsLoaded([String: CompletedVoteRecord])
         case roundTapped(String)
-        case roundDraftStateLoaded(roundId: String, drafts: [UInt32: VoteChoice], voteRecord: VoteRecord?)
+        case roundDraftStateLoaded(roundId: String, drafts: [UInt32: VoteChoice], voteRecord: CompletedVoteRecord?)
         case startNewRoundPolling
         case roundsLoadFailed
         case retryLoadRounds
