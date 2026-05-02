@@ -130,8 +130,7 @@ extension Voting {
             // Cancel per-round effects and re-fetch rounds. allRoundsLoaded
             // sees the cleared activeSession and re-renders the polls list.
             state.screenStack = [.loading]
-            // Clean up persisted drafts for the current round
-            Self.clearPersistedDrafts(walletId: state.walletId, roundId: state.roundId)
+            let clearDraftsEffect = clearPersistedDraftsEffect(walletId: state.walletId, roundId: state.roundId)
             // Reset per-round state
             state.activeSession = nil
             state.votes = [:]
@@ -175,6 +174,7 @@ extension Voting {
                 .cancel(id: cancelDelegationPrecomputeId),
                 .cancel(id: cancelNewRoundPollingId),
                 .cancel(id: cancelShareTrackingId),
+                clearDraftsEffect,
                 .run { [votingAPI] send in
                     let allRounds = try await votingAPI.fetchAllRounds()
                     await send(.allRoundsLoaded(allRounds))
@@ -421,8 +421,11 @@ extension Voting {
             } else {
                 state.draftVotes[proposalId] = choice
             }
-            Self.persistDrafts(state.draftVotes, walletId: state.walletId, roundId: state.roundId)
-            return .none
+            return persistDraftsEffect(
+                state.draftVotes,
+                walletId: state.walletId,
+                roundId: state.roundId
+            )
 
         case .voteSubmissionBundleStarted(let index):
             state.currentVoteBundleIndex = index
@@ -460,19 +463,24 @@ extension Voting {
             // Revert the edited proposal's draft to the snapshot captured when
             // the session started. `nil` prior draft means "not drafted before
             // edit", so we remove whatever was set during the session.
+            var persistEffect: Effect<Action> = .none
             if let snapshot = state.editingFromReview {
                 if let prior = snapshot.priorDraft {
                     state.draftVotes[snapshot.proposalId] = prior
                 } else {
                     state.draftVotes.removeValue(forKey: snapshot.proposalId)
                 }
-                Self.persistDrafts(state.draftVotes, walletId: state.walletId, roundId: state.roundId)
+                persistEffect = persistDraftsEffect(
+                    state.draftVotes,
+                    walletId: state.walletId,
+                    roundId: state.roundId
+                )
                 state.editingFromReview = nil
             }
             if case .proposalDetail = state.currentScreen {
                 state.screenStack.removeLast()
             }
-            return .none
+            return persistEffect
 
         case .saveEdit:
             // Draft already reflects the user's choices via .castVote — just
@@ -541,10 +549,14 @@ extension Voting {
                 }
                 state.draftVotes[proposal.id] = .option(abstainIndex)
             }
-            Self.persistDrafts(state.draftVotes, walletId: state.walletId, roundId: state.roundId)
+            let persistEffect = persistDraftsEffect(
+                state.draftVotes,
+                walletId: state.walletId,
+                roundId: state.roundId
+            )
             state.screenStack.removeLast()
             state.screenStack.append(.reviewVotes)
-            return .none
+            return persistEffect
 
         case .dismissUnanswered:
             if case .proposalDetail = state.currentScreen {

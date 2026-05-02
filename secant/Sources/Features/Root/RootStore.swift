@@ -258,6 +258,7 @@ struct Root {
     @Dependency(\.walletConfigProvider) var walletConfigProvider
     @Dependency(\.walletStorage) var walletStorage
     @Dependency(\.readTransactionsStorage) var readTransactionsStorage
+    @Dependency(\.votingStorage) var votingStorage
     @Dependency(\.zcashSDKEnvironment) var zcashSDKEnvironment
 
     init() { }

@@ -41,18 +41,15 @@ extension Voting {
                 State.RoundListItem(roundNumber: index + 1, session: session)
             }
 
-            // Populate voteRecords from persisted UserDefaults so the polls
+            // Populate voteRecords from persisted app storage so the polls
             // list can render the Voted pill and "X of Y voted" indicator
             // for rounds the user has fully submitted. Per-round, sync
             // read — fast even for tens of rounds.
             let walletId = state.walletId
-            var loadedRecords: [String: VoteRecord] = [:]
-            for item in state.allRounds {
-                if let record = Self.loadCompletedVoteRecord(walletId: walletId, roundId: item.id) {
-                    loadedRecords[item.id] = record
-                }
-            }
-            state.voteRecords = loadedRecords
+            state.voteRecords = loadCompletedVoteRecords(
+                walletId: walletId,
+                roundIds: state.allRounds.map(\.id)
+            )
 
             // Always land on the polls list when there are any rounds, so the
             // user explicitly chooses which one to enter — even if there's only
@@ -84,7 +81,7 @@ extension Voting {
                 state.keystoneSigningStatus = .idle
             }
             state.votingRound = sessionBackedRound(from: session, title: item.title, fallback: state.votingRound)
-            state.voteRecord = Self.loadCompletedVoteRecord(walletId: state.walletId, roundId: state.roundId)
+            state.voteRecord = loadCompletedVoteRecord(walletId: state.walletId, roundId: state.roundId)
             reconcileProposalState(&state)
             let cancelStaleDelegation: Effect<Action> = isSwitchingRounds
                 ? .cancel(id: cancelDelegationProofId)
@@ -296,7 +293,7 @@ extension Voting {
             // Don't set delegationProofStatus here — verifyWitnesses will set it
             // only for fresh rounds, avoiding a brief flash for cached rounds.
             // Restore persisted draft votes (survives app termination)
-            let restored = Self.loadDrafts(walletId: state.walletId, roundId: state.roundId)
+            let restored = loadDrafts(walletId: state.walletId, roundId: state.roundId)
             // Only keep drafts for proposals that haven't been submitted yet
             state.draftVotes = restored.filter { state.votes[$0.key] == nil }
             if !state.draftVotes.isEmpty {

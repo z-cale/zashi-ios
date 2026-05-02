@@ -130,12 +130,17 @@ struct Voting {
     var votingAPI
     @Dependency(\.votingCrypto)
     var votingCrypto
+    @Dependency(\.votingStorage)
+    var votingStorage
     @Dependency(\.localAuthentication)
     var localAuthentication
     @Dependency(\.walletStorage)
     var walletStorage
     @Dependency(\.zcashSDKEnvironment)
     var zcashSDKEnvironment
+
+    typealias VoteRecord = VotingCompletionRecord
+
     @ObservableState
     struct State: Equatable {
         enum Screen: Equatable {
@@ -302,15 +307,15 @@ struct Voting {
         var hasSeenHowToVote: Bool = false
 
         /// Persisted record of when the current round finished submitting,
-        /// loaded from UserDefaults in `roundTapped`. Used by Results to
+        /// loaded from app storage in `roundTapped`. Used by Results to
         /// render "Voted MMM d - Voting Power X.XXX ZEC" days after submission.
         var voteRecord: VoteRecord?
 
         /// Per-round persisted vote records keyed by round ID, populated by a
-        /// one-time scan of UserDefaults during `allRoundsLoaded`. The polls
+        /// one-time load from app storage during `allRoundsLoaded`. The polls
         /// list uses this to render the Voted pill on active-round cards and
-        /// the "X of Y voted" indicator on closed cards without re-querying
-        /// UserDefaults from the view. A record exists only once the round has
+        /// the "X of Y voted" indicator on closed cards without querying
+        /// storage from the view. A record exists only once the round has
         /// no remaining draft votes to edit or retry.
         var voteRecords: [String: VoteRecord] = [:]
 
@@ -319,7 +324,7 @@ struct Voting {
         // MARK: - Batch voting
 
         /// Draft votes (batch mode): proposal ID -> chosen option. Persisted to
-        /// UserDefaults to survive app termination. Drafts are not submitted
+        /// app storage to survive app termination. Drafts are not submitted
         /// until the user explicitly triggers batch submission.
         var draftVotes: [UInt32: VoteChoice] = [:]
 

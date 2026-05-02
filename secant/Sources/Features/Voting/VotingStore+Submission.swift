@@ -12,17 +12,24 @@ extension Voting {
         case let .setDraftVote(proposalId, choice):
             guard state.votes[proposalId] == nil else { return .none }
             state.draftVotes[proposalId] = choice
-            Self.persistDrafts(state.draftVotes, walletId: state.walletId, roundId: state.roundId)
+            let persistEffect = persistDraftsEffect(
+                state.draftVotes,
+                walletId: state.walletId,
+                roundId: state.roundId
+            )
             // Pop back to the list so the user can continue drafting other proposals
             if case .proposalDetail = state.currentScreen {
                 state.screenStack.removeLast()
             }
-            return .none
+            return persistEffect
 
         case let .clearDraftVote(proposalId):
             state.draftVotes.removeValue(forKey: proposalId)
-            Self.persistDrafts(state.draftVotes, walletId: state.walletId, roundId: state.roundId)
-            return .none
+            return persistDraftsEffect(
+                state.draftVotes,
+                walletId: state.walletId,
+                roundId: state.roundId
+            )
 
         case .submitAllDrafts:
             guard state.canSubmitBatch else { return .none }
@@ -401,8 +408,11 @@ extension Voting {
         case let .batchVoteSubmitted(proposalId, choice):
             state.votes[proposalId] = choice
             state.draftVotes.removeValue(forKey: proposalId)
-            Self.persistDrafts(state.draftVotes, walletId: state.walletId, roundId: state.roundId)
-            return .none
+            return persistDraftsEffect(
+                state.draftVotes,
+                walletId: state.walletId,
+                roundId: state.roundId
+            )
 
         case let .batchVoteFailed(proposalId, error):
             state.batchVoteErrors[proposalId] = error
@@ -435,11 +445,12 @@ extension Voting {
                         proposalCount: state.totalProposals
                     )
                     state.voteRecord = record
-                    Self.persistVoteRecord(record, walletId: state.walletId, roundId: state.roundId)
                     state.voteRecords[state.roundId] = record
+                    state.batchSubmissionStatus = .completed(successCount: successCount)
+                    return completeVoteRoundEffect(record, walletId: state.walletId, roundId: state.roundId)
                 }
                 state.batchSubmissionStatus = .completed(successCount: successCount)
-                Self.clearPersistedDrafts(walletId: state.walletId, roundId: state.roundId)
+                return clearPersistedDraftsEffect(walletId: state.walletId, roundId: state.roundId)
             }
             return .none
 
