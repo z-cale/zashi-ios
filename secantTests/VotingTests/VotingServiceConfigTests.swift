@@ -940,6 +940,7 @@ final class VotingSubmissionPostFallbackTests: XCTestCase {
         }
         store.exhaustivity = .off
         store.dependencies.votingAPI.fetchAllRounds = { [] }
+        store.dependencies.votingCrypto.clearDraftVotes = { _ in }
 
         await store.send(.backToRoundsList)
 
@@ -1220,6 +1221,8 @@ final class VotingSubmissionPostFallbackTests: XCTestCase {
         votingCrypto.computeShareNullifier = { _, _, _ in String(repeating: "00", count: 32) }
         votingCrypto.recordShareDelegation = { _, _, _, _, _, _, _ in }
         votingCrypto.markVoteSubmitted = { _, _, _ in }
+        votingCrypto.replaceDraftVotes = { _, _ in }
+        votingCrypto.clearDraftVotes = { _ in }
         store.dependencies.votingCrypto = votingCrypto
 
         return store

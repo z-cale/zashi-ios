@@ -92,6 +92,21 @@ extension VotingCryptoClient: DependencyKey {
                 let backend = try await dbActor.backend()
                 try backend.clearRound(roundId: roundId)
             },
+            replaceDraftVotes: { roundId, drafts in
+                let backend = try await dbActor.backend()
+                try backend.replaceDraftVotes(
+                    roundId: roundId,
+                    drafts: drafts.map { $0.toSDK() }
+                )
+            },
+            getDraftVotes: { roundId in
+                let backend = try await dbActor.backend()
+                return try backend.getDraftVotes(roundId: roundId).map { $0.toModel() }
+            },
+            clearDraftVotes: { roundId in
+                let backend = try await dbActor.backend()
+                try backend.clearDraftVotes(roundId: roundId)
+            },
             deleteSkippedBundles: { roundId, keepCount in
                 let backend = try await dbActor.backend()
                 _ = try backend.deleteSkippedBundles(roundId: roundId, keepCount: keepCount)
@@ -802,6 +817,26 @@ private extension VotingVoteRecord {
             bundleIndex: bundleIndex,
             choice: VoteChoice.fromFFI(choice),
             submitted: submitted
+        )
+    }
+}
+
+private extension DraftVoteRecord {
+    func toSDK() -> VotingDraftVote {
+        VotingDraftVote(
+            proposalId: proposalId,
+            choice: choice.index,
+            updatedAt: updatedAt
+        )
+    }
+}
+
+private extension VotingDraftVote {
+    func toModel() -> DraftVoteRecord {
+        DraftVoteRecord(
+            proposalId: proposalId,
+            choice: .option(choice),
+            updatedAt: updatedAt
         )
     }
 }

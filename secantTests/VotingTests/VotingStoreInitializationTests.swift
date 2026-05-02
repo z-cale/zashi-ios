@@ -30,6 +30,7 @@ final class VotingStoreInitializationTests: XCTestCase {
         }
         store.dependencies.votingCrypto.openDatabase = { _ in }
         store.dependencies.votingCrypto.setWalletId = { _ in }
+        store.dependencies.votingCrypto.getDraftVotes = { _ in [] }
 
         await store.send(.initialize) {
             $0.votingRound = VotingRound(
@@ -54,6 +55,7 @@ final class VotingStoreInitializationTests: XCTestCase {
             $0.screenStack = [.pollsList]
             $0.voteRecords = [:]
         }
+        await store.receive(.voteRecordsLoaded([:]))
 
         await store.send(.initialize) {
             $0.serviceConfig = nil
@@ -85,6 +87,7 @@ final class VotingStoreInitializationTests: XCTestCase {
             $0.screenStack = [.pollsList]
             $0.voteRecords = [:]
         }
+        await store.receive(.voteRecordsLoaded([:]))
 
         XCTAssertEqual(await callCounter.configFetches, 2)
         XCTAssertEqual(await callCounter.urlConfigurations, 2)

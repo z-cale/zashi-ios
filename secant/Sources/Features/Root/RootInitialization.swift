@@ -514,6 +514,10 @@ extension Root {
                     where key.hasPrefix("voting.voteRecord.") || key.hasPrefix("voting.draftVotes.") {
                     standardDefaults.removeObject(forKey: key)
                 }
+                let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                for fileName in ["voting.sqlite3", "voting.sqlite3-wal", "voting.sqlite3-shm"] {
+                    try? FileManager.default.removeItem(at: documentsURL.appendingPathComponent(fileName))
+                }
                 flexaHandler.signOut()
                 userStoredPreferences.removeAll()
                 try? readTransactionsStorage.resetZashi()

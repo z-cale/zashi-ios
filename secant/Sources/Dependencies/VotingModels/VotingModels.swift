@@ -205,6 +205,20 @@ struct VoteRecord: Equatable, Sendable {
     }
 }
 
+// MARK: - Draft Vote Record (from Rust draft_votes table)
+
+struct DraftVoteRecord: Equatable, Sendable {
+    let proposalId: UInt32
+    let choice: VoteChoice
+    let updatedAt: UInt64
+
+    init(proposalId: UInt32, choice: VoteChoice, updatedAt: UInt64 = 0) {
+        self.proposalId = proposalId
+        self.choice = choice
+        self.updatedAt = updatedAt
+    }
+}
+
 /// Combined DB state published via stateStream. Drives all UI state.
 struct VotingDbState: Equatable, Sendable {
     let roundState: RoundStateInfo

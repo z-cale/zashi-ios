@@ -23,7 +23,6 @@ final class VotingSubmissionTests: XCTestCase {
         let walletId = UUID().uuidString
         let roundId = UUID().uuidString
         defer {
-            Voting.clearPersistedDrafts(walletId: walletId, roundId: roundId)
             Voting.clearPersistedVoteRecord(walletId: walletId, roundId: roundId)
         }
 
@@ -45,7 +44,6 @@ final class VotingSubmissionTests: XCTestCase {
         let walletId = UUID().uuidString
         let roundId = UUID().uuidString
         defer {
-            Voting.clearPersistedDrafts(walletId: walletId, roundId: roundId)
             Voting.clearPersistedVoteRecord(walletId: walletId, roundId: roundId)
         }
 
@@ -55,8 +53,6 @@ final class VotingSubmissionTests: XCTestCase {
             1: .option(0),
             2: .option(1)
         ]
-        Voting.persistDrafts([1: .option(0), 2: .option(1)], walletId: walletId, roundId: roundId)
-
         _ = Voting().reduceSubmission(&state, .batchSubmissionCompleted(successCount: 2, failCount: 0))
 
         guard let record = state.voteRecord else {
@@ -67,7 +63,6 @@ final class VotingSubmissionTests: XCTestCase {
         XCTAssertEqual(record.proposalCount, 2)
         XCTAssertEqual(state.voteRecords[roundId], record)
         XCTAssertEqual(Voting.loadVoteRecord(walletId: walletId, roundId: roundId), record)
-        XCTAssertTrue(Voting.loadDrafts(walletId: walletId, roundId: roundId).isEmpty)
 
         guard case .completed(let successCount) = state.batchSubmissionStatus else {
             return XCTFail("Expected completed batch submission status")
@@ -79,16 +74,140 @@ final class VotingSubmissionTests: XCTestCase {
         let walletId = UUID().uuidString
         let roundId = UUID().uuidString
         defer {
-            Voting.clearPersistedDrafts(walletId: walletId, roundId: roundId)
             Voting.clearPersistedVoteRecord(walletId: walletId, roundId: roundId)
         }
 
         let record = Voting.VoteRecord(votedAt: Date(timeIntervalSince1970: 1_700_000_000), votingWeight: ballotDivisor, proposalCount: 1)
         Voting.persistVoteRecord(record, walletId: walletId, roundId: roundId)
-        Voting.persistDrafts([1: .option(0)], walletId: walletId, roundId: roundId)
 
-        XCTAssertNil(Voting.loadCompletedVoteRecord(walletId: walletId, roundId: roundId))
+        XCTAssertNil(Voting.loadCompletedVoteRecord(walletId: walletId, roundId: roundId, hasDrafts: true))
         XCTAssertNil(Voting.loadVoteRecord(walletId: walletId, roundId: roundId))
+    }
+
+    func testDraftRecordConversionIsStableAndSorted() {
+        let records = Voting.draftRecords(from: [
+            2: .option(1),
+            1: .option(0)
+        ])
+
+        XCTAssertEqual(records.map(\.proposalId), [1, 2])
+        XCTAssertEqual(Voting.draftDictionary(from: records), [
+            1: .option(0),
+            2: .option(1)
+        ])
+    }
+
+    func testLegacyDraftEntriesParseUserDefaultsShape() {
+        let walletId = UUID().uuidString
+        let roundId = UUID().uuidString
+        let key = "voting.draftVotes.\(walletId)|\(roundId)"
+        UserDefaults.standard.set([
+            "1": NSNumber(value: 0),
+            "2": NSNumber(value: 1)
+        ], forKey: key)
+        defer {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+
+        let entries = Voting.legacyDraftEntries().filter { $0.key == key }
+
+        XCTAssertEqual(entries, [
+            Voting.LegacyDraftEntry(
+                key: key,
+                walletId: walletId,
+                roundId: roundId,
+                drafts: [
+                    1: .option(0),
+                    2: .option(1)
+                ]
+            )
+        ])
+    }
+
+    func testLegacyDraftMigrationWritesThenDeletesMigratedKeys() async throws {
+        Voting.clearLegacyDraftKeys()
+        let recorder = DraftMigrationRecorder()
+        let activeWalletId = "active-\(UUID().uuidString)"
+        let walletId = "legacy-\(UUID().uuidString)"
+        let roundId = UUID().uuidString
+        let key = "voting.draftVotes.\(walletId)|\(roundId)"
+        UserDefaults.standard.set(["7": NSNumber(value: 2)], forKey: key)
+        defer {
+            Voting.clearLegacyDraftKeys()
+        }
+
+        var client = VotingCryptoClient()
+        client.setWalletId = { walletId in
+            await recorder.setWalletId(walletId)
+        }
+        client.replaceDraftVotes = { roundId, drafts in
+            await recorder.replaceDraftVotes(roundId: roundId, drafts: drafts)
+        }
+
+        try await Voting.migrateLegacyDrafts(votingCrypto: client, activeWalletId: activeWalletId)
+
+        XCTAssertNil(UserDefaults.standard.object(forKey: key))
+        let walletIds = await recorder.walletIds
+        let writes = await recorder.writes
+        XCTAssertEqual(walletIds, [walletId, activeWalletId])
+        XCTAssertEqual(writes, [
+            DraftMigrationRecorder.Write(
+                roundId: roundId,
+                drafts: [DraftVoteRecord(proposalId: 7, choice: .option(2))]
+            )
+        ])
+    }
+
+    func testLegacyDraftMigrationPreservesKeyWhenWriteFails() async {
+        Voting.clearLegacyDraftKeys()
+        let recorder = DraftMigrationRecorder(failingRoundId: "failed-round")
+        let activeWalletId = "active-\(UUID().uuidString)"
+        let walletId = "legacy-\(UUID().uuidString)"
+        let key = "voting.draftVotes.\(walletId)|failed-round"
+        UserDefaults.standard.set(["7": NSNumber(value: 2)], forKey: key)
+        defer {
+            Voting.clearLegacyDraftKeys()
+        }
+
+        var client = VotingCryptoClient()
+        client.setWalletId = { walletId in
+            await recorder.setWalletId(walletId)
+        }
+        client.replaceDraftVotes = { roundId, drafts in
+            try await recorder.replaceDraftVotes(roundId: roundId, drafts: drafts)
+        }
+
+        do {
+            try await Voting.migrateLegacyDrafts(votingCrypto: client, activeWalletId: activeWalletId)
+            XCTFail("Expected migration to fail")
+        } catch {
+            XCTAssertNotNil(UserDefaults.standard.object(forKey: key))
+            let walletIds = await recorder.walletIds
+            XCTAssertEqual(walletIds, [walletId, activeWalletId])
+        }
+    }
+
+    func testRoundTappedWaitsForDraftHydrationBeforeProposalList() {
+        var state = makeState(walletId: UUID().uuidString, roundId: "", proposalCount: 1)
+        let session = makeSession(proposals: state.votingRound.proposals)
+        let roundId = session.voteRoundId.hexString
+        state.allRounds = [
+            Voting.State.RoundListItem(roundNumber: 1, session: session)
+        ]
+        state.screenStack = [.pollsList]
+
+        _ = Voting().reduceSession(&state, .roundTapped(roundId))
+
+        XCTAssertEqual(state.screenStack, [.pollsList, .loading])
+        XCTAssertTrue(state.draftVotes.isEmpty)
+
+        _ = Voting().reduceSession(
+            &state,
+            .roundDraftStateLoaded(roundId: roundId, drafts: [1: .option(1)], voteRecord: nil)
+        )
+
+        XCTAssertEqual(state.screenStack, [.pollsList, .proposalList])
+        XCTAssertEqual(state.draftVotes, [1: .option(1)])
     }
 
     func testBatchSubmissionProgressClearsPreviousSubmissionStep() {
@@ -225,3 +344,31 @@ final class VotingSubmissionTests: XCTestCase {
         )
     }
 }
+
+private actor DraftMigrationRecorder {
+    struct Write: Equatable {
+        let roundId: String
+        let drafts: [DraftVoteRecord]
+    }
+
+    private(set) var walletIds: [String] = []
+    private(set) var writes: [Write] = []
+    private let failingRoundId: String?
+
+    init(failingRoundId: String? = nil) {
+        self.failingRoundId = failingRoundId
+    }
+
+    func setWalletId(_ walletId: String) {
+        walletIds.append(walletId)
+    }
+
+    func replaceDraftVotes(roundId: String, drafts: [DraftVoteRecord]) throws {
+        if roundId == failingRoundId {
+            throw DraftMigrationFailure()
+        }
+        writes.append(Write(roundId: roundId, drafts: drafts))
+    }
+}
+
+private struct DraftMigrationFailure: Error {}

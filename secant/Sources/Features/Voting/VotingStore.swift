@@ -319,8 +319,8 @@ struct Voting {
         // MARK: - Batch voting
 
         /// Draft votes (batch mode): proposal ID -> chosen option. Persisted to
-        /// UserDefaults to survive app termination. Drafts are not submitted
-        /// until the user explicitly triggers batch submission.
+        /// the voting SQLite database to survive app termination. Drafts are
+        /// not submitted until the user explicitly triggers batch submission.
         var draftVotes: [UInt32: VoteChoice] = [:]
 
         /// Snapshot of the edited proposal's draft at the moment the user
@@ -689,6 +689,7 @@ struct Voting {
     let cancelDelegationPrecomputeId = UUID()
     let cancelNewRoundPollingId = UUID()
     let cancelShareTrackingId = UUID()
+    let cancelDraftPersistenceId = UUID()
 
     enum Action: Equatable {
         // Navigation
@@ -700,7 +701,9 @@ struct Voting {
 
         // Rounds list
         case allRoundsLoaded([VotingSession])
+        case voteRecordsLoaded([String: VoteRecord])
         case roundTapped(String)
+        case roundDraftStateLoaded(roundId: String, drafts: [UInt32: VoteChoice], voteRecord: VoteRecord?)
         case startNewRoundPolling
         case roundsLoadFailed
         case retryLoadRounds
@@ -843,7 +846,9 @@ struct Voting {
 
             // MARK: - Rounds List
             case .allRoundsLoaded,
+                .voteRecordsLoaded,
                 .roundTapped,
+                .roundDraftStateLoaded,
                 .startNewRoundPolling,
                 .roundsLoadFailed,
                 .retryLoadRounds:
@@ -1001,6 +1006,9 @@ struct Voting {
     func reconcileProposalState(_ state: inout State) {
         let validProposalIDs = Set(state.votingRound.proposals.map(\.id))
         state.votes = state.votes.filter { validProposalIDs.contains($0.key) }
+        state.draftVotes = state.draftVotes.filter {
+            validProposalIDs.contains($0.key) && state.votes[$0.key] == nil
+        }
 
         if let selectedProposalId = state.selectedProposalId,
             !validProposalIDs.contains(selectedProposalId) {

@@ -41,18 +41,10 @@ extension Voting {
                 State.RoundListItem(roundNumber: index + 1, session: session)
             }
 
-            // Populate voteRecords from persisted UserDefaults so the polls
-            // list can render the Voted pill and "X of Y voted" indicator
-            // for rounds the user has fully submitted. Per-round, sync
-            // read — fast even for tens of rounds.
+            // Vote records stay in UserDefaults for this issue, but DB-backed
+            // drafts decide whether a record is complete enough to show.
             let walletId = state.walletId
-            var loadedRecords: [String: VoteRecord] = [:]
-            for item in state.allRounds {
-                if let record = Self.loadCompletedVoteRecord(walletId: walletId, roundId: item.id) {
-                    loadedRecords[item.id] = record
-                }
-            }
-            state.voteRecords = loadedRecords
+            state.voteRecords = [:]
 
             // Always land on the polls list when there are any rounds, so the
             // user explicitly chooses which one to enter — even if there's only
@@ -63,6 +55,28 @@ extension Voting {
             } else if state.activeSession == nil {
                 state.screenStack = [.pollsList]
             }
+            let roundIds = state.allRounds.map(\.id)
+            return .run { [votingCrypto, walletId] send in
+                var loadedRecords: [String: VoteRecord] = [:]
+                for roundId in roundIds {
+                    do {
+                        let drafts = try await votingCrypto.getDraftVotes(roundId)
+                        if let record = Self.loadCompletedVoteRecord(
+                            walletId: walletId,
+                            roundId: roundId,
+                            hasDrafts: !drafts.isEmpty
+                        ) {
+                            loadedRecords[roundId] = record
+                        }
+                    } catch {
+                        votingLogger.error("Failed to validate vote record for round \(roundId): \(error)")
+                    }
+                }
+                await send(.voteRecordsLoaded(loadedRecords))
+            }
+
+        case .voteRecordsLoaded(let records):
+            state.voteRecords = records
             return .none
 
         case .roundTapped(let roundId):
@@ -84,7 +98,8 @@ extension Voting {
                 state.keystoneSigningStatus = .idle
             }
             state.votingRound = sessionBackedRound(from: session, title: item.title, fallback: state.votingRound)
-            state.voteRecord = Self.loadCompletedVoteRecord(walletId: state.walletId, roundId: state.roundId)
+            state.voteRecord = nil
+            state.draftVotes = [:]
             reconcileProposalState(&state)
             let cancelStaleDelegation: Effect<Action> = isSwitchingRounds
                 ? .cancel(id: cancelDelegationProofId)
@@ -92,35 +107,78 @@ extension Voting {
             let cancelStalePrecompute: Effect<Action> = isSwitchingRounds
                 ? .cancel(id: cancelDelegationPrecomputeId)
                 : .none
+            let walletId = state.walletId
+            let selectedRoundId = state.roundId
+            let loadDraftState: Effect<Action> = .run { [votingCrypto] send in
+                let records = try await votingCrypto.getDraftVotes(selectedRoundId)
+                let drafts = Self.draftDictionary(from: records)
+                let voteRecord = Self.loadCompletedVoteRecord(
+                    walletId: walletId,
+                    roundId: selectedRoundId,
+                    hasDrafts: !drafts.isEmpty
+                )
+                await send(.roundDraftStateLoaded(
+                    roundId: selectedRoundId,
+                    drafts: drafts,
+                    voteRecord: voteRecord
+                ))
+            } catch: { error, send in
+                votingLogger.error("Failed to load voting drafts: \(error)")
+                await send(.initializeFailed(error.localizedDescription))
+            }
 
             switch session.status {
             case .active:
-                // Go straight to proposal list — the witness/proof pipeline
-                // runs in the background once voting weight is loaded.
-                state.screenStack = [.pollsList, .proposalList]
+                // Hydrate DB-backed drafts before showing the proposal list so
+                // persisted choices never flash empty.
+                state.screenStack = [.pollsList, .loading]
                 return .merge(
                     cancelStaleDelegation,
                     cancelStalePrecompute,
                     .cancel(id: cancelNewRoundPollingId),
-                    .send(.startRoundStatusPolling),
-                    // Defer pipeline start so SwiftUI renders the navigation
-                    // transition before the reducer processes the pipeline action.
-                    .run { send in await send(.startActiveRoundPipeline) }
+                    loadDraftState
                 )
             case .tallying:
                 state.screenStack = [.tallying]
-                return .merge(cancelStaleDelegation, cancelStalePrecompute, .send(.startRoundStatusPolling))
+                return .merge(
+                    cancelStaleDelegation,
+                    cancelStalePrecompute,
+                    loadDraftState,
+                    .send(.startRoundStatusPolling)
+                )
             case .finalized:
                 state.screenStack = [.results]
                 return .merge(
                     cancelStaleDelegation,
                     cancelStalePrecompute,
+                    loadDraftState,
                     .send(.fetchTallyResults),
                     .send(.startNewRoundPolling)
                 )
             case .unspecified:
                 return .none
             }
+
+        case let .roundDraftStateLoaded(roundId, drafts, voteRecord):
+            guard roundId == state.roundId,
+                  state.activeSession?.voteRoundId.hexString == roundId else { return .none }
+            state.draftVotes = drafts.filter { state.votes[$0.key] == nil }
+            state.voteRecord = voteRecord
+            if let voteRecord {
+                state.voteRecords[roundId] = voteRecord
+            } else {
+                state.voteRecords.removeValue(forKey: roundId)
+            }
+            reconcileProposalState(&state)
+
+            guard state.activeSession?.status == .active else { return .none }
+            state.screenStack = [.pollsList, .proposalList]
+            return .merge(
+                .send(.startRoundStatusPolling),
+                // Defer pipeline start so SwiftUI renders the navigation
+                // transition before the reducer processes the pipeline action.
+                .run { send in await send(.startActiveRoundPipeline) }
+            )
 
         // MARK: - Initialization
 
@@ -171,6 +229,7 @@ extension Voting {
                     .appendingPathComponent("voting.sqlite3").path
                 try await votingCrypto.openDatabase(dbPath)
                 try await votingCrypto.setWalletId(walletId)
+                try await Self.migrateLegacyDrafts(votingCrypto: votingCrypto, activeWalletId: walletId)
 
                 // 4. Fetch all rounds and populate the list. Kept in its own
                 //    do/catch so transient network failures surface as the
@@ -292,21 +351,14 @@ extension Voting {
                 state.screenStack = [.ineligible]
                 return .none
             }
-            // Show proposals immediately while witnesses load in the background.
-            // For Keystone users that haven't authorized yet, go straight to the
-            // delegation signing screen to avoid a brief flash of the proposal list.
-            // Don't set delegationProofStatus here — verifyWitnesses will set it
-            // only for fresh rounds, avoiding a brief flash for cached rounds.
-            // Restore persisted draft votes (survives app termination)
-            let restored = Self.loadDrafts(walletId: state.walletId, roundId: state.roundId)
-            // Only keep drafts for proposals that haven't been submitted yet
-            state.draftVotes = restored.filter { state.votes[$0.key] == nil }
+            // Drafts were hydrated before proposal-list navigation. Keep only
+            // proposals that have not since been marked submitted by the DB.
+            state.draftVotes = state.draftVotes.filter { state.votes[$0.key] == nil }
             if !state.draftVotes.isEmpty {
                 let draftCount = state.draftVotes.count
                 votingLogger.info("Restored \(draftCount) persisted draft votes")
             }
 
-            state.screenStack = [.pollsList, .proposalList]
             return .merge(
                 .publisher {
                     votingCrypto.stateStream()
@@ -520,6 +572,7 @@ extension Voting {
                 }
             }
             state.votes = mergedVotes
+            state.draftVotes = state.draftVotes.filter { mergedVotes[$0.key] == nil }
             // Proof status: if DB says proof succeeded and we're not actively generating, sync it
             if dbState.roundState.proofGenerated && state.delegationProofStatus != .complete {
                 state.delegationProofStatus = .complete

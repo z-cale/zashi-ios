@@ -129,9 +129,10 @@ extension Voting {
         case .backToRoundsList:
             // Cancel per-round effects and re-fetch rounds. allRoundsLoaded
             // sees the cleared activeSession and re-renders the polls list.
+            let roundId = state.roundId
             state.screenStack = [.loading]
-            // Clean up persisted drafts for the current round
-            Self.clearPersistedDrafts(walletId: state.walletId, roundId: state.roundId)
+            // Clean up persisted drafts for the current round.
+            let clearDrafts: Effect<Action> = roundId.isEmpty ? .none : clearDraftsEffect(roundId: roundId)
             // Reset per-round state
             state.activeSession = nil
             state.votes = [:]
@@ -175,6 +176,7 @@ extension Voting {
                 .cancel(id: cancelDelegationPrecomputeId),
                 .cancel(id: cancelNewRoundPollingId),
                 .cancel(id: cancelShareTrackingId),
+                clearDrafts,
                 .run { [votingAPI] send in
                     let allRounds = try await votingAPI.fetchAllRounds()
                     await send(.allRoundsLoaded(allRounds))
@@ -421,8 +423,7 @@ extension Voting {
             } else {
                 state.draftVotes[proposalId] = choice
             }
-            Self.persistDrafts(state.draftVotes, walletId: state.walletId, roundId: state.roundId)
-            return .none
+            return persistDraftsEffect(state.draftVotes, roundId: state.roundId)
 
         case .voteSubmissionBundleStarted(let index):
             state.currentVoteBundleIndex = index
@@ -466,8 +467,12 @@ extension Voting {
                 } else {
                     state.draftVotes.removeValue(forKey: snapshot.proposalId)
                 }
-                Self.persistDrafts(state.draftVotes, walletId: state.walletId, roundId: state.roundId)
                 state.editingFromReview = nil
+                let effect = persistDraftsEffect(state.draftVotes, roundId: state.roundId)
+                if case .proposalDetail = state.currentScreen {
+                    state.screenStack.removeLast()
+                }
+                return effect
             }
             if case .proposalDetail = state.currentScreen {
                 state.screenStack.removeLast()
@@ -541,10 +546,9 @@ extension Voting {
                 }
                 state.draftVotes[proposal.id] = .option(abstainIndex)
             }
-            Self.persistDrafts(state.draftVotes, walletId: state.walletId, roundId: state.roundId)
             state.screenStack.removeLast()
             state.screenStack.append(.reviewVotes)
-            return .none
+            return persistDraftsEffect(state.draftVotes, roundId: state.roundId)
 
         case .dismissUnanswered:
             if case .proposalDetail = state.currentScreen {
