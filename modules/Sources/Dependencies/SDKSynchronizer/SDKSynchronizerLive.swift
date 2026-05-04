@@ -184,6 +184,12 @@ extension SDKSynchronizerClient: DependencyKey {
                     return .partial(txIds: txIds, statuses: statuses)
                 }
             },
+            broadcasterCreateProposedTransactions: { proposal, spendingKey in
+                try await synchronizer.broadcaster.createProposedTransactions(
+                    proposal: proposal,
+                    spendingKey: spendingKey
+                )
+            },
             proposeShielding: { accountUUID, shieldingThreshold, memo, transparentReceiver in
                 try await synchronizer.proposeShielding(
                     accountUUID: accountUUID,
@@ -191,6 +197,9 @@ extension SDKSynchronizerClient: DependencyKey {
                     memo: memo,
                     transparentReceiver: transparentReceiver
                 )
+            },
+            broadcasterSubmit: { rawTx, endpoint in
+                try await synchronizer.broadcaster.submit(rawTx, to: endpoint)
             },
             isSeedRelevantToAnyDerivedAccount: { seed in
                 try await synchronizer.isSeedRelevantToAnyDerivedAccount(seed: seed)
@@ -283,6 +292,12 @@ extension SDKSynchronizerClient: DependencyKey {
                 } else {
                     return .partial(txIds: txIds, statuses: statuses)
                 }
+            },
+            broadcasterCreateTransactionFromPCZT: { pcztWithProofs, pcztWithSigs in
+                try await synchronizer.broadcaster.createTransactionFromPCZT(
+                    pcztWithProofs: pcztWithProofs,
+                    pcztWithSigs: pcztWithSigs
+                )
             },
             urEncoderForPCZT: { pczt in
                 let keystoneSDK = KeystoneZcashSDK()
