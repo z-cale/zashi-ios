@@ -17,6 +17,8 @@ extension UserPreferencesStorageClient: TestDependencyKey {
             setServer: mock.setServer(_:),
             exchangeRate: { mock.exchangeRate },
             setExchangeRate: mock.setExchangeRate(_:),
+            selectedServers: { mock.selectedServers },
+            setSelectedServers: mock.setSelectedServers(_:),
             removeAll: mock.removeAll
         )
     }()

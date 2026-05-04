@@ -6,6 +6,9 @@ directly impact users rather than highlighting other crucial architectural updat
 
 ## [Unreleased]
 
+### Added
+- Server Setup UI reworked with Automatic/Manual connection mode.
+
 ## 3.3.0 build 2 (2026-04-07)
 
 ### Added

@@ -385,7 +385,8 @@ extension Root {
                     .send(.batteryStateChanged(nil)),
                     .send(.observeTransactions),
                     .send(.observeShieldingProcessor),
-                    .send(.observeTorInit)
+                    .send(.observeTorInit),
+                    .send(.benchmarkSyncEndpoint)
                 )
                 
             case .initialization(.loadedWalletAccounts(let walletAccounts)):

@@ -63,7 +63,7 @@ extension ZcashSDKEnvironment {
         if network == .mainnet {
             servers.append(.custom)
             
-            let mainnetServers = ZcashSDKEnvironment.endpoints(skipDefault: true).map {
+            let mainnetServers = ZcashSDKEnvironment.endpoints(for: network, skipDefault: true).map {
                 Server.hardcoded("\($0.host):\($0.port)")
             }
             
@@ -87,27 +87,36 @@ extension ZcashSDKEnvironment {
         )
     }
     
-    public static func endpoints(skipDefault: Bool = false) -> [LightWalletEndpoint] {
-        var result: [LightWalletEndpoint] = []
-        
-        if !skipDefault {
-            result.append(LightWalletEndpoint(address: "us.zec.stardust.rest", port: 443))
+    public static func endpoints(for network: NetworkType, skipDefault: Bool = false) -> [LightWalletEndpoint] {
+        if network == .testnet {
+            return skipDefault ? [] : [defaultEndpoint(for: network)]
         }
-        
+
+        let timeout = ZcashSDKConstants.streamingCallTimeoutInMillis
+        var result: [LightWalletEndpoint] = []
+
+        if !skipDefault {
+            result.append(LightWalletEndpoint(address: "us.zec.stardust.rest", port: 443, secure: true, streamingCallTimeoutInMillis: timeout))
+        }
+
         result.append(
             contentsOf: [
-                LightWalletEndpoint(address: "eu.zec.stardust.rest", port: 443),
-                LightWalletEndpoint(address: "eu2.zec.stardust.rest", port: 443),
-                LightWalletEndpoint(address: "jp.zec.stardust.rest", port: 443),
-                LightWalletEndpoint(address: "zec.rocks", port: 443),
-                LightWalletEndpoint(address: "na.zec.rocks", port: 443),
-                LightWalletEndpoint(address: "sa.zec.rocks", port: 443),
-                LightWalletEndpoint(address: "eu.zec.rocks", port: 443),
-                LightWalletEndpoint(address: "ap.zec.rocks", port: 443)
+                LightWalletEndpoint(address: "eu.zec.stardust.rest", port: 443, secure: true, streamingCallTimeoutInMillis: timeout),
+                LightWalletEndpoint(address: "eu2.zec.stardust.rest", port: 443, secure: true, streamingCallTimeoutInMillis: timeout),
+                LightWalletEndpoint(address: "jp.zec.stardust.rest", port: 443, secure: true, streamingCallTimeoutInMillis: timeout),
+                LightWalletEndpoint(address: "zec.rocks", port: 443, secure: true, streamingCallTimeoutInMillis: timeout),
+                LightWalletEndpoint(address: "na.zec.rocks", port: 443, secure: true, streamingCallTimeoutInMillis: timeout),
+                LightWalletEndpoint(address: "sa.zec.rocks", port: 443, secure: true, streamingCallTimeoutInMillis: timeout),
+                LightWalletEndpoint(address: "eu.zec.rocks", port: 443, secure: true, streamingCallTimeoutInMillis: timeout),
+                LightWalletEndpoint(address: "ap.zec.rocks", port: 443, secure: true, streamingCallTimeoutInMillis: timeout)
             ]
         )
         
         return result
+    }
+
+    public static func isKnownEndpoint(host: String, port: Int, network: NetworkType) -> Bool {
+        endpoints(for: network).contains { $0.host == host && $0.port == port }
     }
 }
 

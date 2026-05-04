@@ -10,6 +10,7 @@ import ZcashLightClientKit
 
 import UserPreferencesStorage
 import UserDefaults
+import Utils
 
 extension ZcashSDKEnvironment {
     public static func live(network: ZcashNetwork) -> Self {
@@ -38,17 +39,20 @@ extension ZcashSDKEnvironment {
 extension ZcashSDKEnvironment {
     public static func serverConfig(for network: NetworkType) -> UserPreferencesStorage.ServerConfig {
         migrateVersion1IfNeeded()
-        
+        initializeSelectedServersIfNeeded(for: network)
+
+        @Dependency(\.userStoredPreferences) var userStoredPreferences
+        if let selected = userStoredPreferences.selectedServers(),
+           selected.mode == .manual,
+           let first = selected.servers.first {
+            return normalizedStoredServerConfig(first)
+        }
+
         guard let serverConfig = storedServerConfig() else {
             return defaultEndpoint(for: network).serverConfig()
         }
-        
-        // Migrate lwdX.zcash-infra.com servers to custom
-        if serverConfig.host.hasSuffix(".zcash-infra.com") {
-            return UserPreferencesStorage.ServerConfig(host: serverConfig.host, port: serverConfig.port, isCustom: true)
-        }
-        
-        return serverConfig
+
+        return normalizedStoredServerConfig(serverConfig)
     }
     
     static func migrateVersion1IfNeeded() {
@@ -95,6 +99,49 @@ extension ZcashSDKEnvironment {
         }
     }
     
+    /// On first launch (no selected servers config), initialize based on existing server preference:
+    /// - Custom server users: manual mode with their custom server (privacy)
+    /// - Known server users / new users: automatic mode (sends to all servers)
+    static func initializeSelectedServersIfNeeded(for network: NetworkType) {
+        @Dependency(\.userStoredPreferences) var userStoredPreferences
+
+        guard userStoredPreferences.selectedServers() == nil else { return }
+
+        if let existing = userStoredPreferences.server() {
+            let normalizedServer = normalizedStoredServerConfig(existing)
+
+            if normalizedServer.isCustom {
+                do {
+                    try userStoredPreferences.setSelectedServers(.init(mode: .manual, servers: [normalizedServer]))
+                } catch {
+                    LoggerProxy.error("[Migration] Failed to persist custom server selection: \(error)")
+                }
+                return
+            }
+        }
+
+        do {
+            try userStoredPreferences.setSelectedServers(.init(mode: .automatic, servers: []))
+        } catch {
+            LoggerProxy.error("[Migration] Failed to persist default server selection: \(error)")
+        }
+    }
+
+    static func normalizedStoredServerConfig(
+        _ serverConfig: UserPreferencesStorage.ServerConfig
+    ) -> UserPreferencesStorage.ServerConfig {
+        // Preserve historical zcash-infra hosts as manual/custom selections.
+        if serverConfig.host.hasSuffix(".zcash-infra.com") {
+            return UserPreferencesStorage.ServerConfig(
+                host: serverConfig.host,
+                port: serverConfig.port,
+                isCustom: true
+            )
+        }
+
+        return serverConfig
+    }
+
     static func storedServerConfig() -> UserPreferencesStorage.ServerConfig? {
         @Dependency(\.userStoredPreferences) var userStoredPreferences
         return userStoredPreferences.server()

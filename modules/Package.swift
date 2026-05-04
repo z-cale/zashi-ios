@@ -1198,6 +1198,7 @@ let package = Package(
                 "Generated",
                 "UserDefaults",
                 "UserPreferencesStorage",
+                "Utils",
                 .product(name: "ZcashLightClientKit", package: "zcash-swift-wallet-sdk"),
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
             ],

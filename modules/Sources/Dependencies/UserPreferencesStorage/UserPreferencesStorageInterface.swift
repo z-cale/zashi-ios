@@ -23,5 +23,8 @@ public struct UserPreferencesStorageClient {
     public var exchangeRate: () -> UserPreferencesStorage.ExchangeRate?
     public var setExchangeRate: (UserPreferencesStorage.ExchangeRate) throws -> Void
 
+    public var selectedServers: () -> UserPreferencesStorage.SelectedServersConfig?
+    public var setSelectedServers: (UserPreferencesStorage.SelectedServersConfig) throws -> Void
+
     public var removeAll: () -> Void
 }

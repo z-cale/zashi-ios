@@ -20,11 +20,13 @@ public struct UserPreferencesStorage {
         /// The current key for exchange rate setup.
         case ups_exchangeRate2
         case ups_server
+        case ups_selectedServers
     }
     
     public enum UserPreferencesStorageError: Error {
         case exchangeRate
         case serverConfig
+        case selectedServersConfig
     }
     
     /// Default values for all preferences in case there is no value stored (counterparts to `Constants`)
@@ -60,6 +62,22 @@ public struct UserPreferencesStorage {
             setValue(contentData, forKey: Constants.ups_server.rawValue)
         } catch {
             throw UserPreferencesStorageError.serverConfig
+        }
+    }
+
+    public var selectedServers: SelectedServersConfig? {
+        guard let contentData = userDefaults.objectForKey(Constants.ups_selectedServers.rawValue) as? Data else {
+            return nil
+        }
+        return try? JSONDecoder().decode(SelectedServersConfig.self, from: contentData)
+    }
+
+    public func setSelectedServers(_ config: SelectedServersConfig) throws {
+        do {
+            let contentData = try JSONEncoder().encode(config)
+            setValue(contentData, forKey: Constants.ups_selectedServers.rawValue)
+        } catch {
+            throw UserPreferencesStorageError.selectedServersConfig
         }
     }
 
@@ -187,8 +205,31 @@ public extension UserPreferencesStorage {
             guard let endpoint = ServerConfig.endpoint(for: string, streamingCallTimeoutInMillis: streamingCallTimeoutInMillis) else {
                 return nil
             }
-            
+
             return ServerConfig(host: endpoint.host, port: endpoint.port, isCustom: isCustom)
+        }
+    }
+}
+
+// MARK: Connection Mode
+
+public extension UserPreferencesStorage {
+    enum ConnectionMode: String, Codable, Equatable {
+        case automatic
+        case manual
+    }
+}
+
+// MARK: Selected Servers Config
+
+public extension UserPreferencesStorage {
+    struct SelectedServersConfig: Equatable, Codable {
+        public let mode: ConnectionMode
+        public let servers: [ServerConfig]
+
+        public init(mode: ConnectionMode, servers: [ServerConfig]) {
+            self.mode = mode
+            self.servers = servers
         }
     }
 }
