@@ -303,6 +303,10 @@ struct Voting {
         @Shared(.appStorage(.votingConfigOverrideURL))
         var votingConfigOverrideURL: String = ""
 
+        var isOnDefaultConfig: Bool {
+            votingConfigOverrideURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+
         /// Persisted record of when the current round finished submitting,
         /// loaded from UserDefaults in `roundTapped`. Used by Results to
         /// render "Voted MMM d - Voting Power X.XXX ZEC" days after submission.
